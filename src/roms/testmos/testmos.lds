@@ -22,6 +22,8 @@ SECTIONS {
 		*(.srodata);
 		*(.data);
 		*(.bss);
+		*(.memory);
+		*(.sbss);
 		end = .;
 		. = 0x3FF8;
 		*(reset);
