@@ -1,4 +1,10 @@
 
+#define INT_NMI		0x08
+#define INT_IRQ		0x10
+#define INT_DEBUG	0x10
+
+extern void enable_interrupts(int mask);
+
 unsigned char * const SCREENBASE = (unsigned char * const)0xFFFF7C00;
 extern unsigned char const splash;
 
@@ -40,9 +46,9 @@ void hexword(unsigned int n) {
 	hexbyte(n);
 }
 
-void irq(void) {
+void irq_handle(void) {
 	for (int i = 0; i < 36; i++) {
-		printstr("   X");
+		printstr("       X");
 		hexbyte(i);
 		printstr(": ");
 		hexword(irq_regs[i]);
@@ -52,16 +58,20 @@ void irq(void) {
 }
 
 
+void init(void) {
+		scrptr = SCREENBASE;
+}
 
 void main(void) {
 	int * p = (int *)&splash;
 	int * q = (int *)SCREENBASE;
 
-	scrptr = SCREENBASE;
 
 	for (int i = 0; i < 0x100; i++) {
 		q[i] = p[i];
 	}
+
+	enable_interrupts(INT_DEBUG|INT_NMI);
 
 	printstr("BOO!");
 

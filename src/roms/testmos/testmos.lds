@@ -50,7 +50,6 @@ SECTIONS {
 	.hwvects : {
 		. = (0x3FF8 - SIZEOF(.code) - SIZEOF(.data)); 
 		*(reset);
-/*		. = 0x3FFC;	*/
 		*(irq);
 		. = ALIGN(4);
 	} > ROM
