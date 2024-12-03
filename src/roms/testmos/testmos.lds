@@ -10,25 +10,49 @@ means.
 MEMORY {
 	/* the memory in the testbench is 128k in size;
 	 * set LENGTH=96k and leave at least 32k for stack */
-	mem : ORIGIN = 0xFFFFC000, LENGTH = 0x00004000
+	ROM : ORIGIN = 0xFFFFC000, LENGTH = 0x00004000
+	RAM : ORIGIN = 0x00010000, LENGTH = 0x00100000
 }
 
 SECTIONS {
-	.memory : {
+	.code : {
 		. = 0x0000;
 		start*(.text);
 		*(.text);
 		*(.rodata);
 		*(.srodata);
-		*(.data);
+		. = ALIGN(4);
+		_cend = .;
+	} > ROM
+
+	.data : {
+		. = ALIGN(4);
+		_data_start = .;
+		*(.data);	
+		*(.data*);	
+		*(.sdata);	
+		*(.sdata*);	
+		. = ALIGN(4);
+	} >RAM AT> ROM
+	_data_size = SIZEOF(.data);
+    _data_load_start = LOADADDR(.data);
+
+	.bss (NOLOAD): {
+		. = ALIGN(4);
+		_bss_start = .;
 		*(.bss);
 		*(.memory);
 		*(.sbss);
-		end = .;
-		. = 0x3FF8;
+		. = ALIGN(4);
+	} > RAM
+	_bss_size = SIZEOF(.bss);
+
+	.hwvects : {
+		. = (0x3FF8 - SIZEOF(.code) - SIZEOF(.data)); 
 		*(reset);
-		. = 0x3FFC;
+/*		. = 0x3FFC;	*/
 		*(irq);
 		. = ALIGN(4);
-	} > mem
+	} > ROM
+
 }

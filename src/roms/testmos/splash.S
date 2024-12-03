@@ -1,5 +1,5 @@
 		.global splash
 
-		.section .data
+		.section .rodata
 splash:
 		.incbin "splash.mo7"

@@ -14,6 +14,7 @@ RISCV_AS=$(TOOLCHAIN_PREFIX)gcc
 RISCV_AS_FLAGS=-mabi=ilp32 -march=rv32im$(subst C,c,$(COMPRESSED_ISA))
 
 RISCV_OBJCOPY=$(TOOLCHAIN_PREFIX)objcopy
+RISCV_OBJDUMP=$(TOOLCHAIN_PREFIX)objcopy
 
 MLCa:=$(words $(MAKEFILE_LIST))
 MLCb:=$(shell echo "$(MLCa) - 1" | bc)
