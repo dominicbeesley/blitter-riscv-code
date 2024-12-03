@@ -26,7 +26,7 @@ deploy:	all
 $(BUILD)/splash.o:splash.mo7
 
 $(BUILD)/%.s:	%.c
-	$(RISCV_CC) $(RISCV_CC_FLAGS) -c -S -o $@ -g $<
+	$(RISCV_CC) $(RISCV_CC_FLAGS) -O3 -c -S -o $@ -g $<
 
 $(BUILD)/%.o: 	$(BUILD)/%.s $(DEPS) 
 	$(RISCV_AS) $(RISCV_AS_FLAGS) -c -o $@ -g -Wa,-alghmns=$(basename $@).lst $<

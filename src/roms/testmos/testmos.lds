@@ -19,7 +19,9 @@ SECTIONS {
 		. = 0x0000;
 		start*(.text);
 		*(.text);
+		*(.text*);
 		*(.rodata);
+		*(.rodata*);
 		*(.srodata);
 		. = ALIGN(4);
 		_cend = .;
