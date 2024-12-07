@@ -1,15 +1,9 @@
+#include "interrupts.h"
+#include "deice.h"
 
-#define INT_NMI		0x08
-#define INT_IRQ		0x10
-#define INT_DEBUG	0x10
-
-extern void enable_interrupts(int mask);
-extern void deice_main(void);
 
 unsigned char * const SCREENBASE = (unsigned char * const)0xFFFF7C00;
 extern unsigned char const splash;
-
-int irq_regs[32+4];						// 32 caller regs + q0..3
 
 char *scrptr;
 char a = 'x';
@@ -55,7 +49,7 @@ void irq_handle(void) {
 		printstr("       X");
 		hexbyte(i);
 		printstr(": ");
-		hexword(irq_regs[i]);
+		hexword(interrupts_regs[i]);
 	}
 
 	do { } while (1);
@@ -63,7 +57,11 @@ void irq_handle(void) {
 
 
 void init(void) {
-		scrptr = SCREENBASE;
+
+	scrptr = SCREENBASE;
+
+	interrupts_disable(0);
+
 }
 
 void main(void) {
@@ -75,11 +73,9 @@ void main(void) {
 		q[i] = p[i];
 	}
 
-	enable_interrupts(INT_DEBUG|INT_NMI);
-
 	printstr("BOO!");
 
-	deice_main();
+	//asm ("c.ebreak");
 
 	do { } while (1);
 }
