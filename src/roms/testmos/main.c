@@ -4,6 +4,7 @@
 #define INT_DEBUG	0x10
 
 extern void enable_interrupts(int mask);
+extern void deice_main(void);
 
 unsigned char * const SCREENBASE = (unsigned char * const)0xFFFF7C00;
 extern unsigned char const splash;
@@ -16,6 +17,9 @@ char a = 'x';
 
 void printch(char c) {
 	*scrptr++=c;
+	if (((int)scrptr) & 0x8000) {
+		scrptr = SCREENBASE;
+	}
 }
 
 void printstr(const char *s) {
@@ -74,6 +78,8 @@ void main(void) {
 	enable_interrupts(INT_DEBUG|INT_NMI);
 
 	printstr("BOO!");
+
+	deice_main();
 
 	do { } while (1);
 }

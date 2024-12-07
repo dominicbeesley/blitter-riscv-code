@@ -2,7 +2,7 @@
 
 ASMINCS=$(wildcard $(TOP)/asm-includes/*.inc) $(filter-out version-date.inc, $(wildcard *.inc))
 DEPS=$(INCS) $(ASMINCS)
-OBJS=start splash main
+OBJS=start splash main deice
 
 
 TARGETS=testmos
