@@ -4,7 +4,8 @@
 #include <stdint.h>
 
 extern void interrupts_disable(int mask);
-extern uint32_t interrupts_regs[32+4];
+#define INTERRUPTS_REGS_N (31+4)		//32 main registers and 4 interrupt registers
+extern uint32_t interrupts_regs[INTERRUPTS_REGS_N];
 
 #define INT_NMI		0x08
 #define INT_IRQ		0x10

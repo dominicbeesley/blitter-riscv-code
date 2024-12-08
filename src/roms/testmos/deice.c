@@ -1,8 +1,10 @@
 #include "deice.h"
+#include "interrupts.h"
 
 //TODO: REMOVE THESE DEBUGGING
 extern void hexbyte(unsigned int n);
 extern void printstr(const char *s);
+extern void hexword(unsigned int n);
 
 
 /* local forward declarations */
@@ -13,7 +15,7 @@ static uint8_t deice_checksum(void);
 static void deice_fn_get_stat(void);
 static void deice_fn_read_mem(void);
 static void deice_fn_write_m(void);
-static void deice_fn_read_rg(void);
+static void deice_fn_read_rg(uint8_t fn);
 static void deice_fn_write_rg(void);
 static void deice_fn_run_targ(void);
 static void deice_fn_set_bytes(void);
@@ -54,6 +56,8 @@ int deice_put_byte(uint8_t b) {
 	while (timeout) {
 		if (ACIA_STAT & ACIA_STAT_TDRE) {
 			ACIA_DATA = b;
+			printstr(">");
+			hexbyte(b);
 			return 0;
 		}
 		else
@@ -68,6 +72,7 @@ int deice_get_byte(void) {
 	while (timeout) {
 		if (ACIA_STAT & ACIA_STAT_RDRF) {
 			uint8_t r = ACIA_DATA;
+			printstr("<");
 			hexbyte(r);
 			return r;
 		}
@@ -90,6 +95,25 @@ void deice_print_str(const char *str) {
 }
 
 
+void deice_enter(void) {
+	//TODO: not sure this is the right place for this but we need
+	//to readjust the PC pointer depending on the type of interrupt
+	//adjust back to previous instruction if illegal op / break / bus error
+	uint32_t irq_type = interrupts_regs[32];
+	if (irq_type & 0x6) {
+		if (interrupts_regs[31] & 1) {
+			//16 bit instruction
+			interrupts_regs[31]-=2;
+		} else {
+			interrupts_regs[31]-=4;
+		}
+	}
+	
+
+	//we expect the process state to be saved in interrupts_regs
+	deice_fn_read_rg(FN_RUN_TARG);
+}
+
 void deice_main(void) {
 
 restart:
@@ -99,35 +123,47 @@ restart:
 	uint8_t *p = combuf;
 
 	int i = deice_get_byte();
-	if (i < 0) goto restart;
-
+	if (i < FN_MIN) goto restart;
 	*p++ = (uint8_t)i;
+
+	printstr("!F!");
 
 	i = deice_get_byte();
 	if (i < 0 || i > COMSZ) goto restart;
 	uint8_t n = (uint8_t)i;
 	*p++ = n;
 
+	printstr("!N!");
+
 	while (n > 0) {
 		i = deice_get_byte();
 		if (i < 0) goto restart;		
-		*p++ = (uint8_t)n;
+		*p++ = (uint8_t)i;
+		n--;
 	}
+
+	printstr("!P!");
+
 
 	// get checksum
 	i = deice_get_byte();
 	if (i < 0) goto restart;		
 	uint8_t cs_s = (uint8_t)i;
-
 	uint8_t cs_c = deice_checksum();
+	printstr("!CS!");
+	hexbyte(cs_s);
+	hexbyte(cs_c);
 
 	if ((cs_s + cs_c) & 0xFF) goto restart;
+
+
+	printstr("!EXE!");
 
 	switch (combuf[0]) {
 		case	FN_GET_STAT:	deice_fn_get_stat();break;
 		case	FN_READ_MEM:	deice_fn_read_mem();break;
 		case	FN_WRITE_M:		deice_fn_write_m();break;
-		case	FN_READ_RG:		deice_fn_read_rg();break;
+		case	FN_READ_RG:		deice_fn_read_rg(FN_READ_RG);break;
 		case	FN_WRITE_RG:	deice_fn_write_rg();break;
 		case	FN_RUN_TARG:	deice_fn_run_targ();break;
 		case	FN_SET_BYTES:	deice_fn_set_bytes();break;
@@ -167,16 +203,56 @@ void deice_fn_get_stat(void) {
 	deice_send();
 }
 
-void deice_fn_read_mem(void) {
+// read big-endian 32 bit address
+uint8_t *deice_read_addr(uint8_t *p) {
+	return (uint8_t *)(
+		  (p[0] << 24) 
+		| (p[1] << 16) 
+		| (p[2] << 8) 
+		| (p[3] << 0)
+		);
+}
 
+void deice_fn_read_mem(void) {
+	uint8_t *p = combuf+2;
+	uint8_t *addr = deice_read_addr(p);	// get address
+	p+=4;
+	uint8_t n = *p;							// get length
+
+	printstr("READMEM");
+	hexword((unsigned int)addr);
+	printstr(",");
+	hexbyte(n);
+
+	combuf[1] = n;							// return length
+	p = combuf+2;
+	while (n) {
+		*p++=*addr++;
+		n--;
+	}
+	deice_send();
 }
 
 void deice_fn_write_m(void) {
 
 }
 
-void deice_fn_read_rg(void) {
+void deice_fn_read_rg(uint8_t fn) {
+	combuf[0] = fn;
+	combuf[1] = (INTERRUPTS_REGS_N*4)+1;			// registers + target status
 
+	//copy as bytes - alignment!
+	uint8_t *p = (uint8_t *)combuf+2;
+	const uint8_t *q = (uint8_t *)interrupts_regs;
+	int n = (INTERRUPTS_REGS_N*4);
+	while (n) {
+		*p++=*q++;
+		n--;
+	}
+	// +1 byte for target status
+	*p++ = 1;									
+	deice_send();
+	deice_main();
 }
 
 void deice_fn_write_rg(void) {

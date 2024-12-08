@@ -45,12 +45,14 @@ void hexword(unsigned int n) {
 }
 
 void irq_handle(void) {
-	for (int i = 0; i < 36; i++) {
+	for (int i = 1; i < 36; i++) {
 		printstr("       X");
 		hexbyte(i);
 		printstr(": ");
-		hexword(interrupts_regs[i]);
+		hexword(interrupts_regs[i-1]);
 	}
+
+	deice_enter();
 
 	do { } while (1);
 }
@@ -64,6 +66,8 @@ void init(void) {
 
 }
 
+extern void buserror(void);
+
 void main(void) {
 	int * p = (int *)&splash;
 	int * q = (int *)SCREENBASE;
@@ -75,7 +79,10 @@ void main(void) {
 
 	printstr("BOO!");
 
-	//asm ("c.ebreak");
+	// force a bus error (if we can)
+	buserror();
+
+//	asm ("c.ebreak"); // enter debugger
 
 	do { } while (1);
 }

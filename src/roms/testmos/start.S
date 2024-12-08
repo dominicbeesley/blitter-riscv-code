@@ -47,6 +47,15 @@ start:		// disable SYSVIA interrupts
 		
 		j	main
 
+	.globl buserror
+buserror:	mv	s0, ra
+		li	a1, 0x12
+		lw	a0, 0(a1)
+		jal	hexword
+		mv	ra, s0
+		ret
+
+
 
 		.section reset, "x", @progbits
 reset_hw:	j start

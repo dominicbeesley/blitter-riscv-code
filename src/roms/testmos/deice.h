@@ -27,6 +27,6 @@
 extern void deice_init(void);
 extern void deice_print_char(char c);
 extern void deice_print_str(const char *str);
-
+extern void deice_enter(void);
 
 #endif
