@@ -1,0 +1,988 @@
+{
+	"auto_complete":
+	{
+		"selected_items":
+		[
+			[
+				"dei",
+				"deice_send_status"
+			],
+			[
+				"deice",
+				"deice_send_status"
+			],
+			[
+				"stat",
+				"deice_send_status"
+			],
+			[
+				"hex",
+				"hexnyb"
+			],
+			[
+				"uint",
+				"uint32_t"
+			],
+			[
+				"int",
+				"interrupts_regs"
+			],
+			[
+				"interr",
+				"interrupts_regs"
+			],
+			[
+				"de",
+				"deice_send"
+			],
+			[
+				"deice_fn_err",
+				"deice_fn_error"
+			],
+			[
+				"ACIA_STAT_",
+				"ACIA_STAT_RDRF"
+			],
+			[
+				"AC",
+				"ACIA_DATA"
+			],
+			[
+				"TD",
+				"ACIA_STAT_TDRE"
+			],
+			[
+				"ACIA",
+				"ACIA_STAT"
+			],
+			[
+				"deice_p",
+				"deice_put_byte"
+			],
+			[
+				"ene",
+				"enemies"
+			],
+			[
+				"cur",
+				"curstart"
+			],
+			[
+				"render",
+				"render_row"
+			],
+			[
+				"zp_Cur",
+				"zp_cur_enemy_ctr"
+			],
+			[
+				"zp_an",
+				"zp_anime_ctr"
+			],
+			[
+				"zp_a",
+				"zp_anime_ctr6"
+			],
+			[
+				"zp",
+				"zp_tmp"
+			],
+			[
+				"E",
+				"ENEMY_BASE_5"
+			],
+			[
+				"ENE",
+				"ENEMY_BASE_0"
+			],
+			[
+				"eme",
+				"enemies"
+			],
+			[
+				"en",
+				"enemies"
+			],
+			[
+				"blit",
+				"blit_tile_exit"
+			],
+			[
+				"PLA",
+				"PLAYFIELD_TOP"
+			],
+			[
+				"dis",
+				"disen0"
+			],
+			[
+				"reg",
+				"disen_delay_reg"
+			],
+			[
+				"zp_src",
+				"zp_src_ptr_save"
+			],
+			[
+				"zp_sr",
+				"zp_src_ptr_save"
+			],
+			[
+				"zp_hei",
+				"zp_height_ctr"
+			],
+			[
+				"zp_he",
+				"zp_height_ctr"
+			],
+			[
+				"mode",
+				"mode16"
+			],
+			[
+				"r0",
+				"r0_crtc_2mhz"
+			],
+			[
+				"cusr",
+				"cursor_invert"
+			],
+			[
+				"invert",
+				"invert_delay_reg"
+			],
+			[
+				"std",
+				"std_logic_vector"
+			],
+			[
+				"inver",
+				"invert_final"
+			],
+			[
+				"invert_",
+				"invert_delay_reg"
+			],
+			[
+				"inv",
+				"cursor_invert"
+			],
+			[
+				"end",
+				"endmacro"
+			],
+			[
+				"wait",
+				"wait_SSS"
+			],
+			[
+				"rend",
+				"render_prev"
+			],
+			[
+				"render_pla",
+				"render_player_exit"
+			],
+			[
+				"tbl",
+				"tbl_rr_l"
+			],
+			[
+				"not",
+				"notanime"
+			],
+			[
+				"play",
+				"playfield_top_crtc"
+			],
+			[
+				"PL",
+				"PLAYFIELD_TOP"
+			],
+			[
+				"WAI",
+				"wait_SSS1"
+			],
+			[
+				"rr",
+				"rr_shift_r"
+			],
+			[
+				"re",
+				"render_player_exit"
+			],
+			[
+				"render_player_",
+				"render_player_int_noshift"
+			],
+			[
+				"zp_mas",
+				"zp_mask_pre"
+			],
+			[
+				"zp_des",
+				"zp_dest_ptr"
+			],
+			[
+				"zp_dest",
+				"zp_dest_row"
+			],
+			[
+				"zp_cur",
+				"zp_cur_y"
+			],
+			[
+				"ZP_DES",
+				"zp_dest_row"
+			],
+			[
+				"RR",
+				"RR_SHIFTL"
+			],
+			[
+				"zp_de",
+				"zp_dest_ptr_sav"
+			],
+			[
+				"zp_cu",
+				"zp_cur_y"
+			],
+			[
+				"zps",
+				"zp_shiftX"
+			],
+			[
+				"zp_next",
+				"zp_next_char"
+			],
+			[
+				"zp_shi",
+				"zp_shiftXnxt2"
+			],
+			[
+				"zp_mask",
+				"zp_mask_pre"
+			],
+			[
+				"ren",
+				"render_prev"
+			],
+			[
+				"zp_s",
+				"zp_shiftXnxt"
+			],
+			[
+				"mak",
+				"maskx_second"
+			],
+			[
+				"addr",
+				"addr_start"
+			],
+			[
+				"sy",
+				"sym_start"
+			],
+			[
+				"sym",
+				"sym_start"
+			],
+			[
+				"fn",
+				"fn_dec"
+			],
+			[
+				"cla",
+				"calc_screen_xy"
+			],
+			[
+				"ca",
+				"calc_dest_8"
+			],
+			[
+				"zp_tmp",
+				"zp_tmp6"
+			],
+			[
+				"zp_scr",
+				"zp_scroll_offs"
+			],
+			[
+				"zp_c",
+				"zp_cur_enemy"
+			],
+			[
+				"render_",
+				"render_stars_and_bullets"
+			],
+			[
+				"bull",
+				"bulletflipnxt"
+			],
+			[
+				"BULL",
+				"BULLET_COUNT"
+			],
+			[
+				"bulletfli",
+				"bulletflipnxt"
+			],
+			[
+				"st",
+				"starflipcur"
+			],
+			[
+				"sta",
+				"starflipcur"
+			],
+			[
+				"star",
+				"starflipnxt"
+			],
+			[
+				"STA",
+				"STARS_COUNT"
+			],
+			[
+				"ST",
+				"STARS_COUNT"
+			],
+			[
+				"render_play",
+				"render_player_int"
+			],
+			[
+				"mai",
+				"main_loop_nula"
+			],
+			[
+				"zp_ani",
+				"zp_anime_ctr"
+			],
+			[
+				"zp_anime_ct",
+				"zp_anime_ctr6"
+			],
+			[
+				"u",
+				"zuint16"
+			],
+			[
+				"osfile",
+				"osfilechronos"
+			],
+			[
+				"os",
+				"osfilen_chronos"
+			],
+			[
+				"she",
+				"SHEILA_ROMCTL_SWR"
+			],
+			[
+				"zp_",
+				"zp_mos_curROM"
+			],
+			[
+				"__",
+				"__ROMIMAGE_START__"
+			],
+			[
+				"cmp",
+				"titcmp"
+			],
+			[
+				"SHE",
+				"SHEILA_ROMCTL_SWR"
+			],
+			[
+				"wa",
+				"wait_SSS1"
+			],
+			[
+				"renders",
+				"renderscore"
+			],
+			[
+				"score",
+				"scoreboard"
+			],
+			[
+				"F",
+				"FONT_BASE"
+			],
+			[
+				"shiela_US",
+				"sheila_USRVIA_ifr"
+			],
+			[
+				"no",
+				"notUsrT1"
+			],
+			[
+				"LOGO",
+				"LOGO_H_ADJ"
+			],
+			[
+				"SCREE",
+				"SCREEN_H_TOT"
+			],
+			[
+				"SCREEN",
+				"SCREEN_V_SYNC"
+			],
+			[
+				"PLAYFIE",
+				"PLAYFIELD_V_TOT"
+			],
+			[
+				"TILE",
+				"TILE_DOWN_TIT"
+			],
+			[
+				"fir",
+				"firing_tits"
+			],
+			[
+				"ne",
+				"blit_tile_next_line"
+			],
+			[
+				"cal",
+				"calc_tile_xy"
+			],
+			[
+				"zp_fr",
+				"zp_frames_per_move"
+			],
+			[
+				"zp_fram",
+				"zp_frames_per_move"
+			],
+			[
+				"bl",
+				"blit_tile"
+			],
+			[
+				"vis",
+				"visibleX_to_screen"
+			],
+			[
+				"get",
+				"get_visible_tileAY"
+			],
+			[
+				"check",
+				"check_and_fire"
+			],
+			[
+				"playfield",
+				"playfield_top_crtc"
+			],
+			[
+				"in",
+				"inPlace"
+			],
+			[
+				"add",
+				"add_tile_to_column"
+			],
+			[
+				"zp_til",
+				"zp_tilesrc_ptr"
+			],
+			[
+				"next",
+				"next_player_y"
+			],
+			[
+				"KE",
+				"KEYS_UP"
+			],
+			[
+				"nex",
+				"next_player_y"
+			],
+			[
+				"move",
+				"move_player1"
+			],
+			[
+				"pla",
+				"player_x"
+			],
+			[
+				"keys",
+				"player_keys"
+			]
+		]
+	},
+	"buffers":
+	[
+		{
+			"file": "main.c",
+			"settings":
+			{
+				"buffer_size": 1201,
+				"line_ending": "Unix"
+			}
+		},
+		{
+			"file": "Makefile",
+			"settings":
+			{
+				"buffer_size": 1542,
+				"line_ending": "Unix"
+			}
+		},
+		{
+			"file": "start.S",
+			"settings":
+			{
+				"buffer_size": 1004,
+				"line_ending": "Unix"
+			}
+		}
+	],
+	"build_system": "",
+	"build_system_choices":
+	[
+	],
+	"build_varint": "",
+	"command_palette":
+	{
+		"height": 0.0,
+		"last_filter": "",
+		"selected_items":
+		[
+			[
+				"ascii",
+				"ASCII Decorator: Font Selector"
+			],
+			[
+				"",
+				"ASCII Decorator: Generate Font Test (Selected Text)"
+			],
+			[
+				"reinden",
+				"Indentation: Reindent Lines"
+			],
+			[
+				"prefe",
+				"Preferences: Settings – Syntax Specific"
+			],
+			[
+				"mark",
+				"Markdown HTML Preview"
+			],
+			[
+				"mar",
+				"Markdown HTML Preview"
+			],
+			[
+				"sort",
+				"Sort Lines"
+			],
+			[
+				"install",
+				"Package Control: Install Package"
+			],
+			[
+				"install ",
+				"Package Control: Install Package"
+			],
+			[
+				"install p",
+				"Package Control: Install Package"
+			],
+			[
+				"asci",
+				"ASCII Decorator: Default Font"
+			],
+			[
+				"insta",
+				"Package Control: Install Package"
+			],
+			[
+				"instal",
+				"Package Control: Install Package"
+			],
+			[
+				"package ins",
+				"Package Control: Install Package"
+			]
+		],
+		"width": 0.0
+	},
+	"console":
+	{
+		"height": 0.0,
+		"history":
+		[
+		]
+	},
+	"distraction_free":
+	{
+		"menu_visible": true,
+		"show_minimap": false,
+		"show_open_files": false,
+		"show_tabs": false,
+		"side_bar_visible": false,
+		"status_bar_visible": false
+	},
+	"file_history":
+	[
+		"/C/Users/Dominic/Documents/GitHub/blitter-riscv-code/build/roms/testmos/testmos.noi",
+		"/C/Users/Dominic/Documents/GitHub/blitter-riscv-code/src/roms/testmos/Makefile",
+		"/C/Users/Dominic/Documents/GitHub/blitter-riscv-code/src/roms/Makefile",
+		"/C/Users/Dominic/Documents/GitHub/blitter-riscv-code/src/Makefile",
+		"/C/Users/Dominic/Documents/GitHub/blitter-riscv-code/src/Makefile.defs",
+		"/C/Users/Dominic/Documents/GitHub/blitter-riscv-code/build/roms/testmos/testmos.map",
+		"/C/Users/Dominic/Documents/GitHub/blitter-vhdl-6502/src/sim_asm/test_riscv/sections.lds",
+		"/C/Users/Dominic/Documents/GitHub/blitter-arm2-code/molotov/deice.inc",
+		"/C/Users/Dominic/Documents/GitHub/model-c-mos/src/mos/deice.asm",
+		"/C/Users/Dominic/Documents/GitHub/blitter-arm2-code/molotov/hardware.inc",
+		"/C/Users/Dominic/Documents/GitHub/blitter-vhdl-6502/src/sim_asm/test_riscv/build/test.map",
+		"/C/Users/Dominic/Documents/GitHub/picorv32/Makefile",
+		"/C/Users/Dominic/Documents/GitHub/DeIce68k/Tests/Disassembler/test_riscv/test.S",
+		"/C/Users/Dominic/Documents/GitHub/blitter-riscv-code/src/roms/testmos/interrupts.h",
+		"/C/Users/Dominic/Documents/GitHub/blitter-riscv-code/src/roms/testmos/interrupts.S",
+		"/C/Users/Dominic/Documents/GitHub/blitter-riscv-code/src/roms/testmos/start.S",
+		"/C/Users/Dominic/Documents/GitHub/picorv32/testbench.vvp",
+		"/C/Users/Dominic/Documents/GitHub/picorv32/firmware/riscv.ld",
+		"/C/Users/Dominic/Documents/GitHub/blitter-vhdl-6502/src/sim_asm/test_riscv/splash.mo7",
+		"/C/Users/Dominic/Documents/GitHub/blitter-riscv-code/src/roms/testmos/testmos.lds",
+		"/C/Users/Dominic/Documents/GitHub/blitter-vhdl-6502/src/sim_asm/test_riscv/Makefile",
+		"/C/Users/Dominic/Documents/GitHub/blitter-riscv-code/src/roms/testmos/splash.S",
+		"/C/Users/Dominic/Documents/GitHub/blitter-riscv-code/src/roms/testmos/deice.h",
+		"/C/Users/Dominic/Documents/GitHub/blitter-riscv-code/src/roms/testmos/main.c",
+		"/C/Users/Dominic/Documents/GitHub/blitter-riscv-code/build/roms/testmos/main.lst",
+		"/C/Users/Dominic/Documents/GitHub/blitter-riscv-code/src/roms/testmos/deice.c",
+		"/C/Users/Dominic/Documents/GitHub/blitter-riscv-code/build/roms/testmos/start.lst",
+		"/C/Users/Dominic/Documents/GitHub/blitter-vhdl-6502/src/sim_asm/test_riscv/test.S",
+		"/C/Users/Dominic/Documents/GitHub/blitter-riscv-code/build/roms/testmos/deice.lst",
+		"/C/Users/Dominic/Documents/GitHub/picorv32/firmware/README",
+		"/C/Users/Dominic/Documents/GitHub/picorv32/firmware/multest.c",
+		"/C/Users/Dominic/Documents/GitHub/DeIce68k/Tests/Disassembler/test_riscv/Makefile.defs",
+		"/C/Users/Dominic/Documents/GitHub/DeIce68k/Tests/Disassembler/test_riscv/Makefile",
+		"/C/Users/Dominic/Documents/GitHub/blitter-riscv-code/src/roms/testmos/custom_ops.S",
+		"/C/Users/Dominic/Documents/GitHub/picorv32/myinstall.txt",
+		"/C/Users/Dominic/Documents/GitHub/blitter-arm2-code/molotov/deice.asm",
+		"/C/Users/Dominic/Documents/Programming/HostFS/romsriscV/_21BOOT.txt",
+		"/C/Users/Dominic/Documents/GitHub/picorv32/firmware/start.S",
+		"/C/Users/Dominic/Documents/GitHub/blitter-riscv-code/src/roms/testrom/Makefile",
+		"/C/Users/Dominic/Documents/GitHub/blitter-65xx-code/src/roms/Makefile",
+		"/C/Users/Dominic/Documents/GitHub/picorv32/firmware/sections.lds",
+		"/C/Users/Dominic/Documents/GitHub/picorv32/firmware/print.c",
+		"/C/Users/Dominic/Documents/GitHub/chronosgamebbc/src/irq.asm",
+		"/C/Users/Dominic/Documents/Programming/6502/MOS/daMOS1.2_edited/daMosEdited.s",
+		"/C/Users/Dominic/Documents/Programming/6502/MOS/daMOS1.2_edited/daMosEdited.lst",
+		"/C/Users/Dominic/Documents/GitHub/BeebFpga_Dom/src/common/vidproc.vhd",
+		"/C/Users/Dominic/Documents/GitHub/BeebFpga_Dom/make_spec_next_release.sh",
+		"/C/Users/Dominic/Documents/GitHub/BeebFpga_Dom/test/build.sh",
+		"/C/Users/Dominic/Documents/GitHub/chronosgamebbc/src/game.asm",
+		"/C/Users/Dominic/Documents/GitHub/chronosgamebbc/src/zp_shared.asm",
+		"/C/Users/Dominic/Documents/GitHub/chronosgamebbc/src/render.asm",
+		"/C/Users/Dominic/Documents/GitHub/chronosgamebbc/src/data_shared.asm",
+		"/c/users/dominic/appdata/local/temp/tmperffeh.txt",
+		"/C/Users/Dominic/Documents/GitHub/chronosgamebbc/Makefile.defs",
+		"/C/Users/Dominic/Documents/GitHub/chronosgamebbc/Makefile",
+		"/C/Users/Dominic/Documents/GitHub/chronosgamebbc/src/Makefile",
+		"/C/Users/Dominic/Documents/GitHub/chronosgamebbc/src/gameN.cfg",
+		"/C/Users/Dominic/Documents/GitHub/chronosgamebbc/src/chronos.inc",
+		"/C/Users/Dominic/Documents/GitHub/chronosgamebbc/src/map.cfg",
+		"/C/Users/Dominic/Documents/GitHub/chronosgamebbc/src/mapheader.asm",
+		"/C/temp/scratch/TrickyAstroBlaster/basfiles/ASTROld",
+		"/C/Users/Dominic/Downloads/vrupt.6502",
+		"/C/Users/Dominic/Documents/GitHub/chronosgamebbc/build/src/sound.bin.da.s",
+		"/C/Users/Dominic/Documents/GitHub/chronosgamebbc/src/scripts/stats.pl",
+		"/C/Users/Dominic/Documents/GitHub/blitter-65xx-code/scripts/ld65debugsymbols.pl",
+		"/c/users/dominic/appdata/local/temp/tmpo2vnob.txt",
+		"/C/Users/Dominic/Documents/GitHub/chronosgamebbc/src/debug.inc",
+		"/C/Users/Dominic/Documents/GitHub/BeebFpga_Dom/src/gowin/gowin_tang_primer25k/src/bbc_micro_tang_primer25k.sdc",
+		"/C/Users/Dominic/Documents/GitHub/BeebFpga_Dom/src/gowin/gowin_tang_primer25k/src/bbc_micro_tang_primer25k.cst",
+		"/C/Users/Dominic/Documents/GitHub/BeebFpga/test/build.sh",
+		"/C/Users/Dominic/Documents/GitHub/chronosgamebbc/scripts/tileconv.py",
+		"/C/Users/Dominic/Documents/GitHub/chronosgamebbc/scripts/numfont.py",
+		"/C/Users/Dominic/Documents/GitHub/chronosgamebbc/build/src/sound.map",
+		"/C/Users/Dominic/Documents/GitHub/chronosgamebbc/src/loader.asm",
+		"/C/Users/Dominic/Documents/Programming/TubeHost/TubeHostF.pl",
+		"/C/Users/Dominic/Documents/GitHub/chronosgamebbc/src/loader.cfg",
+		"/C/Users/Dominic/Documents/GitHub/chronosgamebbc/build/src/sound.lst.rel",
+		"/C/Users/Dominic/Documents/GitHub/chronosgamebbc/includes/hardware.inc",
+		"/C/Users/Dominic/Documents/GitHub/chronosgamebbc/includes/oslib.inc",
+		"/C/Users/Dominic/Documents/GitHub/chronosgamebbc/includes/mosrom.inc",
+		"/C/Users/Dominic/Documents/GitHub/chronosgamebbc/src/boot.txt",
+		"/C/Users/Dominic/Documents/GitHub/chronosgamebbc/src/game.cfg",
+		"/C/Users/Dominic/Documents/GitHub/chronosgamebbc/.gitignore",
+		"/C/Users/Dominic/Documents/GitHub/chronosgamebbc/build/src/game.map",
+		"/C/Users/Dominic/Documents/GitHub/chronosgamebbc/build/src/gameN.map",
+		"/C/Users/Dominic/Documents/GitHub/chronosgamebbc/src/render_nula.asm",
+		"/C/Users/Dominic/Documents/GitHub/chronosgamebbc/build/src/render.lst.rel",
+		"/C/Users/Dominic/Documents/GitHub/chronosgamebbc/build/src/render_nula.n.lst.rel",
+		"/C/Users/Dominic/Documents/GitHub/chronosgamebbc/build/src/game.sy2",
+		"/C/Users/Dominic/Documents/GitHub/chronosgamebbc/build/src/game.lst.rel",
+		"/C/Users/Dominic/Documents/GitHub/chronosgamebbc/build/src/game.n.lst.rel",
+		"/C/tools/SpectrumAnalyser/SpectrumAnalyserProjects/chronosm/Analysis.json",
+		"/C/Users/Dominic/Documents/GitHub/chronosgamebbc/scripts/ca65lstupdate.pl",
+		"/C/Users/Dominic/Documents/GitHub/chronosgamebbc/build/src/loader.lst.rel",
+		"/C/Users/Dominic/Documents/GitHub/chronosgamebbc/build/src/loader.map",
+		"/C/Users/Dominic/Documents/GitHub/chronosgamebbc/build/src/mapheader.lst.rel",
+		"/C/Users/Dominic/Documents/GitHub/picorv32/shell.nix",
+		"/C/Users/Dominic/Downloads/Chronos (1987)(Mastertronic).pok",
+		"/C/tools/SpectrumAnalyser/Pokes/chronosm.pok",
+		"/C/Users/Dominic/Documents/GitHub/chronosgamebbc/src/sound.asm",
+		"/C/Users/Dominic/Documents/GitHub/BeebFpga_Dom/src/gowin/gowin_tang_primer25k/src/bootstrap.vhd",
+		"/C/Users/Dominic/Documents/GitHub/BeebFpga_Dom/src/gowin/gowin_tang_primer25k/src/bbc_micro_tang_primer25k.vhd",
+		"/C/Users/Dominic/Documents/GitHub/BeebFpga_Dom/src/gowin/gowin_tang_primer25k/src/common.vhd",
+		"/C/Users/Dominic/Documents/GitHub/BeebFpga_Dom/src/gowin/gowin_tang_primer25k/src/mem_tang_25k.vhd",
+		"/C/temp/cuntygit/BeebFpga/src/common/vidproc.vhd",
+		"/C/Users/Dominic/Documents/GitHub/BeebFpga/test/dom-nula-tests/Makefile",
+		"/C/Users/Dominic/Documents/GitHub/BeebFpga/test/dom-nula-tests/paltes2/Makefile",
+		"/C/Users/Dominic/Documents/GitHub/BeebFpga/test/dom-nula-tests/scrtest1/Makefile",
+		"/C/Users/Dominic/Documents/GitHub/BeebFpga/test/dom-nula-tests/scrtest1/scrtes1.bas",
+		"/C/Users/Dominic/Documents/GitHub/BeebFpga/test/dom-nula-tests/scrtest1/scrtest1.bas",
+		"/C/Users/Dominic/Documents/GitHub/BeebFpga/test/NOTES.txt",
+		"/C/Users/Dominic/Documents/kicad-mk2/Extron/extron_J4_bob/extron_J4_bob.kicad_pcb",
+		"/C/Users/Dominic/AppData/Local/Temp/d32c44c5-dc47-4686-bb84-910331390c72_game (1).zip.c72/game.asm",
+		"/C/Users/Dominic/AppData/Roaming/Sublime Text/Packages/User/ASCII Decorator.sublime-settings",
+		"/C/Users/Dominic/AppData/Roaming/Sublime Text/Packages/ASCII-Decorator/ASCII Decorator.sublime-settings",
+		"/C/Users/Dominic/Documents/GitHub/chronosgamebbc/src/enemies.asm",
+		"/C/Users/Dominic/Documents/GitHub/chronosgamebbc/tunehack/emutest/myemu.h",
+		"/C/Users/Dominic/Documents/GitHub/chronosgamebbc/tunehack/emutest/myemu.c",
+		"/C/Users/Dominic/Documents/GitHub/chronosgamebbc/tunehack/emutest/Makefile",
+		"/C/Users/Dominic/Documents/GitHub/chronosgamebbc/tunehack/emutest/main.c",
+		"/C/Users/Dominic/Documents/GitHub/chronosgamebbc/tunehack/emutest/mkwav.pl",
+		"/C/temp/ishfight3.txt",
+		"/C/Users/Dominic/AppData/Local/Temp/d2a3f787-c425-4f00-bf2f-2d453a2f38af_hide_refs.zip.8af/metadata.json",
+		"/C/Users/Dominic/Documents/GitHub/chronosgamebbc/tunehack/emutest/mkdec.pl",
+		"/C/Users/Dominic/AppData/Local/Temp/5c4a46ff-c891-43c4-9b09-84bb94236b89_z80pack-1.37.tgz.b89/z80pack-1.37/z80core/sim3.c",
+		"/C/Users/Dominic/AppData/Local/Temp/8e184d9f-bc15-4f63-8be9-3ccb2550bf69_z80pack-1.37.tgz.f69/z80pack-1.37/z80core/sim1.c",
+		"/C/Users/Dominic/AppData/Local/Temp/47be34ad-849d-4d0a-8d38-61e213a082ca_z80pack-1.37.tgz.2ca/z80pack-1.37/z80core/simglb.h",
+		"/C/Users/Dominic/AppData/Local/Temp/7957c0f0-efdf-480f-8192-1b705522ecc4_z80pack-1.37.tgz.cc4/z80pack-1.37/doc/README-frontpanel.txt"
+	],
+	"find":
+	{
+		"height": 23.0
+	},
+	"find_in_files":
+	{
+		"height": 0.0,
+		"where_history":
+		[
+		]
+	},
+	"find_state":
+	{
+		"case_sensitive": true,
+		"find_history":
+		[
+		],
+		"highlight": true,
+		"in_selection": false,
+		"preserve_case": false,
+		"regex": true,
+		"replace_history":
+		[
+		],
+		"reverse": false,
+		"scrollbar_highlights": true,
+		"show_context": true,
+		"use_buffer2": true,
+		"use_gitignore": true,
+		"whole_word": false,
+		"wrap": true
+	},
+	"groups":
+	[
+		{
+			"sheets":
+			[
+				{
+					"buffer": 0,
+					"file": "main.c",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 1201,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								0,
+								0
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/C++/C.sublime-syntax",
+							"tab_size": 4,
+							"translate_tabs_to_spaces": false
+						},
+						"translation.x": 0.0,
+						"translation.y": 0.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 2,
+					"stack_multiselect": false,
+					"type": "text"
+				},
+				{
+					"buffer": 1,
+					"file": "Makefile",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 1542,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								0,
+								0
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/Makefile/Makefile.sublime-syntax",
+							"tab_size": 4,
+							"translate_tabs_to_spaces": false
+						},
+						"translation.x": 0.0,
+						"translation.y": 0.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 1,
+					"stack_multiselect": false,
+					"type": "text"
+				},
+				{
+					"buffer": 2,
+					"file": "start.S",
+					"selected": true,
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 1004,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								0,
+								0
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/Z80 Assembly/Z80Assembly.tmLanguage.sublime-syntax",
+							"tab_size": 4,
+							"translate_tabs_to_spaces": false
+						},
+						"translation.x": 0.0,
+						"translation.y": 0.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 0,
+					"stack_multiselect": false,
+					"type": "text"
+				}
+			]
+		}
+	],
+	"incremental_find":
+	{
+		"height": 23.0
+	},
+	"input":
+	{
+		"height": 0.0
+	},
+	"layout":
+	{
+		"cells":
+		[
+			[
+				0,
+				0,
+				1,
+				1
+			]
+		],
+		"cols":
+		[
+			0.0,
+			1.0
+		],
+		"rows":
+		[
+			0.0,
+			1.0
+		]
+	},
+	"menu_visible": true,
+	"output.exec":
+	{
+		"height": 108.0
+	},
+	"output.figlet_preview":
+	{
+		"height": 102.0
+	},
+	"output.find_results":
+	{
+		"height": 0.0
+	},
+	"pinned_build_system": "",
+	"project": "riscv-test1.sublime-project",
+	"replace":
+	{
+		"height": 42.0
+	},
+	"save_all_on_build": true,
+	"select_file":
+	{
+		"height": 0.0,
+		"last_filter": "",
+		"selected_items":
+		[
+		],
+		"width": 0.0
+	},
+	"select_project":
+	{
+		"height": 0.0,
+		"last_filter": "",
+		"selected_items":
+		[
+		],
+		"width": 0.0
+	},
+	"select_symbol":
+	{
+		"height": 0.0,
+		"last_filter": "",
+		"selected_items":
+		[
+		],
+		"width": 0.0
+	},
+	"selected_group": 0,
+	"settings":
+	{
+	},
+	"show_minimap": true,
+	"show_open_files": false,
+	"show_tabs": true,
+	"side_bar_visible": true,
+	"side_bar_width": 230.0,
+	"status_bar_visible": true,
+	"template_settings":
+	{
+	}
+}
