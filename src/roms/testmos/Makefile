@@ -39,6 +39,8 @@ $(BUILD)/%.elf: $(OBJS_O) %.lds
 	$(RISCV_LD) $(RISCV_LD_FLAGS) -Os -ffreestanding -nostdlib -o $@ \
 	-Wl,--build-id=none,-Bstatic,-T,$(filter %.lds, $^),-Map,$(basename $@).map,--strip-debug \
 		$(filter %.o,$^) -lgcc 
+	$(RISCV_NM) --format=posix $@ >$(basename $@).sy1
+	sed -n -E 's/^(\w+)\s+\w\s+([0-9a-f]+)/DEF \1 \2/ip' <$(basename $@).sy1 >$(basename $@).noi
 
 
 $(BUILD)/testmos.mos: $(BUILD)/testmos.elf
