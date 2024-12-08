@@ -44,6 +44,7 @@ void hexword(unsigned int n) {
 	hexbyte(n);
 }
 
+/*
 void irq_handle(void) {
 	for (int i = 1; i < 36; i++) {
 		printstr("       X");
@@ -56,6 +57,7 @@ void irq_handle(void) {
 
 	do { } while (1);
 }
+*/
 
 
 void init(void) {
