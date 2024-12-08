@@ -83,7 +83,7 @@ interrupts_handle:
 		la	t1,0xFFFF7C00
 		sw	t0,0(t1)
 
-		jal irq_handle
+		jal deice_enter
 
 		//;;;;;TODO!
 

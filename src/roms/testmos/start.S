@@ -7,8 +7,6 @@ start:		// disable SYSVIA interrupts
 		la	t0, sheila
 		li	t1, 0x7F
 		sb	t1,0x4E(t0)
-		sb	t1,0x4E(t0)
-		sb	t1,0x6E(t0)
 		sb	t1,0x6E(t0)
 
 		// disable all but timer, illins, bus interrupts
