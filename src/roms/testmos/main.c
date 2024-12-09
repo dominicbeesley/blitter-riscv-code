@@ -82,7 +82,7 @@ void main(void) {
 	printstr("BOO!");
 
 	// force a bus error (if we can)
-	buserror();
+	//buserror();
 
 //	asm ("c.ebreak"); // enter debugger
 

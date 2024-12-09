@@ -11,7 +11,7 @@ MEMORY {
 	/* the memory in the testbench is 128k in size;
 	 * set LENGTH=96k and leave at least 32k for stack */
 	ROM : ORIGIN = 0xFFFFC000, LENGTH = 0x00004000
-	RAM : ORIGIN = 0x00010000, LENGTH = 0x00100000
+	RAM : ORIGIN = 0x0008000, LENGTH = 0x00004000
 }
 
 SECTIONS {

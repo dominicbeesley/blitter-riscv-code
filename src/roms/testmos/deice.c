@@ -20,11 +20,11 @@ static void deice_fn_read_mem(void);
 static void deice_fn_write_m(void);
 static void deice_fn_read_rg(uint8_t fn);
 static void deice_fn_write_rg(void);
-static void deice_fn_run_targ(void);
 static void deice_fn_set_bytes(void);
 static void deice_fn_in(void);
 static void deice_fn_out(void);
 static void deice_fn_error(void);
+static void deice_send_status(uint8_t);
 
 #define COMSZ 0xF0
 
@@ -185,7 +185,7 @@ restart:
 		case	FN_WRITE_M:		deice_fn_write_m();break;
 		case	FN_READ_RG:		deice_fn_read_rg(FN_READ_RG);break;
 		case	FN_WRITE_RG:	deice_fn_write_rg();break;
-		case	FN_RUN_TARG:	deice_fn_run_targ();break;
+		case	FN_RUN_TARG:	return; // exit deice back to interrupt return sequence
 		case	FN_SET_BYTES:	deice_fn_set_bytes();break;
 		case	FN_IN:			deice_fn_in();break;
 		case	FN_OUT:			deice_fn_out();break;
@@ -224,19 +224,18 @@ void deice_fn_get_stat(void) {
 }
 
 // read big-endian 32 bit address
-uint8_t *deice_read_addr(uint8_t *p) {
+uint8_t *deice_read_addr(uint8_t **p) {
 	return (uint8_t *)(
-		  (p[0] << 24) 
-		| (p[1] << 16) 
-		| (p[2] << 8) 
-		| (p[3] << 0)
+		  (*(*p)++ << 24) 
+		| (*(*p)++ << 16) 
+		| (*(*p)++ << 8) 
+		| (*(*p)++ << 0)
 		);
 }
 
 void deice_fn_read_mem(void) {
 	uint8_t *p = combuf+2;
-	uint8_t *addr = deice_read_addr(p);	// get address
-	p+=4;
+	uint8_t *addr = deice_read_addr(&p);	// get address
 	uint8_t n = *p;							// get length
 
 #ifdef DEICE_DEBUG
@@ -256,6 +255,37 @@ void deice_fn_read_mem(void) {
 }
 
 void deice_fn_write_m(void) {
+	uint8_t *p = combuf+1;
+	int n = (int)*p++;						// get length
+	uint8_t *addr = deice_read_addr(&p);	// get address
+	n -= 4;
+
+#ifdef DEICE_DEBUG
+	printstr("WRITEMEM");
+	hexword((unsigned int)addr);
+	printstr(",");
+	hexbyte(n);
+#endif
+
+	uint8_t *src = combuf + 6;
+	uint8_t *dest = addr;
+	int c = n;
+	while (c > 0) {
+		*dest++=*src++;
+		c--;
+	}
+
+	//verify
+	src = combuf + 6;
+	dest = addr;
+	c = n;
+	while (c > 0) {
+		if (*dest++ != *src++)
+			deice_send_status(1);	//error - mismatch
+		c--;
+	}
+
+	deice_send_status(0);			// worked!
 
 }
 
@@ -265,7 +295,7 @@ void deice_fn_read_rg(uint8_t fn) {
 
 	//copy as bytes - alignment!
 	uint8_t *p = (uint8_t *)combuf+2;
-	const uint8_t *q = (uint8_t *)interrupts_regs;
+	uint8_t *q = (uint8_t *)interrupts_regs;
 	int n = (INTERRUPTS_REGS_N*4);
 	while (n) {
 		*p++=*q++;
@@ -278,27 +308,36 @@ void deice_fn_read_rg(uint8_t fn) {
 }
 
 void deice_fn_write_rg(void) {
-
+	if (combuf[1] != (INTERRUPTS_REGS_N*4)+1) 
+		deice_send_status(1);	// error - wrong length
+	uint8_t *p = (uint8_t *)combuf+2;
+	uint8_t *q = (uint8_t *)interrupts_regs;
+	int n = (INTERRUPTS_REGS_N*4);
+	while (n) {
+		*q++=*p++;
+		n--;
+	}
+	//ignore target status?!
+	deice_send_status(0); // success
 }
 
-void deice_fn_run_targ(void) {
-
-}
 
 void deice_fn_set_bytes(void) {
 
 }
 
 void deice_fn_in(void) {
-
+	// TODO: we don't actually have ports - but instead do a read/write without verify
+	deice_fn_error();
 }
 
 void deice_fn_out(void) {
-
+	// TODO: we don't actually have ports - but instead do a read/write without verify
+	deice_fn_error();	
 }
 
 void deice_send_status(uint8_t code) {
-	combuf[0] = code;
+	combuf[2] = code;
 	combuf[1] = 1;
 	deice_send();
 }
