@@ -22,14 +22,103 @@ interrupts_disable:
 
 		ret
 
+		.bss
+		.align(4)
+		.globl mos_stack_base
+		.globl mos_stack_top
+mos_stack_base:
+		.space (0x1000)
+mos_stack_top:
+mos_stack_len = mos_stack_top-mos_stack_base
+		.text
+
+		//TODO: move this to own file
+mos_enter:
+		// we should be entered with
+		// q0 = address after ecall
+		// q1 = interrupt status - we will cancel bit 2
+		// q2 = callers ra
+		// q3 = callers sp
+
+		// if q3 isn't in MOS stack then set to MOS stack - allow MOS to reenter, maybe change this?
+		picorv32_getq_insn(sp, q3)
+		la		ra,mos_stack_base
+		blt		sp,ra,.news
+		la		ra,mos_stack_top
+		blt		sp,ra,.nonews
+
+		// we weren't in the mos set to MOS stack
+.news:	la		sp,mos_stack_top
+.nonews:
+		addi	sp,sp,-(10*4)			// reserved space on stack, 7 arguments, ra, sp, pc
+		picorv32_getq_insn(ra, q3)		// get back caller's sp and push
+		sw		ra,0(sp)
+		picorv32_getq_insn(ra, q2)		// get back caller's ra and push
+		sw		ra,4(sp)
+		picorv32_getq_insn(ra, q0)		// get back caller's pc and push
+		sw		ra,8(sp)
+		// reset the illegal instruction bit in q1
+		picorv32_getq_insn(ra, q1)
+		andi	ra,ra,~2
+		picorv32_setq_insn(q1, ra)
+		la		ra,.cont
+		picorv32_setq_insn(q0, ra)
+		picorv32_retirq_insn()			// continue at .cont but allow other irqs to re-fire
+////////////////////////////////////////////////////////////
+.cont:	
+		sw		a0,12(sp)
+		sw		a1,16(sp)	
+		sw		a2,20(sp)	
+		sw		a3,24(sp)	
+		sw		a4,28(sp)	
+		sw		a5,32(sp)	
+		sw		a6,36(sp)	
+		addi	a0,sp,12				// argument 0 to mos_enter_call
+		mv		a1,a7
+		jal		mos_enter_ecall			// jump to mos_entry_point
+		lw		a0,12(sp)
+		lw		a1,16(sp)	
+		lw		a2,20(sp)	
+		lw		a3,24(sp)	
+		lw		a4,28(sp)	
+		lw		a5,32(sp)	
+		lw		a6,36(sp)	
+		
+		// we now need to return to the caller with all registers intact
+		//TODO: this uses t0 and trashes it - need to speak with Hoglet about this and maybe look at change API
+		lw		ra,4(sp)				// caller ra
+		lw		t0,8(sp)				// caller pc
+		lw		sp,0(sp)				// caller sp
+		addi	sp,sp,(10*4)
+		jr		t0						// return
+
+		
+
 
 interrupts_handle:
 
 		picorv32_setq_insn(q2, ra)	// save return address
 		picorv32_setq_insn(q3, sp)	// save stack pointer
 
-		la x1, interrupts_regs
+		// quick check for ecall - TODO: make this more efficient when we sort out interrupts		
+		picorv32_getq_insn(x1, q1)
+		andi	x1,x1,2
+		beqz	x1,.notecall		// not an illegal instr
+		picorv32_getq_insn(x1, q0)
+		andi	x2,x1,1
+		bnez	x2,.notecall		// not a full-fat instr
+		//need to do half-word loads here because of misalign 
+		lh		x2,-4(x1)
+		xori	x2,x2,0x73
+		bnez	x2,.notecall
+		lh		x2,-2(x1)
+		xori	x2,x2,0x0
+		bnez	x2,.notecall
+		j		mos_enter
 
+
+.notecall:
+		la x1, interrupts_regs
 		// q0 is set to return address of interrupt
 		picorv32_getq_insn(x2, q0)
 		sw x2,   31*4(x1)

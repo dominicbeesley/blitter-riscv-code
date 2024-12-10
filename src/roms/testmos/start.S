@@ -13,7 +13,7 @@ start:		// disable SYSVIA interrupts
 		li	t0,0xFFFFFFF8
 		picorv32_maskirq_insn(t0, t0)
 
-		la 	sp,0x10000		// setup set stack in ChipRAM at 00010000
+		la 	sp,0x10000		// setup set stack in ChipRAM at 00010000 growing downwards
 
 		// copy r/w data to RAM from ROM
 		//ASSERT data_size & 3 == 0

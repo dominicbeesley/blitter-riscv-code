@@ -1,6 +1,6 @@
 #include "interrupts.h"
 #include "deice.h"
-
+#include "moslib.h"
 
 unsigned char * const SCREENBASE = (unsigned char * const)0xFFFF7C00;
 extern unsigned char const splash;
@@ -81,10 +81,15 @@ void main(void) {
 
 	printstr("BOO!");
 
+	mos_oswrch('A');	
+
 	// force a bus error (if we can)
 	//buserror();
 
 //	asm ("c.ebreak"); // enter debugger
 
+
 	do { } while (1);
 }
+
+
