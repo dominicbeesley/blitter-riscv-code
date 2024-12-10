@@ -1,6 +1,8 @@
 #include "deice.h"
 #include "interrupts.h"
 
+uint8_t	deice_host_status;			// when deice_main is running this holds the target status
+
 //TODO: REMOVE THESE DEBUGGING
 #undef DEICE_DEBUG 
 #ifdef DEICE_DEBUG
@@ -25,6 +27,7 @@ static void deice_fn_in(void);
 static void deice_fn_out(void);
 static void deice_fn_error(void);
 static void deice_send_status(uint8_t);
+static void deice_main(void);
 
 #define COMSZ 0xF0
 
@@ -117,10 +120,61 @@ void deice_enter(void) {
 			interrupts_regs[31]-=4;
 		}
 	}
-	
 
-	//we expect the process state to be saved in interrupts_regs
+	//we deduce target state from interrupt register
+	if (irq_type & 1) {
+		deice_host_status = TS_RV_TIMER;
+		interrupts_regs[32] &= ~1;
+	}
+	else if (irq_type & 2)
+	{
+		uint8_t *pc = (uint8_t *)(interrupts_regs[31] & 0xFFFFFFFE);
+
+		// check for a c.ebreak/break at PC
+		if (
+			((pc[0] == 0x02) && (pc[1] == 0x90))
+			| ((pc[0] == 0x73) && (pc[1] == 0x00) && (pc[2] == 0x10) && (pc[1] == 0x00))
+			)
+			// break or c.break
+			deice_host_status = TS_BP;
+		else if ((pc[0] == 0x73) && (pc[1] == 0x00) && (pc[2] == 0x00) && (pc[1] == 0x00))
+			// ecall
+			deice_host_status = TS_RV_CALL;
+		else
+			deice_host_status = TS_ILLEGAL;
+		interrupts_regs[32] &= ~2;
+	}
+	else if (irq_type & 4) {
+		deice_host_status = TS_RV_BUSERROR;
+		interrupts_regs[32] &= ~4;		
+	}
+	else if (irq_type & 8) {
+		deice_host_status = TS_RV_NMI;
+		interrupts_regs[32] &= ~8;		
+	}
+	else if (irq_type & 16) {
+		deice_host_status = TS_RV_IRQ;
+		interrupts_regs[32] &= ~16;		
+	}
+	else if (irq_type & 32) {
+		deice_host_status = TS_RV_DEBUG;
+		interrupts_regs[32] &= ~32;		
+	} else {
+		deice_host_status = TS_RV_UNKNOWN;		
+		uint32_t m = 1;
+		while (m) {
+			if (m & irq_type) {
+				interrupts_regs[32] &= m;
+			} else {
+				m = m << 1;
+			}
+		}
+	}
+
 	deice_fn_read_rg(FN_RUN_TARG);
+
+	deice_main();
+
 }
 
 void deice_main(void) {
@@ -281,7 +335,10 @@ void deice_fn_write_m(void) {
 	c = n;
 	while (c > 0) {
 		if (*dest++ != *src++)
+		{
 			deice_send_status(1);	//error - mismatch
+			return;
+		}
 		c--;
 	}
 
@@ -302,9 +359,8 @@ void deice_fn_read_rg(uint8_t fn) {
 		n--;
 	}
 	// +1 byte for target status
-	*p++ = 1;									
+	*p++ = deice_host_status;									
 	deice_send();
-	deice_main();
 }
 
 void deice_fn_write_rg(void) {
@@ -321,9 +377,25 @@ void deice_fn_write_rg(void) {
 	deice_send_status(0); // success
 }
 
+#define SB_LEN 5
 
 void deice_fn_set_bytes(void) {
-
+	uint8_t l = combuf[1]; 					// data length
+	uint8_t ll = 0;
+	uint8_t *p = combuf+2;					// read pointer
+	uint8_t *q = combuf+2;					// write return data pointer
+	while (l >= SB_LEN) {
+		volatile uint8_t *addr = deice_read_addr(&p);
+		uint8_t o = *addr;			// old data
+		uint8_t d = *p++;
+		*addr = d;
+		if (*addr != d) break;		// take an early exit - data didn't read back correctly
+		*q++ = o;
+		ll++;
+		l-=SB_LEN;
+	}
+	combuf[1] = ll;
+	deice_send();
 }
 
 void deice_fn_in(void) {

@@ -24,6 +24,21 @@
 #define FN_ERROR			0xF0    // error reply to unknown op-code
 
 
+//target statuses
+#define TS_RUNNING			0
+#define TS_BP				1
+#define TS_TRACE			2
+#define TS_ILLEGAL			3
+
+#define TS_RV_TIMER			0x10
+#define TS_RV_IRQ			0x11
+#define TS_RV_NMI			0x12
+#define TS_RV_DEBUG			0x13
+#define TS_RV_CALL			0x14
+#define TS_RV_BUSERROR		0x15
+#define TS_RV_UNKNOWN		0x20
+
+
 extern void deice_init(void);
 extern void deice_print_char(char c);
 extern void deice_print_str(const char *str);
