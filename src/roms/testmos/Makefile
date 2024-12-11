@@ -7,8 +7,14 @@ OBJS=start splash main deice interrupts mos moslib
 
 TARGETS=testmos
 
+TARGETS_NODEPS=clean
+
 OBJS_O = $(addprefix $(BUILD)/, $(addsuffix .o, $(OBJS)))
 TARGETS_O = $(addprefix $(BUILD)/, $(addsuffix .mos, $(TARGETS)))
+
+DEPFLAGS = -MT $@ -MMD -MP -MF $(BUILD)/$*.d
+
+
 
 .PHONY: all clean
 
@@ -25,8 +31,8 @@ deploy:	all
 
 $(BUILD)/splash.o:splash.mo7
 
-$(BUILD)/%.s:	%.c
-	$(RISCV_CC) $(RISCV_CC_FLAGS) -fomit-frame-pointer -O3 -Os -c -S -o $@ -g $<
+$(BUILD)/%.s $(BUILD)/%.d:	%.c 
+	$(RISCV_CC) $(RISCV_CC_FLAGS) $(DEPFLAGS) -fomit-frame-pointer -O3 -Os -c -S -o $@ -g $<
 
 $(BUILD)/%.o: 	$(BUILD)/%.s $(DEPS) 
 	$(RISCV_AS) $(RISCV_AS_FLAGS) -c -o $@ -g -Wa,-alghmns=$(basename $@).lst $<
@@ -47,12 +53,23 @@ $(BUILD)/testmos.mos: $(BUILD)/testmos.elf
 	$(RISCV_OBJCOPY) -O binary $< $@
 	echo "M.TEST FFFFC000 FFFFC000" >$@.inf
 
+DEPFILES := $(OBJS_O:%.o=%.d)
+$(DEPFILES):
 
+
+include $(wildcard $(DEPFILES))
+
+
+$(DEPDIR): 
+	@mkdir -p $@
 
 clean:
 	-rm $(TARGETS_O)
 	-rm $(addsuffix .inf, $(TARGETS_O))
 	-rm $(patsubst %.mos, %.map, $(TARGETS_O))
+	-rm $(patsubst %.mos, %.elf, $(TARGETS_O))
+	-rm $(patsubst %.mos, %.sy1, $(TARGETS_O))
+	-rm $(patsubst %.mos, %.noi, $(TARGETS_O))
 	-rm $(OBJS_O)
 	-rm $(patsubst %.o, %.lst, $(OBJS_O))
 

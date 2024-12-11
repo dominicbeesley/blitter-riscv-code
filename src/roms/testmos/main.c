@@ -1,6 +1,7 @@
 #include "interrupts.h"
 #include "deice.h"
 #include "moslib.h"
+#include "mos.h"
 
 unsigned char * const SCREENBASE = (unsigned char * const)0xFFFF7C00;
 extern unsigned char const splash;
@@ -11,7 +12,7 @@ char a = 'x';
 
 void printch(char c) {
 	*scrptr++=c;
-	if (((int)scrptr) & 0x8000) {
+	if (scrptr >= SCREENBASE + 25*40) {
 		scrptr = SCREENBASE;
 	}
 }
@@ -64,8 +65,6 @@ void init(void) {
 
 	scrptr = SCREENBASE;
 
-	interrupts_disable(0);
-
 }
 
 extern void buserror(void);
@@ -81,7 +80,15 @@ void main(void) {
 
 	printstr("BOO!");
 
-	mos_oswrch('A');	
+	do {
+		uint32_t t = ((uint32_t)TIME_VAL1_MSB[1] << 24)
+		| ((uint32_t)TIME_VAL1_MSB[2] << 16)
+		| ((uint32_t)TIME_VAL1_MSB[3] << 8)
+		| ((uint32_t)TIME_VAL1_MSB[4] << 0);
+		hexword(t);
+		hexbyte(*OSB_TIME_SWITCH);
+
+	} while (1);
 
 	// force a bus error (if we can)
 	//buserror();

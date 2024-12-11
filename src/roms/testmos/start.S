@@ -3,13 +3,7 @@
 
 sheila			= 0xFFFFFE00
 
-start:		// disable SYSVIA interrupts
-		la	t0, sheila
-		li	t1, 0x7F
-		sb	t1,0x4E(t0)
-		sb	t1,0x6E(t0)
-
-		// disable all but timer, illins, bus interrupts
+start:		// disable all but timer, illins, bus interrupts
 		li	t0,0xFFFFFFF8
 		picorv32_maskirq_insn(t0, t0)
 
@@ -38,11 +32,12 @@ start:		// disable SYSVIA interrupts
 		addi	t2,t2,-4
 		bgt	t2,zero,.blp
 
-		
-		jal	init
-
 		jal	deice_init
-		
+
+		jal	mos_reset
+
+		//application
+		jal	init
 		j	main
 
 	.globl buserror

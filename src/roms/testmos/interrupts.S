@@ -92,7 +92,104 @@ mos_enter:
 		addi	sp,sp,(10*4)
 		jr		t0						// return
 
-		
+mos_irq:	
+		//TODO: this is very much belt-and-braces, we could probably
+		//rely on C properly preserving some of these registers
+
+
+		//on entry:
+		// q0 = address after ecall
+		// q1 = interrupt status - we will cancel bit 2
+		// q2 = callers ra
+		// q3 = callers sp
+		// x2,x2 already corrupted
+
+		// if q3 isn't in MOS stack then set to MOS stack - allow MOS to reenter, maybe change this?
+		picorv32_getq_insn(sp, q3)
+		la		ra,mos_stack_base
+		blt		sp,ra,.news2
+		la		ra,mos_stack_top
+		blt		sp,ra,.nonews2
+
+		// we weren't in the mos set to MOS stack
+.news2:	la		sp,mos_stack_top
+.nonews2:
+
+		// stack all remaining regs
+		addi	sp,sp,-(4*29)
+		sw x3,   0*4(sp)
+		sw x4,   1*4(sp)
+		sw x5,   2*4(sp)
+		sw x6,   3*4(sp)
+		sw x7,   4*4(sp)
+		sw x8,   5*4(sp)
+		sw x9,   6*4(sp)
+		sw x10,  7*4(sp)
+		sw x11,  8*4(sp)
+		sw x12,  9*4(sp)
+		sw x13, 10*4(sp)
+		sw x14, 11*4(sp)
+		sw x15, 12*4(sp)
+		sw x16, 13*4(sp)
+		sw x17, 14*4(sp)
+		sw x18, 15*4(sp)
+		sw x19, 16*4(sp)
+		sw x20, 17*4(sp)
+		sw x21, 18*4(sp)
+		sw x22, 19*4(sp)
+		sw x23, 20*4(sp)
+		sw x24, 21*4(sp)
+		sw x25, 22*4(sp)
+		sw x26, 23*4(sp)
+		sw x27, 24*4(sp)
+		sw x28, 25*4(sp)
+		sw x29, 26*4(sp)
+		sw x30, 27*4(sp)
+		sw x31, 28*4(sp)
+
+		//TODO: jump through IRQ1V
+		jal		mos_default_IRQ1V
+
+		lw x3,   0*4(sp)
+		lw x4,   1*4(sp)
+		lw x5,   2*4(sp)
+		lw x6,   3*4(sp)
+		lw x7,   4*4(sp)
+		lw x8,   5*4(sp)
+		lw x9,   6*4(sp)
+		lw x10,  7*4(sp)
+		lw x11,  8*4(sp)
+		lw x12,  9*4(sp)
+		lw x13, 10*4(sp)
+		lw x14, 11*4(sp)
+		lw x15, 12*4(sp)
+		lw x16, 13*4(sp)
+		lw x17, 14*4(sp)
+		lw x18, 15*4(sp)
+		lw x19, 16*4(sp)
+		lw x20, 17*4(sp)
+		lw x21, 18*4(sp)
+		lw x22, 19*4(sp)
+		lw x23, 20*4(sp)
+		lw x24, 21*4(sp)
+		lw x25, 22*4(sp)
+		lw x26, 23*4(sp)
+		lw x27, 24*4(sp)
+		lw x28, 25*4(sp)
+		lw x29, 26*4(sp)
+		lw x30, 27*4(sp)
+		lw x31, 28*4(sp)
+
+		//mask irq
+		picorv32_getq_insn(ra, q1)
+		andi	ra,ra,~0x10
+		picorv32_setq_insn(q1, ra)
+
+		picorv32_getq_insn(x1, q2)
+		picorv32_getq_insn(x2, q3)
+
+		picorv32_retirq_insn()
+
 
 
 interrupts_handle:
@@ -102,8 +199,8 @@ interrupts_handle:
 
 		// quick check for ecall - TODO: make this more efficient when we sort out interrupts		
 		picorv32_getq_insn(x1, q1)
-		andi	x1,x1,2
-		beqz	x1,.notecall		// not an illegal instr
+		andi	x2,x1,2
+		beqz	x2,.notecall		// not an illegal instr
 		picorv32_getq_insn(x1, q0)
 		andi	x2,x1,1
 		bnez	x2,.notecall		// not a full-fat instr
@@ -118,6 +215,10 @@ interrupts_handle:
 
 
 .notecall:
+		picorv32_getq_insn(x1, q1)
+		andi	x2,x1,0x10
+		bnez	x2, mos_irq
+
 		la x1, interrupts_regs
 		// q0 is set to return address of interrupt
 		picorv32_getq_insn(x2, q0)
