@@ -72,5 +72,7 @@ clean:
 	-rm $(patsubst %.mos, %.noi, $(TARGETS_O))
 	-rm $(OBJS_O)
 	-rm $(patsubst %.o, %.lst, $(OBJS_O))
+	-rm $(patsubst %.o, %.s, $(OBJS_O))
+	-rm $(patsubst %.o, %.d, $(OBJS_O))
 
 

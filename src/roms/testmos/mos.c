@@ -9,7 +9,7 @@ extern void printch(char c);
 extern void hexword(unsigned int n);
 extern void hexbyte(unsigned int n);
 
-const uint8_t const KEY_TRANS_TABLE[] = {
+const uint8_t KEY_TRANS_TABLE[] = {
 'q', '3', '4', '5', 0x84,'8', 0x87,'-', '^', 0x8c,
 0x80,'w', 'e', 't', '7', 'i', '9', '0', '_', 0x8e,
 '1', '2', 'd', 'r', '6', 'u', 'o', 'p', '[', 0x8f,

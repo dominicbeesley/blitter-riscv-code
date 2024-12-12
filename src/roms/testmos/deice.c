@@ -279,12 +279,14 @@ void deice_fn_get_stat(void) {
 
 // read big-endian 32 bit address
 uint8_t *deice_read_addr(uint8_t **p) {
-	return (uint8_t *)(
-		  (*(*p)++ << 24) 
-		| (*(*p)++ << 16) 
-		| (*(*p)++ << 8) 
-		| (*(*p)++ << 0)
+	uint8_t *r = (uint8_t *)(
+		  ((*p)[0] << 24) 
+		| ((*p)[1] << 16) 
+		| ((*p)[2] << 8) 
+		| ((*p)[3] << 0)
 		);
+	(*p) += 4;
+	return r;
 }
 
 void deice_fn_read_mem(void) {

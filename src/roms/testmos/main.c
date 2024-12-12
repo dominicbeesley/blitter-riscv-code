@@ -4,10 +4,10 @@
 #include "mos.h"
 #include "hardware.h"
 
-unsigned char * const SCREENBASE = (unsigned char *)0xFFFF7C00;
+uint8_t * const SCREENBASE = (unsigned char *)0xFFFF7C00;
 extern unsigned char const splash;
 
-volatile char volatile *scrptr;
+volatile uint8_t *scrptr;
 char a = 'x';
 
 
@@ -88,7 +88,7 @@ void main(void) {
 		| ((uint32_t)TIME_VAL1_MSB[4] << 0);
 
 		interrupts_disable(0xFF);
-		uint8_t *tmp = scrptr;
+		volatile uint8_t *tmp = scrptr;
 		scrptr = SCREENBASE;
 		hexword(t);
 		hexbyte(*OSB_TIME_SWITCH);
