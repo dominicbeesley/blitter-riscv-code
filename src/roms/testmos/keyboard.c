@@ -3,6 +3,8 @@
 #include "hardware.h"
 #include <stddef.h>
 
+//TODO: check out CTRL-SHIFT-fX not working correctly?
+
 //TODO:remove
 extern void printstr(const char *s);
 extern void printch(char c);
