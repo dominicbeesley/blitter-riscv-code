@@ -16,7 +16,7 @@ interrupts_regs:
 interrupts_disable:
 
 		// ensure bus, instr, timer
-		andi	a0, a0, 7
+		andi	a0, a0, ~7
 
 		picorv32_maskirq_insn(a0, a0)
 
