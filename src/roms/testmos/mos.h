@@ -2,6 +2,7 @@
 #define __MOS_H__
 
 #include <stdint.h>
+#include "hardware.h"
 
 // RISC-V Co Processor Sys Call Numbers
 
@@ -219,5 +220,11 @@ struct mos_args {
 #define KEY_CTRL  	0x01
 #define KEY_SHIFT_LOCK 	0xD0
 #define KEY_CAPS_LOCK 	0xC0
+
+
+void mos_latch_write(uint8_t val);
+
+
+#define DELAY1	*sheila_USRVIA_ora_nh;
 
 #endif

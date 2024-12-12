@@ -2,7 +2,7 @@
 
 ASMINCS=$(wildcard $(TOP)/asm-includes/*.inc) $(filter-out version-date.inc, $(wildcard *.inc))
 DEPS=$(INCS) $(ASMINCS)
-OBJS=start splash main deice interrupts mos moslib
+OBJS=start splash main deice interrupts mos moslib keyboard
 
 
 TARGETS=testmos
@@ -22,7 +22,7 @@ all:	$(TARGETS_O)
 ssd:	all
 deploy:	all
 
-.PRECIOUS:build/*
+.PRECIOUS:$(BUILD)/%.o $(BUILD)/%.s $(BUILD)/%.d $(BUILD)/%.elf
 
 #$(BUILD)/version-date.inc: $(DEPS) $(filter-out %.da.asm, $(wildcard *.asm))
 #	$(SCRIPTS)/gendate.sh $@
@@ -31,7 +31,7 @@ deploy:	all
 
 $(BUILD)/splash.o:splash.mo7
 
-$(BUILD)/%.s $(BUILD)/%.d:	%.c 
+$(BUILD)/%.s:	%.c 
 	$(RISCV_CC) $(RISCV_CC_FLAGS) $(DEPFLAGS) -fomit-frame-pointer -O3 -Os -c -S -o $@ -g $<
 
 $(BUILD)/%.o: 	$(BUILD)/%.s $(DEPS) 
@@ -53,11 +53,10 @@ $(BUILD)/testmos.mos: $(BUILD)/testmos.elf
 	$(RISCV_OBJCOPY) -O binary $< $@
 	echo "M.TEST FFFFC000 FFFFC000" >$@.inf
 
-DEPFILES := $(OBJS_O:%.o=%.d)
-$(DEPFILES):
+#DEPFILES := $(OBJS_O:%.o=%.d)
+#$(DEPFILES):
 
-
-include $(wildcard $(DEPFILES))
+#include $(wildcard $(DEPFILES))
 
 
 $(DEPDIR): 
@@ -76,3 +75,4 @@ clean:
 	-rm $(patsubst %.o, %.d, $(OBJS_O))
 
 
+ 
