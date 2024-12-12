@@ -16,10 +16,8 @@ extern void hexbyte(unsigned int n);
 #define T1PER (10000-2)
 
 void mos_latch_write(uint8_t val) {
-	//delay for at least 2us to ensure latch clocks
-	*sheila_USRVIA_ddra;	// this should be enough
-	*sheila_USRVIA_ddra;	// this should be enough
-
+	//delay for at least 1us to ensure latch clocks
+	DELAY1
 	*sheila_SYSVIA_orb = val;
 }
 
