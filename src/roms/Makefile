@@ -5,7 +5,7 @@ DEPLOY=$(DEPLOY_TOP)/romsriscV
 
 SUBDIRS=testmos
 OBJS=testmos/testmos.mos
-EXTRAS=$(wildcard extras/*.inf)
+EXTRAS=$(wildcard extras/*.inf) $(basename $(wildcard extras/*.inf))
 
 OBJS_O=$(addprefix $(BUILD)/, $(OBJS))
 
@@ -28,5 +28,5 @@ $(SUBDIRS):
 $(SSD):	$(OBJS_O) $(EXTRAS)
 	dfs form -80 $(SSD)
 	dfs title $(SSD) "romsRiscV"
-	dfs add $(SSD) $(addsuffix .inf, $(OBJS_O)) $(EXTRAS)
+	dfs add $(SSD) $(addsuffix .inf, $(OBJS_O)) $(filter %.inf, $(EXTRAS))
 
