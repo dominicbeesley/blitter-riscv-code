@@ -2,11 +2,12 @@
 #include "deice.h"
 #include "moslib.h"
 #include "mos.h"
+#include "hardware.h"
 
-unsigned char * const SCREENBASE = (unsigned char * const)0xFFFF7C00;
+unsigned char * const SCREENBASE = (unsigned char *)0xFFFF7C00;
 extern unsigned char const splash;
 
-char *scrptr;
+volatile char volatile *scrptr;
 char a = 'x';
 
 
@@ -63,7 +64,7 @@ void irq_handle(void) {
 
 void init(void) {
 
-	scrptr = SCREENBASE;
+	scrptr = SCREENBASE + 40*10;
 
 }
 
@@ -85,8 +86,31 @@ void main(void) {
 		| ((uint32_t)TIME_VAL1_MSB[2] << 16)
 		| ((uint32_t)TIME_VAL1_MSB[3] << 8)
 		| ((uint32_t)TIME_VAL1_MSB[4] << 0);
+
+		interrupts_disable(0xFF);
+		uint8_t *tmp = scrptr;
+		scrptr = SCREENBASE;
 		hexword(t);
 		hexbyte(*OSB_TIME_SWITCH);
+
+		printch(' ');
+		hexbyte(*OSB_KEY_SEM);
+		printch(' ');
+		hexbyte(*sheila_SYSVIA_ier);
+		printch(' ');
+		hexbyte(*KEYNUM_FIRST);
+		printch(' ');
+		hexbyte(*KEYNUM_LAST);
+		printch(' ');
+		hexbyte(*KEY_ROLLOVER_1);
+		printch(' ');
+		hexbyte(*KEY_ROLLOVER_2);
+		printch(' ');
+		hexbyte(*OSB_KEY_STATUS);
+
+
+		scrptr = tmp;
+		interrupts_disable(0x00);
 
 	} while (1);
 

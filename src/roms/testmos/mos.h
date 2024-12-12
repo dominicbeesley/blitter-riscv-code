@@ -36,6 +36,68 @@ struct mos_args {
 	uint32_t	a6;
 };
 
+#define	CRFS_LOAD		((uint32_t *)0xb0)
+#define	CRFS_EXEC		((uint16_t *)0xb4)
+#define	CRFS_NEXT_BLK		((uint16_t *)0xb6)
+#define	CRFS_ERR_PTR		((uint16_t *)0xb8)
+#define	CRFS_BLOCK_FLAG		((uint8_t *)0xba)
+#define	CRFS_OPTS		((uint8_t *)0xbb)
+#define	CRFS_BLK_OFFSET		((uint8_t *)0xbc)
+#define	CRFS_BLK_LAST		((uint8_t *)0xbd)
+#define	CRFS_CRC_TMP		((uint16_t *)0xbe)
+#define	CRFS_BUFFER_FLAG	((uint8_t *)0xc0)
+#define	CRFS_CRC_RESULT		((uint8_t *)0xc1)
+#define	CRFS_PROGRESS		((uint8_t *)0xc2)
+#define	CFS_HANDLE		((uint8_t *)0xc3)
+#define	CRFS_TMP		((uint8_t *)0xc4)
+#define	CFS_BAUD_RATE		((uint8_t *)0xc6)
+#define	CFS_INTERBLOCK		((uint8_t *)0xc7)
+#define	CRFS_OSFILE_PTR		((uint16_t *)0xc8)
+#define	CFS_SERIAL_CTRL		((uint8_t *)0xca)
+#define	CRFS_CRC_BIT_CNT	((uint8_t *)0xcb)
+#define	CRFS_FILE_SIZE		((uint16_t *)0xcc)
+
+#define	VDU_STATUS		((uint8_t *)0xd0)
+#define	VDU_G_PIX_MASK		((uint8_t *)0xd1)
+#define	VDU_T_OR_MASK		((uint8_t *)0xd2)
+#define	VDU_T_EOR_MASK		((uint8_t *)0xd3)
+#define	VDU_G_OR_MASK		((uint8_t *)0xd4)
+#define	VDU_G_EOR_MASK		((uint8_t *)0xd5)
+#define	VDU_G_MEM		((uint16_t *)0xd6)
+#define	VDU_TOP_SCAN		((uint16_t *)0xd8)
+#define	VDU_TMP1		((uint8_t *)0xda)
+#define	VDU_TMP2		((uint8_t *)0xdb)
+#define	VDU_TMP3		((uint8_t *)0xdc)
+#define	VDU_TMP4		((uint8_t *)0xdd)
+#define	VDU_TMP5		((uint8_t *)0xde)
+#define	VDU_TMP6		((uint8_t *)0xdf)
+#define	VDU_ROW_MULT		((uint16_t *)0xe0)
+#define	CRFS_STATUS		((uint8_t *)0xe2)
+#define	CRFS_OPTIONS		((uint8_t *)0xe3)
+#define	OSBYTE_PAR_3		((uint8_t *)0xe4)
+#define	OSBYTE_PAR_2		((uint8_t *)0xe5)
+#define	MOS_WS			((uint8_t *)0xe6)
+#define	AUTO_REPEAT_TIMER	((uint8_t *)0xe7)
+#define	OSW_0_PTR		((uint16_t *)0xe8)
+#define	RS423_TIMEOUT		((uint8_t *)0xea)
+#define	CRFS_ACTIVE		((uint8_t *)0xeb)
+#define	KEYNUM_FIRST		((uint8_t *)0xec)
+#define	KEYNUM_LAST		((uint8_t *)0xed)
+#define	OSW_A			((uint8_t *)0xef)
+#define	OSW_X			((uint8_t *)0xf0)
+#define	OSW_Y			((uint8_t *)0xf1)
+#define	TEXT_PTR		((uint16_t *)0xf2)
+#define	ROM_SELECT		((uint8_t *)0xf4)
+#define	RFS_SELECT		((uint8_t *)0xf5)
+#define	ROM_PTR			((uint16_t *)0xf6)
+#define	MOS_WS_0		((uint8_t *)0xfa)
+#define	MOS_WS_1		((uint8_t *)0xfb)
+#define	IRQ_COPY_A		((uint8_t *)0xfc)
+#define	ERR_MSG_PTR		((uint16_t *)0xfd)
+#define	ESCAPE_FLAG		((uint8_t *)0xff)
+
+
+
 #define 	OSB_EXT_VEC		((uint16_t *)0x0238)
 #define 	OSB_ROM_TABLE		((uint16_t *)0x023a)
 #define 	OSB_KEY_TABLE		((uint16_t *)0x023c)
@@ -127,5 +189,35 @@ struct mos_args {
 #define		TIME_VAL2_MSB		((volatile uint8_t *)0x0297)
 #define		TIME_VAL2_LSB		((volatile uint8_t *)0x029b)
 
+#define		KEY_REPEAT_CNT		((uint8_t *)0x02ca)
+#define		KEY_ROLLOVER_1		((uint8_t *)0x02cb)
+#define		KEY_ROLLOVER_2		((uint8_t *)0x02cd)
+
+
+#define FLAG_N 0x80
+#define FLAG_V 0x40
+#define FLAG_Z 0x02
+#define FLAG_C 0x01
+
+#define LATCH_0_SOUND 		0
+#define LATCH_1_SPEECH_RS	1
+#define LATCH_2_SPEECH_WS	2
+#define LATCH_3_KEYSCAN		3
+#define LATCH_4_C0		4
+#define LATCH_5_C1		5
+#define LATCH_6_LED_CAPS	6
+#define LATCH_7_LED_SHIFT	7
+#define LATCH_8_ON		8
+
+#define KEYSTAT_SHIFT_EN	0x80
+#define KEYSTAT_CTRL		0x40
+#define KEYSTAT_SHIFT_LK	0x20
+#define KEYSTAT_CAPS_LK		0x10
+#define KEYSTAT_SHIFT		0x08
+
+#define KEY_SHIFT 	0x00
+#define KEY_CTRL  	0x01
+#define KEY_SHIFT_LOCK 	0xD0
+#define KEY_CAPS_LOCK 	0xC0
 
 #endif
