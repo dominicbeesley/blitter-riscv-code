@@ -8,10 +8,11 @@ means.
 */
 
 MEMORY {
-	/* the memory in the testbench is 128k in size;
-	 * set LENGTH=96k and leave at least 32k for stack */
-	ROM : ORIGIN = 0xFFFFC000, LENGTH = 0x00004000
-	RAM : ORIGIN = 0x0008000, LENGTH = 0x00004000
+	/* this runs from BB (mk2)/ChipRam (mk3) 16K at
+	7D 0000 - 7D 3FFF. This will enter reset in  MOSRAM at 
+	FFFFCxxx which we just use for the vectors */ 
+	ROM : 		ORIGIN = 0x007D0000, LENGTH = 0x00004000
+	RAM : 		ORIGIN = 0x00008000, LENGTH = 0x00004000
 }
 
 SECTIONS {
@@ -39,6 +40,20 @@ SECTIONS {
 	_data_size = SIZEOF(.data);
     _data_load_start = LOADADDR(.data);
 
+	.shims ORIGIN(ROM) + 0x3F00 : {
+		. = ALIGN(4);
+		*(entry_shims);
+		_bob2 = .;
+	} >ROM
+
+	.hwvects ORIGIN(ROM) + 0x3FF8 : {
+		. = ALIGN(4);
+		*(reset);		
+		*(irq);
+		. = ALIGN(4);
+		_bob = .;
+	} >ROM
+
 	.bss (NOLOAD): {
 		. = ALIGN(4);
 		_bss_start = .;
@@ -49,11 +64,6 @@ SECTIONS {
 	} > RAM
 	_bss_size = SIZEOF(.bss);
 
-	.hwvects : {
-		. = (0x3FF8 - SIZEOF(.code) - SIZEOF(.data)); 
-		*(reset);
-		*(irq);
-		. = ALIGN(4);
-	} > ROM
+	
 
 }

@@ -48,11 +48,32 @@ buserror:	mv	s0, ra
 		mv	ra, s0
 		ret
 
+		// this must be placed in top-half of ROM with the vectors
+		// to ensure it's mapped in to memory at FF FF00 at boot time
+		// and will jump "down" to correct memory 7D 0000 when running
+	.section entry_shims, "ax", @progbits
 
+		// TODO: this is the only way I've found to get the linker to tell us
+		// the absolute address....li doesn't work and la is PC relative which
+		// is no good for this purpose!
+start_addr:	.word start
+ih_addr:	.word interrupts_handle
 
-		.section reset, "x", @progbits
-reset_hw:	j start
-		.section irq, "x", @progbits
-irq_hw:		j interrupts_handle
+reset_handle_enter:
+		// need to do a long/absolute jump here as CPU will think we're running
+		// in FFFFCxxx when we're actually in 007D0xxx
+		lw	t0,start_addr
+		jr	t0
+interrupts_handle_enter:
+		// need to do a long/absolute jump here as CPU will think we're running
+		// in FFFFCxxx when we're actually in 007D0xxx
+		picorv32_setq_insn(q2, ra)	// save return address
+		lw	ra,ih_addr
+		jr	ra
+
+	.section reset, "ax", @progbits
+reset_hw:	j reset_handle_enter
+	.section irq, "ax", @progbits
+irq_hw:		j interrupts_handle_enter
 
 

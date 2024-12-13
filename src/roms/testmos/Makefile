@@ -51,7 +51,7 @@ $(BUILD)/%.elf: $(OBJS_O) %.lds
 
 $(BUILD)/testmos.mos: $(BUILD)/testmos.elf
 	$(RISCV_OBJCOPY) -O binary $< $@
-	echo "M.TEST FFFFC000 FFFFC000" >$@.inf
+	echo "M.TEST 007CC000 007CC000" >$@.inf
 
 #DEPFILES := $(OBJS_O:%.o=%.d)
 #$(DEPFILES):

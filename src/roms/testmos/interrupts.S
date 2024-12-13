@@ -191,10 +191,8 @@ mos_irq:
 		picorv32_retirq_insn()
 
 
-
 interrupts_handle:
 
-		picorv32_setq_insn(q2, ra)	// save return address
 		picorv32_setq_insn(q3, sp)	// save stack pointer
 
 		// quick check for ecall - TODO: make this more efficient when we sort out interrupts		
