@@ -1,4 +1,5 @@
 #include "mos.h"
+#include "mos_shared.h"
 #include "hardware.h"
 #include "interrupts.h"
 #include "keyboard.h"

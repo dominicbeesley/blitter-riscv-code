@@ -52,4 +52,14 @@
 #define VIA_IxR_CA2					0x01
 
 
+#define LATCH_0_SOUND 		0
+#define LATCH_1_SPEECH_RS	1
+#define LATCH_2_SPEECH_WS	2
+#define LATCH_3_KEYSCAN		3
+#define LATCH_4_C0		4
+#define LATCH_5_C1		5
+#define LATCH_6_LED_CAPS	6
+#define LATCH_7_LED_SHIFT	7
+#define LATCH_8_ON		8
+
 #endif

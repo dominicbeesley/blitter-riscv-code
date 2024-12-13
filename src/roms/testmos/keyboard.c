@@ -2,6 +2,7 @@
 #include "mos.h"
 #include "hardware.h"
 #include <stddef.h>
+#include "mos_shared.h"
 
 //TODO: check out CTRL-SHIFT-fX not working correctly?
 

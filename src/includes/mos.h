@@ -195,21 +195,6 @@ struct mos_args {
 #define		KEY_ROLLOVER_2		((uint8_t *)0x02cd)
 
 
-#define FLAG_N 0x80
-#define FLAG_V 0x40
-#define FLAG_Z 0x02
-#define FLAG_C 0x01
-
-#define LATCH_0_SOUND 		0
-#define LATCH_1_SPEECH_RS	1
-#define LATCH_2_SPEECH_WS	2
-#define LATCH_3_KEYSCAN		3
-#define LATCH_4_C0		4
-#define LATCH_5_C1		5
-#define LATCH_6_LED_CAPS	6
-#define LATCH_7_LED_SHIFT	7
-#define LATCH_8_ON		8
-
 #define KEYSTAT_SHIFT_EN	0x80
 #define KEYSTAT_CTRL		0x40
 #define KEYSTAT_SHIFT_LK	0x20
@@ -222,9 +207,5 @@ struct mos_args {
 #define KEY_CAPS_LOCK 	0xC0
 
 
-void mos_latch_write(uint8_t val);
-
-
-#define DELAY1	*sheila_USRVIA_ora_nh;
 
 #endif
