@@ -19,7 +19,7 @@ extern void hexbyte(unsigned int n);
 void mos_latch_write(uint8_t val) {
 	//delay for at least 1us to ensure latch clocks
 	DELAY1
-	*sheila_SYSVIA_orb = val;
+	sheila_SYSVIA_orb = val;
 }
 
 void mos_enter_ecall(struct mos_args *args, uint32_t a7) {
@@ -64,7 +64,7 @@ void mos_default_IRQ1V() {
 
 //			lda	SYS_VIA_IFR			; Read System VIA interrupt flag register
 //			bpl	_POLL_USER_VIA_IRQ		; No System VIA interrupt, jump to check User VIA
-	uint8_t sysviaifr = *sheila_SYSVIA_ifr;
+	uint8_t sysviaifr = sheila_SYSVIA_ifr;
 	if (sysviaifr & 0x80) {
 //
 //; System VIA interupt
@@ -75,7 +75,7 @@ void mos_default_IRQ1V() {
 //			ror					; 
 //			bcc	_POLL_TIMER2_IRQ		; No CA1 (frame sync), jump to check speech
 
-		sysviaifr = sysviaifr & *sheila_SYSVIA_ier; //TODO: *OSB_VIA_IER mask from mos vars
+		sysviaifr = sysviaifr & sheila_SYSVIA_ier; //TODO: *OSB_VIA_IER mask from mos vars
 		if (sysviaifr & VIA_IxR_CA1)
 		{
 			//TODO:
@@ -109,25 +109,25 @@ void mos_default_IRQ1V() {
 
 //			lda	#$02				; A=2
 //			jmp	_LDE6E				; clear interrupt 1 and exit
-			*sheila_SYSVIA_ifr = VIA_IxR_CA1;
+			sheila_SYSVIA_ifr = VIA_IxR_CA1;
 			return;
 		} else if (sysviaifr & VIA_IxR_T2) {
 
 			/* TIMER 2 - TODO */
 
-			*sheila_SYSVIA_ifr = VIA_IxR_T2;
+			sheila_SYSVIA_ifr = VIA_IxR_T2;
 			return;
 		} else if (sysviaifr & VIA_IxR_T1) {
 
-			*sheila_SYSVIA_ifr = VIA_IxR_T1;
+			sheila_SYSVIA_ifr = VIA_IxR_T1;
 
 			/* TIMER 1 - 100Hz tick */
 
 			//TIME=
-			uint8_t sw = *OSB_TIME_SWITCH;
+			uint8_t sw = OSB_TIME_SWITCH;
 			uint8_t sw2 = sw ^ 0xF;
 			uint8_t c = 1;
-			*OSB_TIME_SWITCH = sw2;
+			OSB_TIME_SWITCH = sw2;
 			volatile uint8_t *p = TIME_VAL1_MSB + sw - 1;
 			volatile uint8_t *q = TIME_VAL1_MSB + sw2 - 1;
 			uint8_t n = 5;
@@ -145,7 +145,7 @@ void mos_default_IRQ1V() {
 			//TODO: BUFFER 8 SPEECH EMPTY
 			//TODO: POLL ACIA
 
-			if ((*KEYNUM_FIRST | *KEYNUM_LAST) & *OSB_KEY_SEM) {
+			if ((KEYNUM_FIRST | KEYNUM_LAST) & OSB_KEY_SEM) {
 				call_KEYV_NVC();
 			}
 
@@ -153,11 +153,11 @@ void mos_default_IRQ1V() {
 
 		} else if (sysviaifr & VIA_IxR_CB1) {
 			//ADC EOC
-			*sheila_SYSVIA_ifr = VIA_IxR_CB1;
+			sheila_SYSVIA_ifr = VIA_IxR_CB1;
 			//TODO: ADC EOC
 		} else if (sysviaifr & VIA_IxR_CA2) {
 			//KEY PRESS
-			*sheila_SYSVIA_ifr = VIA_IxR_CA2;
+			sheila_SYSVIA_ifr = VIA_IxR_CA2;
 			call_KEYV_NV();
 		}
 	}
@@ -166,39 +166,39 @@ void mos_default_IRQ1V() {
 
 void mos_reset(void) {
 	// disable SYSVIA interrupts
-	*sheila_SYSVIA_ier = 0x7F;
-	*sheila_SYSVIA_ifr = 0x7F;
+	sheila_SYSVIA_ier = 0x7F;
+	sheila_SYSVIA_ifr = 0x7F;
 
 
 	// setup 100Hz tick
-	*sheila_SYSVIA_t1ll = T1PER & 0xFF;
-	*sheila_SYSVIA_t1lh = T1PER >> 8;
-	*sheila_SYSVIA_t1ch = T1PER >> 8;
+	sheila_SYSVIA_t1ll = T1PER & 0xFF;
+	sheila_SYSVIA_t1lh = T1PER >> 8;
+	sheila_SYSVIA_t1ch = T1PER >> 8;
 
 	//TODO: this only resets a handful of things, should be table driven like on 6502
-	*OSB_TIME_SWITCH = 5;
+	OSB_TIME_SWITCH = 5;
 	for (int i = 0 ; i < 10 ; i++) {
 		TIME_VAL1_MSB[i] = i;
 	}
 
 	//resettable latch
-	*sheila_SYSVIA_ddrb = 0x0F;
+	sheila_SYSVIA_ddrb = 0x0F;
 	for (uint8_t i = 0xf; i>=9; i++)
 		mos_latch_write(i);
 
 	//init keyboard
-	*KEYNUM_LAST = 0;
-	*KEYNUM_FIRST = 0;
-	*KEY_ROLLOVER_1 = 0;
-	*KEY_ROLLOVER_2 = 0;
-	*OSB_KEY_SEM = 0xFF;
-	*OSB_KEY_STATUS = 0x20;
-	*OSB_KEY_REPEAT = 24;
-	*OSB_KEY_DELAY = 40;
+	KEYNUM_LAST = 0;
+	KEYNUM_FIRST = 0;
+	KEY_ROLLOVER_1 = 0;
+	KEY_ROLLOVER_2 = 0;
+	OSB_KEY_SEM = 0xFF;
+	OSB_KEY_STATUS = 0x20;
+	OSB_KEY_REPEAT = 24;
+	OSB_KEY_DELAY = 40;
 
 
 	// renable T1, T2, EOC, VS
-	*sheila_SYSVIA_ier = VIA_IxR_FLAG|VIA_IxR_T1|VIA_IxR_T2|VIA_IxR_CB1|VIA_IxR_CA2;
+	sheila_SYSVIA_ier = VIA_IxR_FLAG|VIA_IxR_T1|VIA_IxR_T2|VIA_IxR_CB1|VIA_IxR_CA2;
 
 	interrupts_disable(0);
 

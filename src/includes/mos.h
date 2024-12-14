@@ -185,10 +185,9 @@ struct mos_args {
 #define		OSB_STARTUP_OPT		(*((uint8_t *)0x028f))
 
 
-#define		TIME_VAL1_MSB		(*((volatile uint8_t *)0x0292))
-#define		TIME_VAL1_LSB		(*((volatile uint8_t *)0x0296))
-#define		TIME_VAL2_MSB		(*((volatile uint8_t *)0x0297))
-#define		TIME_VAL2_LSB		(*((volatile uint8_t *)0x029b))
+// TIME declared as an array ...
+#define		TIME_VAL1_MSB		((volatile uint8_t *)0x0292)
+#define		TIME_VAL2_MSB		((volatile uint8_t *)0x0297)
 
 #define		KEY_REPEAT_CNT		(*((uint8_t *)0x02ca))
 #define		KEY_ROLLOVER_1		(*((uint8_t *)0x02cb))
@@ -206,6 +205,7 @@ struct mos_args {
 #define KEY_SHIFT_LOCK 	0xD0
 #define KEY_CAPS_LOCK 	0xC0
 
+#define BUFFER_KEYBOARD_IN 	0x00
 
 
 #endif

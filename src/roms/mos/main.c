@@ -91,22 +91,22 @@ void main(void) {
 		volatile uint8_t *tmp = scrptr;
 		scrptr = SCREENBASE;
 		hexword(t);
-		hexbyte(*OSB_TIME_SWITCH);
+		hexbyte(OSB_TIME_SWITCH);
 
 		printch(' ');
-		hexbyte(*OSB_KEY_SEM);
+		hexbyte(OSB_KEY_SEM);
 		printch(' ');
-		hexbyte(*sheila_SYSVIA_ier);
+		hexbyte(sheila_SYSVIA_ier);
 		printch(' ');
-		hexbyte(*KEYNUM_FIRST);
+		hexbyte(KEYNUM_FIRST);
 		printch(' ');
-		hexbyte(*KEYNUM_LAST);
+		hexbyte(KEYNUM_LAST);
 		printch(' ');
-		hexbyte(*KEY_ROLLOVER_1);
+		hexbyte(KEY_ROLLOVER_1);
 		printch(' ');
-		hexbyte(*KEY_ROLLOVER_2);
+		hexbyte(KEY_ROLLOVER_2);
 		printch(' ');
-		hexbyte(*OSB_KEY_STATUS);
+		hexbyte(OSB_KEY_STATUS);
 
 
 		scrptr = tmp;
