@@ -3,6 +3,7 @@
 #include "hardware.h"
 #include <stddef.h>
 #include "mos_shared.h"
+#include "buffers.h"
 
 //TODO: check out CTRL-SHIFT-fX not working correctly?
 
@@ -67,14 +68,14 @@ uint8_t key_keyboard_scanX(uint8_t X)
 }
 
 //TODO: I suspect splitting this into two OSBYTE/non-OSBYTE routines will be simpler and possibly shorter!
-uint8_t key_keyboard_scan_fromXon(uint8_t flags, uint8_t *X, uint8_t Y) {
-	uint8_t A = *X;
-	if (*X & FLAG_N) {
-		*X = key_keyboard_scanX(*X);
+uint8_t key_keyboard_scan_fromXon(uint8_t flags, uint8_t X, uint8_t Y) {
+	uint8_t A = X;
+	if (X & FLAG_N) {
+		X = key_keyboard_scanX(X);
 		if (flags & FLAG_C)
 		{
 			key_scan_enable();
-			return *X;
+			return X;
 		}
 	}
 	if (flags & FLAG_C) {
@@ -83,7 +84,7 @@ uint8_t key_keyboard_scan_fromXon(uint8_t flags, uint8_t *X, uint8_t Y) {
 		Y = 0xEE;
 	}
 	*((uint8_t *)(0x1df + Y)) = A;
-	*X = 9;
+	X = 9;
 	do {
 		key_scan_enable();			// TODO: reenable interrupts for some reason?		
 		key_scan_enable();			// TODO: check if this is too much / enough delay
@@ -95,23 +96,23 @@ uint8_t key_keyboard_scan_fromXon(uint8_t flags, uint8_t *X, uint8_t Y) {
 		DELAY1
 		sheila_SYSVIA_ifr = VIA_IxR_CA2; 	// clear pending interrupt
 		DELAY1
-		sheila_SYSVIA_ora_nh = *X;		// set to the column of interest
+		sheila_SYSVIA_ora_nh = X;		// set to the column of interest
 		DELAY1
 		if (sheila_SYSVIA_ifr & VIA_IxR_CA2) {
-			A = *X;
+			A = X;
 			do {
 				if (A >= *((uint8_t *)(0x1df + Y))) {
 					sheila_SYSVIA_ora_nh = A;
 					if (sheila_SYSVIA_ora_nh & 0x80) {
 						if (flags & FLAG_C) {
 							key_scan_enable();
-							*X = A;
+							X = A;
 							return A;
 						} else {
 							uint8_t c = ((*(uint8_t *)(uint32_t)Y) ^ A) << 1;
 							if (c > 1) {
 								key_scan_enable();
-								*X = A;
+								X = A;
 								return A;
 							}
 						}
@@ -121,9 +122,9 @@ uint8_t key_keyboard_scan_fromXon(uint8_t flags, uint8_t *X, uint8_t Y) {
 			} while (A < 0x80);			
 		}
 
-		(*X)--;
-	} while (!((*X) & 0x80));
-	A = *X;
+		(X)--;
+	} while (!(X & 0x80));
+	A = X;
 	key_scan_enable();
 	return A;
 
@@ -142,14 +143,13 @@ void _key_LEFE9(void) {
 		if (!(KEYNUM_LAST & FLAG_N))
 			KEYNUM_LAST = 0;
 	}
-	uint8_t X = 0x10;
-	uint8_t sr = key_keyboard_scan_fromXon(0, &X, 0xEC);// TODO: check number significance and use constant
+	uint8_t sr = key_keyboard_scan_fromXon(0, 0x10, 0xEC);// TODO: check number significance and use constant
 	if (sr & FLAG_N) {
 		key_EEDA_housekeep();
 		return;
 	}
 	KEYNUM_LAST = KEYNUM_FIRST;
-	KEYNUM_FIRST = X;
+	KEYNUM_FIRST = sr;
 	key_LF01F();
 	key_EEDA_housekeep();
 }
@@ -158,8 +158,7 @@ void key_irq_keypressed() {
 	key_keyboard_scanX(0);		//don't think this matters?
 	if (!KEYNUM_FIRST) 
 	{
-		uint8_t X = 0x10;
-		uint8_t c = key_keyboard_scan_fromXon(0, &X, 0xED);
+		uint8_t c = key_keyboard_scan_fromXon(0, 0x10, 0xED);
 		if (!(c & 0x80)) {
 			KEYNUM_FIRST = c;
 			key_LF01F();			
@@ -220,7 +219,7 @@ uint8_t call_KEYV(uint8_t flags, uint8_t *X) {
 	} else {
 		// V = 0
 		if (flags & FLAG_C)
-			key_keyboard_scan_fromXon(flags, X, 0);
+			return key_keyboard_scan_fromXon(flags, *X, 0);
 	}
 	// EF16
 	// V=0, V=0 or V=1, C=1
@@ -331,11 +330,19 @@ uint8_t call_KEYV(uint8_t flags, uint8_t *X) {
 
 					// Test for ESCape
 
-					if (a > 0x20 && a < 0x80) {
-						printch(a);
-					} else {
-						hexbyte(a);
+					if (a == OSB_ESCAPE && OSB_ESC_ACTION == 0)
+						AUTO_REPEAT_TIMER = 0;
+
+					//TODO: econet keyboard disable
+
+					buffer_insert(BUFFER_KEYBOARD_IN, a);
+
+					if (KEYNUM_LAST) {
+						uint8_t knl = key_keyboard_scanX(KEYNUM_LAST);
+						if (!(knl & 0x80))
+							KEYNUM_LAST = 0x00;
 					}
+
 					_key_LEFE9();
 					return 0;
 				}
