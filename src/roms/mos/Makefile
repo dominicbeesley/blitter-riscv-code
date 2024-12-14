@@ -2,7 +2,7 @@
 
 ASMINCS=$(wildcard $(TOP)/asm-includes/*.inc) $(filter-out version-date.inc, $(wildcard *.inc))
 DEPS=$(INCS) $(ASMINCS)
-OBJS=start splash main deice interrupts mos moslib keyboard buffers
+OBJS=start splash main deice interrupts mos moslib keyboard buffers events
 
 
 TARGETS=mos
@@ -42,7 +42,7 @@ $(BUILD)/%.o: 	%.S $(DEPS)
 	$(RISCV_AS) $(RISCV_AS_FLAGS) -c -o $@ -g -Wa,-alghmns=$(basename $@).lst $<
 
 $(BUILD)/%.elf: $(OBJS_O) %.lds
-	$(RISCV_LD) $(RISCV_LD_FLAGS) -Os -ffreestanding -nostdlib -o $@ \
+	$(RISCV_LD) $(RISCV_LD_FLAGS) --specs=nano.specs -Os -nostartfiles -o $@ \
 	-Wl,--build-id=none,-Bstatic,-T,$(filter %.lds, $^),-Map,$(basename $@).map,--strip-debug \
 		$(filter %.o,$^) -lgcc 
 	$(RISCV_NM) --format=posix $@ >$(basename $@).sy1

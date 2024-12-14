@@ -207,5 +207,16 @@ struct mos_args {
 
 #define BUFFER_KEYBOARD_IN 	0x00
 
+#define EVENT_01_INPUT_BUFFER_FULL	1
+#define EVENT_02_CHAR_ENTER_BUFFER 	2
+#define EVENT_06_ESCAPE			6
+
+// vectors : TODO : currently these are just defined in mos.c randomly in data section make 
+// into well-known locations
+
+typedef uint8_t (*INSV_FN)(uint8_t buffer, uint8_t data);
+
+extern INSV_FN INSV;
+
 
 #endif

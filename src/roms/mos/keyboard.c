@@ -335,12 +335,21 @@ uint8_t call_KEYV(uint8_t flags, uint8_t *X) {
 
 					//TODO: econet keyboard disable
 
-					buffer_insert(BUFFER_KEYBOARD_IN, a);
+					buffers_insert_check_ESC(BUFFER_KEYBOARD_IN, a);
 
 					if (KEYNUM_LAST) {
 						uint8_t knl = key_keyboard_scanX(KEYNUM_LAST);
 						if (!(knl & 0x80))
 							KEYNUM_LAST = 0x00;
+					}
+
+					if (KEYNUM_LAST) {
+						if (!(key_keyboard_scan_fromXon(FLAG_N, KEYNUM_LAST, 0xEC) & 0x80)) {
+							uint8_t t = KEYNUM_FIRST;
+							KEYNUM_FIRST = KEYNUM_LAST;
+							KEYNUM_LAST = t;
+							key_LF01F();
+						}
 					}
 
 					_key_LEFE9();

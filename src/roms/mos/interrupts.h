@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 
-extern void interrupts_disable(int mask);
+extern uint32_t interrupts_disable(int mask);
 #define INTERRUPTS_REGS_N (31+4)		//32 main registers and 4 interrupt registers
 extern uint32_t interrupts_regs[INTERRUPTS_REGS_N];
 

@@ -3,6 +3,7 @@
 #include "hardware.h"
 #include "interrupts.h"
 #include "keyboard.h"
+#include "buffers.h"
 #include <stdlib.h>
 
 //TODO:remove
@@ -11,7 +12,7 @@ extern void printch(char c);
 extern void hexword(unsigned int n);
 extern void hexbyte(unsigned int n);
 
-
+INSV_FN INSV;
 
 //Timer 1 100Hz period
 #define T1PER (10000-2)
@@ -196,9 +197,18 @@ void mos_reset(void) {
 	OSB_KEY_REPEAT = 24;
 	OSB_KEY_DELAY = 40;
 
+	OSB_ESC_BRK = 0;
+	OSB_ESCAPE = 27;
+	OSB_ESC_ACTION = 0;
+	OSB_ESC_EFFECTS = 0;
 
 	// renable T1, T2, EOC, VS
 	sheila_SYSVIA_ier = VIA_IxR_FLAG|VIA_IxR_T1|VIA_IxR_T2|VIA_IxR_CB1|VIA_IxR_CA2;
+
+	buffers_init();
+
+	INSV = buffers_default_INSV;
+
 
 	interrupts_disable(0);
 
