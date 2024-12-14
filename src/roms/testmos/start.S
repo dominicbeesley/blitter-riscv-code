@@ -47,6 +47,7 @@ crtc_mode_7:
 		sb	a0, sheila_VIDULA_PAL(zero)
 .endm		
 
+
 wait_vsync:	li	t0, VIA_IxR_CA1	
 		sb	t0, sheila_SYSVIA_ifr(zero)
 wvslp:		lb	t0, sheila_SYSVIA_ifr(zero)
@@ -144,6 +145,138 @@ mode7:
 		mv	ra, s2
 		ret
 
+poke_sn76489:	li	t0, 0xFF
+		sb	t0, sheila_SYSVIA_ddra(zero)
+		DELAY1
+		sb	a0, sheila_SYSVIA_ora_nh(zero)
+		DELAY1
+		DELAY1
+		DELAY1
+		DELAY1
+		DELAY1
+		DELAY1
+		DELAY1
+		DELAY1
+		DELAY1
+		DELAY1
+		DELAY1
+		DELAY1
+		sb	x0, sheila_SYSVIA_orb(zero)
+		DELAY1
+		DELAY1
+		DELAY1
+		DELAY1
+		DELAY1
+		DELAY1
+		DELAY1
+		DELAY1
+		DELAY1
+		DELAY1
+		DELAY1
+		DELAY1
+		DELAY1
+		DELAY1
+		DELAY1
+		DELAY1
+		DELAY1
+		DELAY1
+		DELAY1
+		DELAY1
+		DELAY1
+		DELAY1
+		li	t0, 8
+		sb	t0, sheila_SYSVIA_orb(zero)
+		DELAY1
+		DELAY1
+		DELAY1
+		DELAY1
+		DELAY1
+		DELAY1
+		DELAY1
+		DELAY1
+		DELAY1
+		DELAY1
+		DELAY1
+		DELAY1
+		DELAY1
+		DELAY1
+		DELAY1
+		DELAY1
+		DELAY1
+		DELAY1
+		DELAY1
+		DELAY1
+		DELAY1
+		DELAY1
+		DELAY1
+		DELAY1
+		DELAY1
+		DELAY1
+		DELAY1
+		DELAY1
+		DELAY1
+		DELAY1
+		DELAY1
+		DELAY1
+		DELAY1
+		DELAY1
+		DELAY1
+		DELAY1
+		DELAY1
+		DELAY1
+		DELAY1
+		DELAY1
+		DELAY1
+		DELAY1
+		DELAY1
+		DELAY1
+		DELAY1
+		DELAY1
+		DELAY1
+		DELAY1
+		DELAY1
+		DELAY1
+		DELAY1
+		DELAY1
+		DELAY1
+		DELAY1
+		DELAY1
+		DELAY1
+		DELAY1
+		DELAY1
+		DELAY1
+		DELAY1
+		DELAY1
+		DELAY1
+		DELAY1
+		DELAY1
+		DELAY1
+		DELAY1
+		sb	x0, sheila_SYSVIA_ddra(zero)
+		ret
+
+play_vgm:	mv	t5, ra
+		mv	t4, a0
+playlp:		lb	a0, 0(t4)
+		addi	t4, t4, 1
+		beqz	a0, playend
+		andi	a1, a0, 0x80
+		beqz	a1, playwait
+		andi	t3, a0, 0x7F
+playlp2:	lb	a0, 0(t4)
+		addi	t4, t4, 1
+		jal	poke_sn76489
+		addi	t3, t3, -1
+		bnez	t3, playlp2
+		j	playlp
+playwait:	jal	wait_vsync
+		addi	a0, a0, -1
+		bnez	a0, playwait
+		j	playlp
+playend:	mv	ra, t5
+		ret
+
+
 
 reset_handle_enter:		
 		// disable all but timer, illegal instruction, bus interrupts, debug button
@@ -155,6 +288,16 @@ reset_handle_enter:
 		sb	t0, sheila_SYSVIA_ier(zero)
 		sb	t0, sheila_USRVIA_ier(zero)
 
+		li	t0, 0x0F
+		sb	t0, sheila_SYSVIA_ddrb(zero)
+
+		// reset latch
+		li	t1, 9
+rllp:		sb	t0, sheila_SYSVIA_orb(zero)
+		DELAY1
+		addi	t0, t0, -1
+		bge	t0, t1, rllp
+		
 
 		// reenable CA1 interrupt, we use this to test for VSYNC
 		li	t0, VIA_IxR_FLAG|VIA_IxR_CA1
@@ -176,8 +319,12 @@ splashlp:	lw	t0, 0(a0)
 		addi	a1, a1, 4
 		bne	a1, a2, splashlp
 
+		
+		la	a0, vgmdata
+		jal	play_vgm
 
-		li	a0, 250
+
+		li	a0, 50
 		jal	wait_vsX
 
 

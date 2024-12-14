@@ -2,7 +2,7 @@
 
 ASMINCS=$(wildcard $(TOP)/asm-includes/*.inc) $(filter-out version-date.inc, $(wildcard *.inc))
 DEPS=$(INCS) $(ASMINCS)
-OBJS=start splash
+OBJS=start splash vgm
 
 
 TARGETS=testmos
@@ -39,7 +39,7 @@ $(BUILD)/%.o: 	$(BUILD)/%.s $(DEPS)
 
 
 $(BUILD)/%.o: 	%.S $(DEPS) 
-	$(RISCV_AS) $(RISCV_AS_FLAGS) -c -o $@ -g -Wa,-alghmns=$(basename $@).lst $<
+	$(RISCV_AS) $(RISCV_AS_FLAGS) -I $(BUILD) -c -o $@ -g -Wa,-alghmns=$(basename $@).lst $<
 
 $(BUILD)/%.elf: $(OBJS_O) %.lds
 	$(RISCV_LD) $(RISCV_LD_FLAGS) -Os -ffreestanding -nostdlib -o $@ \
@@ -47,6 +47,12 @@ $(BUILD)/%.elf: $(OBJS_O) %.lds
 		$(filter %.o,$^) -lgcc 
 	$(RISCV_NM) --format=posix $@ >$(basename $@).sy1
 	sed -n -E 's/^(\w+)\s+\w\s+([0-9a-f]+)/DEF \1 \2/ip' <$(basename $@).sy1 >$(basename $@).noi
+
+$(BUILD)/%.S:	%.v
+	./vgm2bin.pl $< >$@
+
+$(BUILD)/vgm.o:	$(BUILD)/05_Round_Clear.S
+
 
 
 $(BUILD)/testmos.mos: $(BUILD)/testmos.elf
@@ -73,6 +79,8 @@ clean:
 	-rm $(patsubst %.o, %.lst, $(OBJS_O))
 	-rm $(patsubst %.o, %.s, $(OBJS_O))
 	-rm $(patsubst %.o, %.d, $(OBJS_O))
+
+	-rm $(BUILD)/05_Round_Clear.S
 
 
  
