@@ -4,7 +4,7 @@
 void mos_latch_write(uint8_t val);
 
 
-#define DELAY1	*sheila_USRVIA_ora_nh;
+#define DELAY1	sheila_USRVIA_ora_nh;
 
 // these are used in various internal calls to mimic
 // flags being passed in 6502 version
