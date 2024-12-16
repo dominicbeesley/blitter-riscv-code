@@ -3,6 +3,7 @@
 #include "moslib.h"
 #include "mos.h"
 #include "hardware.h"
+#include <stddef.h>
 
 uint8_t * const SCREENBASE = (unsigned char *)0xFFFF7C00;
 extern unsigned char const splash;
@@ -119,7 +120,7 @@ void main(void) {
 		{
 			printstr("ESCAPE!");
 			//TODO: use OSBYTE 126
-			ESCAPE_FLAG = 0;
+			mos_osbyte(126, NULL, NULL, NULL);
 		}
 		else
 			if (c <= ' ' || c >= 0x7F)

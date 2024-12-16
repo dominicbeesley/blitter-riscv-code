@@ -212,6 +212,31 @@ struct mos_args {
 #define EVENT_02_CHAR_ENTER_BUFFER 	2
 #define EVENT_06_ESCAPE			6
 
+#define OSBYTE_0_HOST_OS			0
+#define OSBYTE_13_DISABLE_EVENT			13
+#define OSBYTE_14_ENABLE_EVENT			14
+#define OSBYTE_15_FLUSH_BUFFER_CLASS		15
+#define OSBYTE_21_FLUSH_BUFFER			21
+#define OSBYTE_108_WRITE_SHADOW_STATE		108
+#define OSBYTE_119_CLOSE_SPOOL_AND_EXEC		119
+#define OSBYTE_121_KEYB_SCAN			121
+#define OSBYTE_124_ESCAPE_CLEAR			124
+#define OSBYTE_125_ESCAPE_SET			125
+#define OSBYTE_126_ESCAPE_ACK			126
+#define OSBYTE_129_INKEY			129
+#define OSBYTE_135_GET_MODE			135
+#define OSBYTE_143_SERVICE_CALL			143
+#define OSBYTE_156_SERIAL_STATE			156
+#define OSBYTE_160_READ_VDU_VARIABLE		160
+#define OSBYTE_161_READ_CMOS			161
+#define OSBYTE_162_WRITE_CMOS			162
+#define OSBYTE_168_READ_ROM_POINTER_TABLE	168
+#define OSBYTE_171_ROMTAB			170
+#define OSBYTE_232_VAR_IRQ_MASK_SERIAL		232
+#define OSBYTE_234_VAR_TUBE			234
+#define OSBYTE_253_VAR_LAST_RESET		253
+
+
 // vectors : TODO : currently these are just defined in mos.c randomly in data section make 
 // into well-known locations
 
@@ -225,9 +250,18 @@ typedef uint8_t (*REMV_FN)(uint8_t buffer, uint8_t flags, uint8_t *c);
 // returs -1 for escape else a character in bottom 8 bits
 typedef int (*RDCHV_FN)(void);
 
+// returns FLAG_C when appropriate, X, Y should not be NULL
+typedef uint8_t (*BYTEV_FN)(uint8_t A, uint8_t *X, uint8_t *Y);
+
+//TODO: define an OSWORD struct or structs - maybe in lib?
+typedef void (*WORDV_FN)(uint8_t A, void *block);
+
+typedef uint8_t (*CNPV_FN)(uint8_t buffer, uint8_t flags);
+
 extern INSV_FN INSV;
 extern REMV_FN REMV;
 extern RDCHV_FN RDCHV;
+extern CNPV_FN CNPV;
 
 
 #endif

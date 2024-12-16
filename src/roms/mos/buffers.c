@@ -1,15 +1,15 @@
 #include "buffers.h"
 #include "mos_shared.h"
 #include "mos.h"
-#include "stdlib.h"
 #include "string.h"
 #include "events.h"
 #include "interrupts.h"
 
+#include <stddef.h>
+
+
 extern void printch(char c);
 extern void hexbyte(unsigned int n);
-
-#define BUFNOMAX 8
 
 volatile uint8_t  * const BUF_STARTS [] = {
 	(volatile uint8_t *)0x03E0,
@@ -147,4 +147,42 @@ int buffers_default_RDCHV(void) {
 	} while (1);
 }
 
-//TODO: CNPV
+
+void buffers_flush(uint8_t flags, uint8_t buffer_num) {
+	//TODO: SOUND / BUSY
+	uint32_t irq = interrupts_disable(INT_IRQ);
+	if (buffer_num <= 1) {
+		OSB_SOFT_KEYLEN = 0;
+		OSB_VDU_QSIZE = 0;
+	}
+
+	CNPV(buffer_num, FLAG_V);
+
+	interrupts_disable(irq);
+}
+
+
+uint8_t buffers_default_CNPV(uint8_t buffer, uint8_t flags) {
+	if (buffer > BUFNOMAX)
+		return 0;
+	if (flags & FLAG_V)
+	{
+		//PURGE
+		buf_ix_out[buffer] = buf_ix_in[buffer];
+		return 0;
+	} else {
+		int r = 0;
+		uint32_t irq = interrupts_disable(INT_IRQ);
+
+		r = buf_ix_in[buffer] - buf_ix_out[buffer];
+		if (r < 0) {
+			r = BUF_LENGTHS[buffer] + r;
+		}
+
+		if (flags & FLAG_C)
+			r = BUF_LENGTHS[buffer] - r;
+
+		interrupts_disable(irq);
+		return r;
+	}
+}

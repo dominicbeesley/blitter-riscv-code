@@ -4,7 +4,9 @@
 #include "interrupts.h"
 #include "keyboard.h"
 #include "buffers.h"
-#include <stdlib.h>
+#include "osbyte.h"
+#include "osword.h"
+#include <stddef.h>
 
 //TODO:remove
 extern void printstr(const char *s);
@@ -15,6 +17,9 @@ extern void hexbyte(unsigned int n);
 INSV_FN INSV;
 REMV_FN REMV;
 RDCHV_FN RDCHV;
+BYTEV_FN BYTEV;
+WORDV_FN WORDV;
+CNPV_FN CNPV;
 
 //Timer 1 100Hz period
 #define T1PER (10000-2)
@@ -37,6 +42,13 @@ void mos_enter_ecall(struct mos_args *args, uint32_t a7) {
 			return;
 		case OS_RDCH:
 			args->a0 = RDCHV();
+			return;
+		case OS_BYTE:
+			uint8_t r = BYTEV(args->a0, (uint8_t *)&args->a1, (uint8_t *)&args->a2);
+			args->a3 = r;
+			return;
+		case OS_WORD:
+			WORDV(args->a0, (void *)&args->a1);			
 			return;
 	}
 
@@ -216,7 +228,10 @@ void mos_reset(void) {
 
 	INSV = buffers_default_INSV;
 	REMV = buffers_default_REMV;
+	CNPV = buffers_default_CNPV;
 	RDCHV = buffers_default_RDCHV;
+	BYTEV = osbyte_default_BYTEV;
+	WORDV = osword_default_WORDV;
 
 	interrupts_disable(0);
 

@@ -25,3 +25,33 @@ int mos_osrdch(void) { // Get character from console input
                  );
    return a0;
 }
+
+
+//TODO: int types here?
+void mos_osbyte(int al, int *x, int *y, int *c) {
+   register int a0 asm ("a0") = al;
+   register int a1 asm ("a1") = x ? (*x) : 0;
+   register int a2 asm ("a2") = y ? (*y) : 0;
+   register int a3 asm ("a3");
+   register int a7 asm ("a7") = OS_BYTE;
+   asm volatile ("ecall"
+                 : // outputs
+                   "+r" (a1),
+                   "+r" (a2),
+                   "+r" (a3)
+                 : // inputs
+                   "r"  (a0),
+                   "r"  (a1),
+                   "r"  (a2),
+                   "r"  (a7)
+                 );
+   if (x) {
+      *x = a1;
+   }
+   if (y) {
+      *y = a2;
+   }
+   if (c) {
+      *c = a3;
+   }
+}
