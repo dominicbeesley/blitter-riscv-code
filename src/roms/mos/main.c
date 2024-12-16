@@ -107,20 +107,21 @@ void main(void) {
 		hexbyte(KEY_ROLLOVER_2);
 		printch(' ');
 		hexbyte(OSB_KEY_STATUS);
+		printch(' ');
+		hexbyte(ESCAPE_FLAG);
 
 
 		scrptr = tmp;
 		interrupts_disable(0x00);
 
+		int c = mos_osrdch();
+		if (c < 0)
+			printstr("ESCAPE!");
+		else
+			mos_oswrch(c);
+
 	} while (1);
 
-	// force a bus error (if we can)
-	//buserror();
-
-//	asm ("c.ebreak"); // enter debugger
-
-
-	do { } while (1);
 }
 
 

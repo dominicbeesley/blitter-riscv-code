@@ -98,3 +98,51 @@ uint8_t buffers_default_INSV(uint8_t buffer_num, uint8_t data) {
 	interrupts_disable(irq);
 	return 0;
 }
+
+uint8_t buffers_default_REMV(uint8_t buffer_num, uint8_t flags, uint8_t *c) {
+
+	if (buffer_num > BUFNOMAX)
+		return FLAG_C;				// not our buffer return SEC
+
+	uint8_t irq = interrupts_disable(INT_IRQ);
+	uint8_t offso = buf_ix_out[buffer_num];
+	uint8_t offsi = buf_ix_in[buffer_num];
+	if (buf_ix_in[buffer_num] == offso)
+	{
+		interrupts_disable(irq);
+		return FLAG_C;
+	}
+
+	*c = BUF_STARTS[buffer_num][offso];
+
+
+	if (!(flags & FLAG_V))
+	{
+		//only advance if no peek
+		offso++;
+		if (offso >= BUF_LENGTHS[buffer_num])
+			offso = 0;
+		buf_ix_out[buffer_num] = offso;
+		if (buffer_num >= 2 && offso == offsi)
+			event_raise(EVENT_00_OUTPUT_BUFFER_EMPTY, buffer_num, 0);
+	}
+
+	interrupts_disable(irq);
+	return 0;
+}
+
+uint8_t buffers_default_RDCHV(void) {
+	//TODO: EXEC
+	if (OSB_ESCAPE & FLAG_N)
+	{
+		return -1;
+	}
+	//TODO: econet redirect here?
+	//TODO: soft key expand here?
+	//TODO: rs423 redirect
+	do {
+		uint8_t r;
+		if (!(REMV(OSB_IN_STREAM, 0, &r) & FLAG_C))
+			return (int)r;
+	} while (1);
+}

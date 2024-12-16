@@ -95,7 +95,7 @@ struct mos_args {
 #define	MOS_WS_1		(*((uint8_t *)0xfb))
 #define	IRQ_COPY_A		(*((uint8_t *)0xfc))
 #define	ERR_MSG_PTR		(*((uint16_t *)0xfd))
-#define	ESCAPE_FLAG		(*((uint8_t *)0xff))
+#define	ESCAPE_FLAG		(*((volatile uint8_t *)0xff))
 
 
 
@@ -207,6 +207,7 @@ struct mos_args {
 
 #define BUFFER_KEYBOARD_IN 	0x00
 
+#define EVENT_00_OUTPUT_BUFFER_EMPTY	0
 #define EVENT_01_INPUT_BUFFER_FULL	1
 #define EVENT_02_CHAR_ENTER_BUFFER 	2
 #define EVENT_06_ESCAPE			6
@@ -214,9 +215,19 @@ struct mos_args {
 // vectors : TODO : currently these are just defined in mos.c randomly in data section make 
 // into well-known locations
 
+// returns C if buffer full or missing
 typedef uint8_t (*INSV_FN)(uint8_t buffer, uint8_t data);
 
+// on entry flags = FLAG_V requests peek
+// on exit if C set if empty else byte returned in c
+typedef uint8_t (*REMV_FN)(uint8_t buffer, uint8_t flags, uint8_t *c);
+
+// returs -1 for escape else a character in bottom 8 bits
+typedef int (*RDCHV_FN)(void);
+
 extern INSV_FN INSV;
+extern REMV_FN REMV;
+extern RDCHV_FN RDCHV;
 
 
 #endif

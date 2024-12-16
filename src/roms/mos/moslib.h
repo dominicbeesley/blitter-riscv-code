@@ -4,5 +4,6 @@
 #include <stdint.h>
 
 extern void mos_oswrch(unsigned char vdu);
+extern int mos_osrdch(void);
 
 #endif

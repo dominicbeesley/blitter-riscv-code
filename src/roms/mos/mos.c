@@ -13,6 +13,8 @@ extern void hexword(unsigned int n);
 extern void hexbyte(unsigned int n);
 
 INSV_FN INSV;
+REMV_FN REMV;
+RDCHV_FN RDCHV;
 
 //Timer 1 100Hz period
 #define T1PER (10000-2)
@@ -33,7 +35,9 @@ void mos_enter_ecall(struct mos_args *args, uint32_t a7) {
 		case OS_NEWL:
 			printstr("\n\r");
 			return;
-
+		case OS_RDCH:
+			args->a0 = RDCHV();
+			return;
 	}
 
 
@@ -202,13 +206,17 @@ void mos_reset(void) {
 	OSB_ESC_ACTION = 0;
 	OSB_ESC_EFFECTS = 0;
 
+	ESCAPE_FLAG = 0;
+	OSB_IN_STREAM = 0;
+
 	// renable T1, T2, EOC, VS
 	sheila_SYSVIA_ier = VIA_IxR_FLAG|VIA_IxR_T1|VIA_IxR_T2|VIA_IxR_CB1|VIA_IxR_CA2;
 
 	buffers_init();
 
 	INSV = buffers_default_INSV;
-
+	REMV = buffers_default_REMV;
+	RDCHV = buffers_default_RDCHV;
 
 	interrupts_disable(0);
 
