@@ -1,15 +1,9 @@
 #include "deice.h"
 #include "interrupts.h"
+#include "debug_print.h"
 
 uint8_t	deice_host_status;			// when deice_main is running this holds the target status
 
-//TODO: REMOVE THESE DEBUGGING
-#undef DEICE_DEBUG 
-#ifdef DEICE_DEBUG
-extern void hexbyte(unsigned int n);
-extern void printstr(const char *s);
-extern void hexword(unsigned int n);
-#endif
 
 
 /* local forward declarations */
@@ -51,10 +45,6 @@ void deice_init(void) {
 		ACIA_STAT = 0b01010111; // master reset
 		ACIA_STAT = 0b01010110; // RTS high, no interrupts, 8N1, div64
 		
-#ifdef DEICE_DEBUG
-		deice_print_str("Hello\n");
-#endif
-
 		//deice_run_flag=0
 }
 
@@ -64,10 +54,6 @@ int deice_put_byte(uint8_t b) {
 	while (timeout) {
 		if (ACIA_STAT & ACIA_STAT_TDRE) {
 			ACIA_DATA = b;
-#ifdef DEICE_DEBUG			
-			printstr(">");
-			hexbyte(b);
-#endif
 			return 0;
 		}
 		else
@@ -82,10 +68,6 @@ int deice_get_byte(void) {
 	while (timeout) {
 		if (ACIA_STAT & ACIA_STAT_RDRF) {
 			uint8_t r = ACIA_DATA;
-#ifdef DEICE_DEBUG
-			printstr("<");
-			hexbyte(r);
-#endif
 			return r;
 		}
 		else
@@ -181,9 +163,6 @@ void deice_main(void) {
 
 restart:
 
-#ifdef DEICE_DEBUG
-	printstr("MAIN");
-#endif
 
 	uint8_t *p = combuf;
 
@@ -191,18 +170,12 @@ restart:
 	if (i < FN_MIN) goto restart;
 	*p++ = (uint8_t)i;
 
-#ifdef DEICE_DEBUG
-	printstr("!F!");
-#endif
 
 	i = deice_get_byte();
 	if (i < 0 || i > COMSZ) goto restart;
 	uint8_t n = (uint8_t)i;
 	*p++ = n;
 
-#ifdef DEICE_DEBUG
-	printstr("!N!");
-#endif
 
 	while (n > 0) {
 		i = deice_get_byte();
@@ -211,9 +184,6 @@ restart:
 		n--;
 	}
 
-#ifdef DEICE_DEBUG
-	printstr("!P!");
-#endif
 
 	// get checksum
 	i = deice_get_byte();
@@ -221,17 +191,9 @@ restart:
 	uint8_t cs_s = (uint8_t)i;
 	uint8_t cs_c = deice_checksum();
 
-#ifdef DEICE_DEBUG
-	printstr("!CS!");
-	hexbyte(cs_s);
-	hexbyte(cs_c);
-#endif
 
 	if ((cs_s + cs_c) & 0xFF) goto restart;
 
-#ifdef DEICE_DEBUG
-	printstr("!EXE!");
-#endif
 
 	switch (combuf[0]) {
 		case	FN_GET_STAT:	deice_fn_get_stat();break;
@@ -294,12 +256,6 @@ void deice_fn_read_mem(void) {
 	uint8_t *addr = deice_read_addr(&p);	// get address
 	uint8_t n = *p;							// get length
 
-#ifdef DEICE_DEBUG
-	printstr("READMEM");
-	hexword((unsigned int)addr);
-	printstr(",");
-	hexbyte(n);
-#endif
 
 	combuf[1] = n;							// return length
 	p = combuf+2;
@@ -316,12 +272,6 @@ void deice_fn_write_m(void) {
 	uint8_t *addr = deice_read_addr(&p);	// get address
 	n -= 4;
 
-#ifdef DEICE_DEBUG
-	printstr("WRITEMEM");
-	hexword((unsigned int)addr);
-	printstr(",");
-	hexbyte(n);
-#endif
 
 	uint8_t *src = combuf + 6;
 	uint8_t *dest = addr;

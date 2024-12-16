@@ -8,9 +8,6 @@
 #include <stddef.h>
 
 
-extern void printch(char c);
-extern void hexbyte(unsigned int n);
-
 volatile uint8_t  * const BUF_STARTS [] = {
 	(volatile uint8_t *)0x03E0,
 	(volatile uint8_t *)0x0A00,

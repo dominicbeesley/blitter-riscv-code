@@ -1,4 +1,5 @@
 #include "debug_print.h"
+#include "deice.h"
 
 uint8_t * const SCREENBASE = (unsigned char *)0xFFFF7C00;
 extern unsigned char const splash;
@@ -7,14 +8,11 @@ volatile uint8_t *scrptr;
 char a = 'x';
 
 void debug_print_init() {
-	scrptr = SCREENBASE;
+	
 }
 
 void debug_print_ch(char c) {
-	*scrptr++=c;
-	if (scrptr >= SCREENBASE + 25*40) {
-		scrptr = SCREENBASE;
-	}
+	deice_print_char(c);
 }
 
 void debug_print_str(const char *s) {
