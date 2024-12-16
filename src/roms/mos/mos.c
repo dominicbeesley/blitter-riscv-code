@@ -7,12 +7,7 @@
 #include "osbyte.h"
 #include "osword.h"
 #include <stddef.h>
-
-//TODO:remove
-extern void printstr(const char *s);
-extern void printch(char c);
-extern void hexword(unsigned int n);
-extern void hexbyte(unsigned int n);
+#include "debug_print.h"
 
 INSV_FN INSV;
 REMV_FN REMV;
@@ -35,10 +30,10 @@ void mos_enter_ecall(struct mos_args *args, uint32_t a7) {
 	//TODO: check for 0xAC0000?
 	switch (a7 & 0xFF) {
 		case OS_WRCH:
-			printch(args->a0);
+			DEBUG_PRINT_CH(args->a0);
 			return;
 		case OS_NEWL:
-			printstr("\n\r");
+			DEBUG_PRINT_STR("\n\r");
 			return;
 		case OS_RDCH:
 			args->a0 = RDCHV();
@@ -53,22 +48,22 @@ void mos_enter_ecall(struct mos_args *args, uint32_t a7) {
 	}
 
 
-	printstr(" A0:");
-	hexword(args->a0);
-	printstr(" A1:");
-	hexword(args->a1);
-	printstr(" A2:");
-	hexword(args->a2);
-	printstr(" A3:");
-	hexword(args->a3);
-	printstr(" A4:");
-	hexword(args->a4);
-	printstr(" A5:");
-	hexword(args->a5);
-	printstr(" A6:");
-	hexword(args->a6);
-	printstr(" A7:");
-	hexword(a7);
+	DEBUG_PRINT_STR(" A0:");
+	DEBUG_PRINT_HEX_WORD(args->a0);
+	DEBUG_PRINT_STR(" A1:");
+	DEBUG_PRINT_HEX_WORD(args->a1);
+	DEBUG_PRINT_STR(" A2:");
+	DEBUG_PRINT_HEX_WORD(args->a2);
+	DEBUG_PRINT_STR(" A3:");
+	DEBUG_PRINT_HEX_WORD(args->a3);
+	DEBUG_PRINT_STR(" A4:");
+	DEBUG_PRINT_HEX_WORD(args->a4);
+	DEBUG_PRINT_STR(" A5:");
+	DEBUG_PRINT_HEX_WORD(args->a5);
+	DEBUG_PRINT_STR(" A6:");
+	DEBUG_PRINT_HEX_WORD(args->a6);
+	DEBUG_PRINT_STR(" A7:");
+	DEBUG_PRINT_HEX_WORD(a7);
 }
 
 

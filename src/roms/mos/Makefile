@@ -2,7 +2,7 @@
 
 ASMINCS=$(wildcard $(TOP)/asm-includes/*.inc) $(filter-out version-date.inc, $(wildcard *.inc))
 DEPS=$(INCS) $(ASMINCS)
-OBJS=start splash main deice interrupts mos moslib keyboard buffers events osbyte osword
+OBJS=start splash main deice interrupts mos moslib keyboard buffers events osbyte osword debug_print
 
 
 TARGETS=mos
@@ -32,7 +32,7 @@ deploy:	all
 $(BUILD)/splash.o:splash.mo7
 
 $(BUILD)/%.s:	%.c 
-	$(RISCV_CC) $(RISCV_CC_FLAGS) $(DEPFLAGS) -fomit-frame-pointer -O3 -Os -c -S -o $@ -g $<
+	$(RISCV_CC) $(RISCV_CC_FLAGS) $(DEPFLAGS) -DDEBUG_PRINT -fomit-frame-pointer -O3 -Os -c -S -o $@ -g $<
 
 $(BUILD)/%.o: 	$(BUILD)/%.s $(DEPS) 
 	$(RISCV_AS) $(RISCV_AS_FLAGS) -c -o $@ -g -Wa,-alghmns=$(basename $@).lst $<

@@ -40,14 +40,6 @@ start:		// disable all but timer, illins, bus interrupts
 		jal	init
 		j	main
 
-	.globl buserror
-buserror:	mv	s0, ra
-		li	a1, 0x12
-		lw	a0, 0(a1)
-		jal	hexword
-		mv	ra, s0
-		ret
-
 		// this must be placed in top-half of ROM with the vectors
 		// to ensure it's mapped in to memory at FF FF00 at boot time
 		// and will jump "down" to correct memory 7D 0000 when running

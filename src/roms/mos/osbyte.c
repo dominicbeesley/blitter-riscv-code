@@ -5,12 +5,6 @@
 #include "interrupts.h"
 #include <stddef.h>
 
-//TODO: remove
-extern void printstr(const char *s);
-extern void printch(char c);
-extern void hexword(unsigned int n);
-extern void hexbyte(unsigned int n);
-
 
 #define XYSET(X,V) {if(X) *X = V;}
 #define XYGET(X) ((X)?*X:0)
@@ -23,9 +17,6 @@ uint8_t osbyte_126_ESCAPE_ACK(uint8_t *X, uint8_t *Y);
 
 uint8_t osbyte_default_BYTEV(uint8_t A, uint8_t *X, uint8_t *Y) {
 	
-	printstr("OSBYTE");
-	hexbyte(A);
-
 	switch (A) {
 		case OSBYTE_15_FLUSH_BUFFER_CLASS:	return osbyte_15_FLUSH_BUFFER_CLASS(X, Y);
 		case OSBYTE_21_FLUSH_BUFFER:		return osbyte_21_FLUSH_BUFFER(X, Y);

@@ -8,11 +8,6 @@
 //TODO: check out CTRL-SHIFT-fX not working correctly?
 //TODO: N-key rollover broken: autorepeat cancels, hammering keyboard cancels/sticks
 
-//TODO:remove
-extern void printstr(const char *s);
-extern void printch(char c);
-extern void hexword(unsigned int n);
-extern void hexbyte(unsigned int n);
 
 
 
