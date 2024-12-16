@@ -131,18 +131,20 @@ uint8_t buffers_default_REMV(uint8_t buffer_num, uint8_t flags, uint8_t *c) {
 	return 0;
 }
 
-uint8_t buffers_default_RDCHV(void) {
-	//TODO: EXEC
-	if (OSB_ESCAPE & FLAG_N)
-	{
-		return -1;
-	}
-	//TODO: econet redirect here?
-	//TODO: soft key expand here?
-	//TODO: rs423 redirect
+int buffers_default_RDCHV(void) {
 	do {
+		//TODO: EXEC
+		if (ESCAPE_FLAG & FLAG_N)
+		{
+			return -1;
+		}
+		//TODO: econet redirect here?
+		//TODO: soft key expand here?
+		//TODO: rs423 redirect
 		uint8_t r;
 		if (!(REMV(OSB_IN_STREAM, 0, &r) & FLAG_C))
 			return (int)r;
 	} while (1);
 }
+
+//TODO: CNPV

@@ -116,9 +116,16 @@ void main(void) {
 
 		int c = mos_osrdch();
 		if (c < 0)
+		{
 			printstr("ESCAPE!");
+			//TODO: use OSBYTE 126
+			ESCAPE_FLAG = 0;
+		}
 		else
-			mos_oswrch(c);
+			if (c <= ' ' || c >= 0x7F)
+				hexbyte(c);
+			else
+				mos_oswrch(c);
 
 	} while (1);
 
