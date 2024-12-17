@@ -28,11 +28,20 @@ void init(void) {
 
 }
 
-extern void buserror(void);
+
+void vdu_str(const char *str) {
+	if (!str)
+		return;
+	char c;
+	while ((c = *str++)) {
+		mos_oswrch(c);
+	}
+}
+
 
 void main(void) {
 
-	DEBUG_PRINT_STR("BOO!");
+	vdu_str("BOO!");
 
 	do {
 
@@ -45,7 +54,7 @@ void main(void) {
 		}
 		else
 		{
-			if (c <= ' ' || c >= 0x7F)
+			if (c < ' ' || c >= 0x7F)
 				DEBUG_PRINT_HEX_BYTE(c);
 			else
 				mos_oswrch(c);

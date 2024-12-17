@@ -53,7 +53,7 @@ extern void vdu_osbyte_155_SET_PALETTE(uint8_t X);
 #define VDU_G_BG		(*((uint8_t *)0x035a))
 #define VDU_P_FG		(*((uint8_t *)0x035b))
 #define VDU_P_BG		(*((uint8_t *)0x035c))
-#define VDU_JUMPVEC		(*((uint16_t *)0x035d))
+//#define VDU_JUMPVEC		(*((uint16_t *)0x035d)) - bad alignment and store in 32 bit somewhere else
 #define VDU_CURS_PREV		(*((uint8_t *)0x035f))
 
 #define VDU_COL_MASK		(*((uint8_t *)0x0360))

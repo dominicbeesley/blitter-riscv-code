@@ -41,9 +41,16 @@ sheila_USRVIA_ifr 	= 0xFFFFFE6D
 sheila_USRVIA_ier 	= 0xFFFFFE6E
 sheila_USRVIA_ora_nh 	= 0xFFFFFE6F
 
+/***********************************************************************
+ * CRTC                                                                *
+ ***********************************************************************/
+
 sheila_CRTC_ix		= 0xFFFFFE00
 sheila_CRTC_dat		= 0xFFFFFE01
 
+/***********************************************************************
+ * VIDEO ULA                                                           *
+ ***********************************************************************/
 sheila_VIDULA_CTL	= 0xFFFFFE20
 sheila_VIDULA_PAL	= 0xFFFFFE21
 sheila_NULA_CTLAUX	= 0xFFFFFE22

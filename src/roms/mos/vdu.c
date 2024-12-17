@@ -3,11 +3,15 @@
 #include "mos_shared.h"
 #include "interrupts.h"
 #include "debug_print.h"
+#include "font.h"
 
 #include <string.h>
+#include <stdbool.h>
 
 //this must be X^2-1
 #define MAXMODES 7
+
+#define SCREENADDR(A) (uint8_t *)(0xFFFF0000 | (uint32_t)A)
 
 const uint8_t _TBL_MODE_COLOURS[] = {
 			// MODE 0 - 2 COLOURS
@@ -404,7 +408,7 @@ void VDU_19(void) {
 void VDU_20(void) {
 	//TODO: look at reduce size?
 	VDU_T_FG = 0;
-	VDU_T_BG = 0xA5;
+	VDU_T_BG = 0;
 	VDU_G_FG = 0;
 	VDU_G_BG = 0;
 	VDU_P_FG = 0;
@@ -467,7 +471,7 @@ uint16_t SET_CRTC_16DIV8(uint8_t ix, uint16_t addr) {
 	return addr >> 3;
 }
 
-uint16_t SET_CUR_CHARSCANX(uint16_t addr) {
+uint16_t SET_CURS_CHARSCANX(uint16_t addr) {
 	VDU_TOP_SCAN = addr;	
 	return SET_CRTC_16DIV8(0xE, VDU_CRTC_CUR);
 }
@@ -477,7 +481,7 @@ uint16_t SET_CRTC_CURS16_adj(uint16_t addr) {
 	VDU_CRTC_CUR = addr;
 	if (addr & 0x8000)
 		addr -= VDU_MEM_PAGES << 8;
-	return SET_CUR_CHARSCANX(addr);
+	return SET_CURS_CHARSCANX(addr);
 }
 
 /*************************************************************************
@@ -494,6 +498,116 @@ uint16_t SET_CRTC_CURS16_adj(uint16_t addr) {
 */
 void VDU_24(void) {
 	//TODO: GRAPHICS
+}
+
+uint16_t _LCF06_calc_text_scan() {
+	//TODO: check - this is greatly simplified...
+	uint16_t a = VDU_MEM + (VDU_BPR * VDU_T_CURS_Y) + (VDU_BPC * VDU_T_CURS_X);
+
+	VDU_CRTC_CUR = a;
+	if (a & 0x8000)
+		a = a - (VDU_MEM_PAGES << 8);
+
+	return a;
+}
+
+
+/************:set up display address *************************************
+
+;Mode 0: (0319)*640+(0318)* 8
+;Mode 1: (0319)*640+(0318)*16
+;Mode 2: (0319)*640+(0318)*32
+;Mode 3: (0319)*640+(0318)* 8
+;Mode 4: (0319)*320+(0318)* 8
+;Mode 5: (0319)*320+(0318)*16
+;Mode 6: (0319)*320+(0318)* 8
+;Mode 7: (0319)* 40+(0318)
+;this gives a displacement relative to the screen RAM start address
+;which is added to the calculated number and stored in in 34A/B
+;if the result is less than &8000, the top of screen RAM it is copied into X/A
+;and D8/9.
+;if the result is greater than &7FFF the hi byte of screen RAM size is
+;subtracted to wraparound the screen. X/A, D8/9 are then set from this
+*/
+
+/********** move text cursor to next line **********************
+; Cy set check against top
+; returns true if caller should return immediately (on MOS it frigs the stack)
+*/
+
+bool _LCD3F(uint8_t flags) {
+	if (VDU_STATUS & (VDUSTATUS_NO_SCROLL|VDUSTATUS_CURSOR_EDIT))
+		return false;
+	uint8_t bound = (flags & FLAG_C)?VDU_T_WIN_T:VDU_T_WIN_B;
+	if (!(VDU_STATUS & VDUSTATUS_CURSOR_EDIT)) {
+		//not cursor editing wrap to other end of the screen
+		VDU_T_CURS_Y = bound;
+		SET_CURS_CHARSCANX(_LCF06_calc_text_scan());			
+		return true;	//indicate no further action
+	} else {
+		//cursor editing
+		if (bound != VDU_TI_CURS_Y)
+			VDU_TI_CURS_Y += (flags & FLAG_C)?-1:+1;
+	}
+
+	return false;
+}
+
+void _LCEAC_clear_line(void) {
+	uint8_t xsave = VDU_T_CURS_X;
+	VDU_T_CURS_X = VDU_T_WIN_L;
+	_LCF06_calc_text_scan();
+	int w = 1 + VDU_T_WIN_R - VDU_T_WIN_R;
+	while (w) {
+		memset(SCREENADDR(VDU_TOP_SCAN), VDU_T_BG, VDU_BPC);	//blank 1 char cell
+		VDU_TOP_SCAN+=VDU_BPC;
+		if (VDU_TOP_SCAN & 0x8000)
+			VDU_TOP_SCAN -= (VDU_MEM_PAGES << 8);
+		w--;
+	}
+	VDU_T_CURS_X = xsave;
+}
+
+void _LCDFF_soft_scroll_up(void) {
+	//TODO:
+}
+
+void _LC9A4_hard_Scroll_up(void) {
+	//TODO:
+}
+
+/*************************************************************************
+ *									 *
+ *	 VDU 9	- CURSOR RIGHT						 *
+ *									 *
+ *************************************************************************/
+
+void VDU_9(void) {
+	//TODO: GRAPHICS
+	if (VDU_T_CURS_X <= VDU_T_WIN_R) {
+		VDU_T_CURS_X++;
+		VDU_CRTC_CUR += VDU_BPC;
+		SET_CRTC_CURS16_adj(VDU_CRTC_CUR);
+		return;
+	} else {
+		VDU_T_CURS_X = VDU_T_WIN_L;
+		//TEXT CUROR DOWN
+		//TODO: PAGED MODE
+		if (VDU_T_CURS_Y < VDU_T_WIN_B)
+		{
+			VDU_T_CURS_Y++;
+		} else {
+			if (_LCD3F(FLAG_C)) return; // check for wrap round due to no scroll / cursor edit
+			if (VDU_STATUS & VDUSTATUS_SOFT_SCROLL)
+				_LCDFF_soft_scroll_up();	// soft scroll
+			else
+				_LC9A4_hard_Scroll_up();	// hard scroll
+			_LCEAC_clear_line();			// clear a line
+
+		}
+		SET_CURS_CHARSCANX(_LCF06_calc_text_scan());
+		return;
+	}
 }
 
 
@@ -528,10 +642,10 @@ void _LCBC1_DOCLS() {
 	VDU_T_CURS_Y = 0;
 
 	DEBUG_PRINT_STR("CLS");
-	DEBUG_PRINT_HEX_WORD((0xFFFF0000 | (uint32_t)VDU_MEM));
+	DEBUG_PRINT_HEX_WORD((uint32_t)SCREENADDR(VDU_MEM));
 	DEBUG_PRINT_HEX_WORD(((uint16_t)VDU_MEM_PAGES << 8));
 
-	memset((void *)(0xFFFF0000 | (uint32_t)VDU_MEM), VDU_T_BG, (uint16_t)VDU_MEM_PAGES << 8);
+	memset(SCREENADDR(VDU_MEM), VDU_T_BG, (uint16_t)VDU_MEM_PAGES << 8);
 
 }
 
@@ -560,6 +674,18 @@ void vdu_mode(uint8_t mode) {
 	_LCBC1_DOCLS();
 }
 
+void VDU_22(void) {
+	vdu_mode(VDU_QUEUE[8]);
+}
+
+void VDU_0(void) {
+
+}
+
+void VDU_OUT_CHAR(uint8_t c) {
+	memcpy(SCREENADDR(VDU_TOP_SCAN), mos_FONT + (c-32)*8, 8);
+}
+
 void vdu_init(uint8_t mode) {
 	VDU_STATUS = 0;
 	memset(&VDU_VARS_BASE, 0, VDU_VARS_SIZE);
@@ -568,7 +694,106 @@ void vdu_init(uint8_t mode) {
 	vdu_mode(mode);
 }
 
-void vdu_write(uint8_t c) {
+typedef void (*VDU_FN)(void);
 
+const VDU_FN _TBL_VDU_ROUTINES[33] = {
+	VDU_0,		// VDU  0   - &C511, no parameters
+	VDU_0,		// VDU  1   - &C53B, 1 parameter
+	VDU_0,		// VDU  2   - &C596, no parameters
+	VDU_0,		// VDU  3   - &C5A1, no parameters
+	VDU_0,		// VDU  4   - &C5AD, no parameters
+	VDU_0,		// VDU  5   - &C5B9, no parameters
+	VDU_0,		// VDU  6   - &C511, no parameters
+	VDU_0,		// VDU  7   - &E86F, no parameters
+	VDU_0,		// VDU  8   - &C5C5, no parameters
+	VDU_9,		// VDU  9   - &C664, no parameters
+	VDU_0,		// VDU 10  - &C6F0, no parameters
+	VDU_0,		// VDU 11  - &C65B, no parameters
+	VDU_0,		// VDU 12  - &C759, no parameters
+	VDU_0,		// VDU 13  - &C7AF, no parameters
+	VDU_0,		// VDU 14  - &C58D, no parameters
+	VDU_0,		// VDU 15  - &C5A6, no parameters
+	VDU_0,		// VDU 16  - &C7C0, no parameters
+	VDU_0,		// VDU 17  - &C7F9, 1 parameter
+	VDU_0,		// VDU 18  - &C7FD, 2 parameters
+	VDU_19,		// VDU 19  - &C892, 5 parameters
+	VDU_20,		// VDU 20  - &C839, no parameters
+	VDU_0,		// VDU 21  - &C59B, no parameters
+	VDU_0,		// VDU 22  - &C8EB, 1 parameter
+	VDU_0,		// VDU 23  - &C8F1, 9 parameters
+	VDU_24,		// VDU 24  - &CA39, 8 parameters
+	VDU_0,		// VDU 25  - &C9AC, 5 parameters
+	VDU_26,		// VDU 26  - &C9BD, no parameters
+	VDU_0,		// VDU 27  - &C511, no parameters
+	VDU_0,		// VDU 28  - &C6FA, 4 parameters
+	VDU_0,		// VDU 29  - &CAA2, 4 parameters
+	VDU_0,		// VDU 30  - &C779, no parameters
+	VDU_0,		// VDU 31  - &C787, 2 parameters
+	VDU_0		// VDU 127 - &CAAC, no parameters
+};
+
+const int8_t _TBL_VDU_PARAMS[33] = {
+	0,		// VDU  0   - &C511, no parameters
+	-1,		// VDU  1   - &C53B, 1 parameter
+	0,		// VDU  2   - &C596, no parameters
+	0,		// VDU  3   - &C5A1, no parameters
+	0,		// VDU  4   - &C5AD, no parameters
+	0,		// VDU  5   - &C5B9, no parameters
+	0,		// VDU  6   - &C511, no parameters
+	0,		// VDU  7   - &E86F, no parameters
+	0,		// VDU  8   - &C5C5, no parameters
+	0,		// VDU  9   - &C664, no parameters
+	0,		// VDU 10  - &C6F0, no parameters
+	0,		// VDU 11  - &C65B, no parameters
+	0,		// VDU 12  - &C759, no parameters
+	0,		// VDU 13  - &C7AF, no parameters
+	0,		// VDU 14  - &C58D, no parameters
+	0,		// VDU 15  - &C5A6, no parameters
+	0,		// VDU 16  - &C7C0, no parameters
+	-1,		// VDU 17  - &C7F9, 1 parameter
+	-2,		// VDU 18  - &C7FD, 2 parameters
+	-5,		// VDU 19  - &C892, 5 parameters
+	0,		// VDU 20  - &C839, no parameters
+	0,		// VDU 21  - &C59B, no parameters
+	-1,		// VDU 22  - &C8EB, 1 parameter
+	-9,		// VDU 23  - &C8F1, 9 parameters
+	-8,		// VDU 24  - &CA39, 8 parameters
+	-5,		// VDU 25  - &C9AC, 5 parameters
+	0,		// VDU 26  - &C9BD, no parameters
+	0,		// VDU 27  - &C511, no parameters
+	-4,		// VDU 28  - &C6FA, 4 parameters
+	-4,		// VDU 29  - &CAA2, 4 parameters
+	0,		// VDU 30  - &C779, no parameters
+	-2,		// VDU 31  - &C787, 2 parameters
+	0		// VDU 127 - &CAAC, no parameters
+};
+
+//TODO: these are hidden - move into header?
+VDU_FN VDU_EXEC;
+
+//TODO: in MOS returns CLC/SEC?
+//TODO:PRINTER
+//TODO:CURSOR
+//TODO:status / disabled etc
+void vdu_write(uint8_t c) {
+	if (OSB_VDU_QSIZE) {
+		VDU_QUEUE[9+OSB_VDU_QSIZE] = c;
+		if (!OSB_VDU_QSIZE++)	
+			VDU_EXEC();
+	} else {
+		if (c == 0x7F || c < 0x20) {
+			if (c == 0x7F)
+				c = 0x20;
+			//TODO: CURSOR EDITING
+			VDU_EXEC = _TBL_VDU_ROUTINES[c];
+			OSB_VDU_QSIZE = _TBL_VDU_PARAMS[c];
+			if (OSB_VDU_QSIZE == 0)
+				VDU_EXEC();
+		} else {
+			//TODO: DELETE
+			VDU_OUT_CHAR(c);
+			VDU_9();
+		}
+	}
 }
 

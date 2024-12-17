@@ -147,7 +147,7 @@ struct mos_args {
 #define 	OSB_BOOT_DISP		(*((uint8_t *)0x0267))
 #define 	OSB_SOFT_KEYLEN		(*((uint8_t *)0x0268))
 #define 	OSB_HALT_LINES		(*((uint8_t *)0x0269))
-#define		OSB_VDU_QSIZE		(*((uint8_t *)0x026a))
+#define		OSB_VDU_QSIZE		(*((int8_t *)0x026a))
 #define		OSB_TAB			(*((uint8_t *)0x026b))
 #define		OSB_ESCAPE		(*((uint8_t *)0x026c))
 #define		OSB_CHAR_C0		(*((uint8_t *)0x026d))

@@ -212,13 +212,15 @@ void mos_reset(void) {
 	KEY_ROLLOVER_2 = 0;
 	OSB_KEY_SEM = 0xFF;
 	OSB_KEY_STATUS = 0x20;
-	OSB_KEY_REPEAT = 24;
-	OSB_KEY_DELAY = 40;
+	OSB_KEY_REPEAT = 8;
+	OSB_KEY_DELAY = 30;
 
 	OSB_ESC_BRK = 0;
 	OSB_ESCAPE = 27;
 	OSB_ESC_ACTION = 0;
 	OSB_ESC_EFFECTS = 0;
+
+	OSB_VDU_QSIZE = 0;
 
 	ESCAPE_FLAG = 0;
 	OSB_IN_STREAM = 0;
@@ -242,7 +244,7 @@ void mos_reset(void) {
 
 
 
-	vdu_init(0);
+	vdu_init(4);
 
 	interrupts_disable(0);
 
