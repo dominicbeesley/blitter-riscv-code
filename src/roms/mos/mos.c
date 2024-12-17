@@ -212,7 +212,7 @@ void mos_reset(void) {
 	KEY_ROLLOVER_2 = 0;
 	OSB_KEY_SEM = 0xFF;
 	OSB_KEY_STATUS = 0x20;
-	OSB_KEY_REPEAT = 8;
+	OSB_KEY_REPEAT = 2;
 	OSB_KEY_DELAY = 30;
 
 	OSB_ESC_BRK = 0;

@@ -536,7 +536,7 @@ uint16_t _LCF06_calc_text_scan() {
 */
 
 bool _LCD3F(uint8_t flags) {
-	if (VDU_STATUS & (VDUSTATUS_NO_SCROLL|VDUSTATUS_CURSOR_EDIT))
+	if (!(VDU_STATUS & (VDUSTATUS_NO_SCROLL|VDUSTATUS_CURSOR_EDIT)))
 		return false;
 	uint8_t bound = (flags & FLAG_C)?VDU_T_WIN_T:VDU_T_WIN_B;
 	if (!(VDU_STATUS & VDUSTATUS_CURSOR_EDIT)) {
@@ -557,23 +557,25 @@ void _LCEAC_clear_line(void) {
 	uint8_t xsave = VDU_T_CURS_X;
 	VDU_T_CURS_X = VDU_T_WIN_L;
 	_LCF06_calc_text_scan();
-	int w = 1 + VDU_T_WIN_R - VDU_T_WIN_R;
-	while (w) {
+	for (int i = VDU_T_WIN_L; i <= VDU_T_WIN_R; i++) {
 		memset(SCREENADDR(VDU_TOP_SCAN), VDU_T_BG, VDU_BPC);	//blank 1 char cell
 		VDU_TOP_SCAN+=VDU_BPC;
 		if (VDU_TOP_SCAN & 0x8000)
 			VDU_TOP_SCAN -= (VDU_MEM_PAGES << 8);
-		w--;
 	}
 	VDU_T_CURS_X = xsave;
 }
 
 void _LCDFF_soft_scroll_up(void) {
-	//TODO:
+	DEBUG_PRINT_STR("SOFT SCROLL UP");
 }
 
 void _LC9A4_hard_Scroll_up(void) {
-	//TODO:
+	uint16_t m = VDU_MEM + VDU_BPR;
+	if (m & 0x8000)
+		m = m - (VDU_MEM_PAGES << 8);
+	VDU_MEM = m;
+	SET_CRTC_16DIV8(0x0C, VDU_MEM);
 }
 
 /*************************************************************************
