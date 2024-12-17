@@ -41,6 +41,22 @@
 #define	sheila_USRVIA_ier			(*((volatile uint8_t *)0xFFFFFE6E))
 #define	sheila_USRVIA_ora_nh		(*((volatile uint8_t *)0xFFFFFE6F))
 
+/***********************************************************************
+ * CRTC                                                                *
+ ***********************************************************************/
+
+#define	sheila_CRTC_ix				(*((volatile uint8_t *)0xFFFFFE00))
+#define	sheila_CRTC_dat				(*((volatile uint8_t *)0xFFFFFE01))
+
+/***********************************************************************
+ * VIDEO ULA                                                           *
+ ***********************************************************************/
+#define sheila_VIDULA_CTL			(*((volatile uint8_t *)0xFFFFFE20))
+#define sheila_VIDULA_PAL			(*((volatile uint8_t *)0xFFFFFE21))
+#define sheila_NULA_CTLAUX			(*((volatile uint8_t *)0xFFFFFE22))
+#define sheila_NULA_PALAUX			(*((volatile uint8_t *)0xFFFFFE23))
+
+
 
 #define VIA_IxR_FLAG				0x80
 #define VIA_IxR_T1					0x40

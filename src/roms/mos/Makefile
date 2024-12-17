@@ -2,7 +2,10 @@
 
 ASMINCS=$(wildcard $(TOP)/asm-includes/*.inc) $(filter-out version-date.inc, $(wildcard *.inc))
 DEPS=$(INCS) $(ASMINCS)
-OBJS=start splash main deice interrupts mos moslib keyboard buffers events osbyte osword debug_print
+OBJS=	start splash main deice \
+		interrupts mos moslib keyboard \
+		buffers events osbyte osword debug_print \
+		font_cushion vdu
 
 
 TARGETS=mos

@@ -4,6 +4,8 @@
 #include <stdint.h>
 #include "hardware.h"
 
+//TODO: split out into internal secrets vs API and move to internal header / top level header
+
 // RISC-V Co Processor Sys Call Numbers
 
 //#define ECALL_BASE  0x00AC0000
@@ -184,6 +186,10 @@ struct mos_args {
 #define		OSB_RAM_PAGES		(*((uint8_t *)0x028e))
 #define		OSB_STARTUP_OPT		(*((uint8_t *)0x028f))
 
+#define		VDU_ADJUST		(*((uint8_t *)0x0290))
+#define		VDU_INTERLACE		(*((uint8_t *)0x0291))
+
+
 
 // TIME declared as an array ...
 #define		TIME_VAL1_MSB		((volatile uint8_t *)0x0292)
@@ -216,6 +222,7 @@ struct mos_args {
 #define OSBYTE_13_DISABLE_EVENT			13
 #define OSBYTE_14_ENABLE_EVENT			14
 #define OSBYTE_15_FLUSH_BUFFER_CLASS		15
+#define OSBYTE_20_EXPLODE			20
 #define OSBYTE_21_FLUSH_BUFFER			21
 #define OSBYTE_108_WRITE_SHADOW_STATE		108
 #define OSBYTE_119_CLOSE_SPOOL_AND_EXEC		119
@@ -226,6 +233,8 @@ struct mos_args {
 #define OSBYTE_129_INKEY			129
 #define OSBYTE_135_GET_MODE			135
 #define OSBYTE_143_SERVICE_CALL			143
+#define OSBYTE_154_SET_VID_ULA			154
+#define OSBYTE_155_SET_PALETTE			155
 #define OSBYTE_156_SERIAL_STATE			156
 #define OSBYTE_160_READ_VDU_VARIABLE		160
 #define OSBYTE_161_READ_CMOS			161
@@ -258,10 +267,12 @@ typedef void (*WORDV_FN)(uint8_t A, void *block);
 
 typedef uint8_t (*CNPV_FN)(uint8_t buffer, uint8_t flags);
 
+typedef void (*WRCHV_FN)(uint8_t c);
+
 extern INSV_FN INSV;
 extern REMV_FN REMV;
 extern RDCHV_FN RDCHV;
 extern CNPV_FN CNPV;
-
+extern WRCHV_FN WRCHV;
 
 #endif

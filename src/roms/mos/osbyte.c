@@ -4,7 +4,7 @@
 #include "mos_shared.h"
 #include "interrupts.h"
 #include <stddef.h>
-
+#include "vdu.h"
 
 #define XYSET(X,V) {if(X) *X = V;}
 #define XYGET(X) ((X)?*X:0)
@@ -17,12 +17,16 @@ uint8_t osbyte_126_ESCAPE_ACK(uint8_t *X, uint8_t *Y);
 
 uint8_t osbyte_default_BYTEV(uint8_t A, uint8_t *X, uint8_t *Y) {
 	
+	//TODO: tables?
 	switch (A) {
 		case OSBYTE_15_FLUSH_BUFFER_CLASS:	return osbyte_15_FLUSH_BUFFER_CLASS(X, Y);
+		case OSBYTE_20_EXPLODE:			vdu_osbyte_20_EXPLODE(); return 0;
 		case OSBYTE_21_FLUSH_BUFFER:		return osbyte_21_FLUSH_BUFFER(X, Y);
 		case OSBYTE_124_ESCAPE_CLEAR:		return osbyte_124_ESCAPE_CLEAR(X, Y);
-		case OSBYTE_125_ESCAPE_SET:			return osbyte_125_ESCAPE_SET(X, Y);
-		case OSBYTE_126_ESCAPE_ACK:			return osbyte_126_ESCAPE_ACK(X, Y);
+		case OSBYTE_125_ESCAPE_SET:		return osbyte_125_ESCAPE_SET(X, Y);
+		case OSBYTE_126_ESCAPE_ACK:		return osbyte_126_ESCAPE_ACK(X, Y);
+		case OSBYTE_154_SET_VID_ULA:		vdu_osbyte_154_SET_VID_ULA(XYGET(X)); return 0;
+		case OSBYTE_155_SET_PALETTE:		vdu_osbyte_155_SET_PALETTE(XYGET(X)); return 0;
 		default:
 			//TODO: check what should happen here
 			return FLAG_C;

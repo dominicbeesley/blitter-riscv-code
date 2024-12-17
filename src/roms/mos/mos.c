@@ -8,6 +8,7 @@
 #include "osword.h"
 #include <stddef.h>
 #include "debug_print.h"
+#include "vdu.h"
 
 INSV_FN INSV;
 REMV_FN REMV;
@@ -15,6 +16,7 @@ RDCHV_FN RDCHV;
 BYTEV_FN BYTEV;
 WORDV_FN WORDV;
 CNPV_FN CNPV;
+WRCHV_FN WRCHV;
 
 //Timer 1 100Hz period
 #define T1PER (10000-2)
@@ -30,7 +32,7 @@ void mos_enter_ecall(struct mos_args *args, uint32_t a7) {
 	//TODO: check for 0xAC0000?
 	switch (a7 & 0xFF) {
 		case OS_WRCH:
-			DEBUG_PRINT_CH(args->a0);
+			WRCHV(args->a0);
 			return;
 		case OS_NEWL:
 			DEBUG_PRINT_STR("\n\r");
@@ -175,6 +177,11 @@ void mos_default_IRQ1V() {
 	}
 }
 
+//TODO: maybe move this out of main mos into buffers or somewhere?
+void mos_default_WRCHV(uint8_t c) {
+	//TODO: redirection and interception
+	vdu_write(c);
+}
 
 void mos_reset(void) {
 	// disable SYSVIA interrupts
@@ -198,7 +205,7 @@ void mos_reset(void) {
 	for (uint8_t i = 0xf; i>=9; i++)
 		mos_latch_write(i);
 
-	//init keyboard
+	//init  variables TODO make this tabular
 	KEYNUM_LAST = 0;
 	KEYNUM_FIRST = 0;
 	KEY_ROLLOVER_1 = 0;
@@ -216,6 +223,10 @@ void mos_reset(void) {
 	ESCAPE_FLAG = 0;
 	OSB_IN_STREAM = 0;
 
+	VDU_ADJUST = 0;
+	VDU_INTERLACE = 0;
+
+
 	// renable T1, T2, EOC, VS
 	sheila_SYSVIA_ier = VIA_IxR_FLAG|VIA_IxR_T1|VIA_IxR_T2|VIA_IxR_CB1|VIA_IxR_CA2;
 
@@ -227,6 +238,11 @@ void mos_reset(void) {
 	RDCHV = buffers_default_RDCHV;
 	BYTEV = osbyte_default_BYTEV;
 	WORDV = osword_default_WORDV;
+	WRCHV = mos_default_WRCHV;
+
+
+
+	vdu_init(0);
 
 	interrupts_disable(0);
 
