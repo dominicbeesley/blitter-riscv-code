@@ -239,7 +239,6 @@ void mos_reset(void) {
 	sheila_SYSVIA_acr = VIA_ACR_T1_CTL_CONT_NOPB7|VIA_ACR_T2_CTL_PULSE_PB6|VIA_ACR_PB_LATCH_OFF|VIA_ACR_PA_LATCH_OFF;
 
 	sheila_USRVIA_pcr = VIA_PCR_CB2_CTL_IN_NEG|VIA_PCR_CB1_CTL_INT_NEG|VIA_PCR_CA2_CTL_OUT_HIGH|VIA_PCR_CA1_CTL_INT_NEG;
-	
 
 	buffers_init();
 
@@ -250,8 +249,6 @@ void mos_reset(void) {
 	BYTEV = osbyte_default_BYTEV;
 	WORDV = osword_default_WORDV;
 	WRCHV = mos_default_WRCHV;
-
-
 
 	vdu_init(4);
 
