@@ -187,6 +187,9 @@ void mos_reset(void) {
 	// disable SYSVIA interrupts
 	sheila_SYSVIA_ier = 0x7F;
 	sheila_SYSVIA_ifr = 0x7F;
+	// disable USRVIA interrupts
+	sheila_USRVIA_ier = 0x7F;
+	sheila_USRVIA_ifr = 0x7F;
 
 
 	// setup 100Hz tick
@@ -209,6 +212,7 @@ void mos_reset(void) {
 	KEYNUM_LAST = 0;
 	KEYNUM_FIRST = 0;
 	KEY_ROLLOVER_1 = 0;
+	KEY_ROLLOVER_1A = 0;
 	KEY_ROLLOVER_2 = 0;
 	OSB_KEY_SEM = 0xFF;
 	OSB_KEY_STATUS = 0x20;
@@ -231,6 +235,11 @@ void mos_reset(void) {
 
 	// renable T1, T2, EOC, VS
 	sheila_SYSVIA_ier = VIA_IxR_FLAG|VIA_IxR_T1|VIA_IxR_T2|VIA_IxR_CB1|VIA_IxR_CA2;
+	sheila_SYSVIA_pcr = VIA_PCR_CB2_CTL_IN_NEG|VIA_PCR_CB1_CTL_INT_NEG|VIA_PCR_CA2_CTL_IN_POS;
+	sheila_SYSVIA_acr = VIA_ACR_T1_CTL_CONT_NOPB7|VIA_ACR_T2_CTL_PULSE_PB6|VIA_ACR_PB_LATCH_OFF|VIA_ACR_PA_LATCH_OFF;
+
+	sheila_USRVIA_pcr = VIA_PCR_CB2_CTL_IN_NEG|VIA_PCR_CB1_CTL_INT_NEG|VIA_PCR_CA2_CTL_OUT_HIGH|VIA_PCR_CA1_CTL_INT_NEG;
+	
 
 	buffers_init();
 
