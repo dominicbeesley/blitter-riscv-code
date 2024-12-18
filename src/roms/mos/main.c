@@ -54,10 +54,7 @@ void main(void) {
 		}
 		else
 		{
-			if (c < ' ' || c >= 0x7F)
-				DEBUG_PRINT_HEX_BYTE(c);
-			else
-				mos_oswrch(c);
+			mos_oswrch(c);
 		}
 
 	} while (1);

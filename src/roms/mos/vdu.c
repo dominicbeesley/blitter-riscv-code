@@ -471,7 +471,7 @@ uint16_t SET_CRTC_16DIV8(uint8_t ix, uint16_t addr) {
 	return addr >> 3;
 }
 
-uint16_t SET_CURS_CHARSCANX(uint16_t addr) {
+uint16_t SET_CURS_CHARSCANAX(uint16_t addr) {
 	VDU_TOP_SCAN = addr;	
 	return SET_CRTC_16DIV8(0xE, VDU_CRTC_CUR);
 }
@@ -481,7 +481,7 @@ uint16_t SET_CRTC_CURS16_adj(uint16_t addr) {
 	VDU_CRTC_CUR = addr;
 	if (addr & 0x8000)
 		addr -= VDU_MEM_PAGES << 8;
-	return SET_CURS_CHARSCANX(addr);
+	return SET_CURS_CHARSCANAX(addr);
 }
 
 /*************************************************************************
@@ -542,7 +542,7 @@ bool _LCD3F(uint8_t flags) {
 	if (!(VDU_STATUS & VDUSTATUS_CURSOR_EDIT)) {
 		//not cursor editing wrap to other end of the screen
 		VDU_T_CURS_Y = bound;
-		SET_CURS_CHARSCANX(_LCF06_calc_text_scan());			
+		SET_CURS_CHARSCANAX(_LCF06_calc_text_scan());			
 		return true;	//indicate no further action
 	} else {
 		//cursor editing
@@ -570,6 +570,18 @@ void _LCDFF_soft_scroll_up(void) {
 	DEBUG_PRINT_STR("SOFT SCROLL UP");
 }
 
+void _LCDA4_soft_scroll_down(void) {
+	DEBUG_PRINT_STR("SOFT SCROLL DOWN");
+}
+
+void _LC994_hard_scroll_down(void) {
+	uint16_t m = VDU_MEM - VDU_BPR;
+	if ((m >> 8) > VDU_PAGE)
+		m += (VDU_MEM_PAGES << 8);
+	VDU_MEM = m;
+	SET_CRTC_16DIV8(0x0C, VDU_MEM);		
+}
+
 void _LC9A4_hard_Scroll_up(void) {
 	uint16_t m = VDU_MEM + VDU_BPR;
 	if (m & 0x8000)
@@ -577,6 +589,26 @@ void _LC9A4_hard_Scroll_up(void) {
 	VDU_MEM = m;
 	SET_CRTC_16DIV8(0x0C, VDU_MEM);
 }
+
+void _BC68A_txt_cursor_down(void) {
+	//TEXT CUROR DOWN
+	//TODO: PAGED MODE
+	if (VDU_T_CURS_Y < VDU_T_WIN_B)
+	{
+		VDU_T_CURS_Y++;
+	} else {
+		if (_LCD3F(FLAG_C)) return; // check for wrap round due to no scroll / cursor edit
+		if (VDU_STATUS & VDUSTATUS_SOFT_SCROLL)
+			_LCDFF_soft_scroll_up();	// soft scroll
+		else
+			_LC9A4_hard_Scroll_up();	// hard scroll
+		_LCEAC_clear_line();			// clear a line
+		
+	}
+	SET_CURS_CHARSCANAX(_LCF06_calc_text_scan());
+	return;
+}
+
 
 /*************************************************************************
  *									 *
@@ -593,22 +625,84 @@ void VDU_9(void) {
 		return;
 	} else {
 		VDU_T_CURS_X = VDU_T_WIN_L;
-		//TEXT CUROR DOWN
-		//TODO: PAGED MODE
-		if (VDU_T_CURS_Y < VDU_T_WIN_B)
-		{
-			VDU_T_CURS_Y++;
-		} else {
-			if (_LCD3F(FLAG_C)) return; // check for wrap round due to no scroll / cursor edit
-			if (VDU_STATUS & VDUSTATUS_SOFT_SCROLL)
-				_LCDFF_soft_scroll_up();	// soft scroll
-			else
-				_LC9A4_hard_Scroll_up();	// hard scroll
-			_LCEAC_clear_line();			// clear a line
-
-		}
-		SET_CURS_CHARSCANX(_LCF06_calc_text_scan());
+		_BC68A_txt_cursor_down();
 		return;
+	}
+}
+
+
+void _BC5F4_txt_cursor_up(void) {
+	if (OSB_HALT_LINES > 0)
+		OSB_HALT_LINES--;
+
+	if (VDU_T_CURS_Y != VDU_T_WIN_T) {
+		VDU_T_CURS_Y--;
+	} else {
+		_LCD3F(0);
+		if (VDU_STATUS & VDUSTATUS_SOFT_SCROLL)
+			_LCDA4_soft_scroll_down();
+		else
+			_LC994_hard_scroll_down();
+		SET_CURS_CHARSCANAX(_LCF06_calc_text_scan());
+	}
+	SET_CURS_CHARSCANAX(_LCF06_calc_text_scan());
+	return;
+}
+
+/*************************************************************************
+ *									 *
+ *	 VDU 10	 - CURSOR DOWN						 *
+ *									 *
+ *************************************************************************/
+
+void VDU_10(void) {
+	if (!(VDU_STATUS & VDUSTATUS_GFX)) {
+		_BC68A_txt_cursor_down();
+		return;
+	} else {
+		//TODO: VDU5
+	}	
+}
+
+/*************************************************************************
+ *									 *
+ *	 VDU 11	 - CURSOR UP						 *
+ *									 *
+ *************************************************************************/
+
+void VDU_11(void) {
+	if (!(VDU_STATUS & VDUSTATUS_GFX)) {
+		_BC5F4_txt_cursor_up();
+		return;
+	} else {
+		//TODO: VDU5
+	}	
+}
+
+
+/*************************************************************************
+ *									 *
+ *	 VDU 8	- CURSOR LEFT						 *
+ *									 *
+ *************************************************************************/
+
+void VDU_8(void) {
+	if (!(VDU_STATUS & VDUSTATUS_GFX)) {
+		int X = VDU_T_CURS_X - 1;
+		if (X < 0) {
+			VDU_T_CURS_X = VDU_T_WIN_R;
+			_BC5F4_txt_cursor_up();
+			return;
+		} else {
+			VDU_CRTC_CUR -= VDU_BPC;
+			if (VDU_CRTC_CUR < (VDU_PAGE << 8)) {
+				VDU_CRTC_CUR += VDU_MEM_PAGES << 8;
+			}
+			SET_CRTC_CURS16_adj(VDU_CRTC_CUR);
+			return;
+		}
+	} else {
+		//TODO: VDU5
 	}
 }
 
@@ -684,6 +778,104 @@ void VDU_0(void) {
 
 }
 
+// returns true if outside window
+bool _LCEE8_check_text_cursor_bounds(void) {
+	if (VDU_T_CURS_X >= VDU_T_WIN_L 
+	&& VDU_T_CURS_X <= VDU_T_WIN_R
+	&& VDU_T_CURS_Y >= VDU_T_WIN_T
+	&& VDU_T_CURS_Y <= VDU_T_WIN_B)
+	{
+		_LCF06_calc_text_scan();
+		return 0;
+	}
+	else
+		return 1;
+}
+
+
+/*************************************************************************
+ *									 *
+ *	 VDU 31 - POSITION TEXT CURSOR					 *
+ *	 TAB(X,Y)							 *
+ *									 *
+ *	 2 parameters							 *
+ *									 *
+ *************************************************************************
+ 0322 = supplied X coordinate
+ 0323 = supplied Y coordinate
+*/
+void VDU_31(void) {
+	if (VDU_STATUS & VDUSTATUS_GFX)
+	{
+		//TODO: VDU5
+	} else {
+		int8_t sx = VDU_T_CURS_X;
+		int8_t sy = VDU_T_CURS_X;
+		VDU_T_CURS_X = (int8_t)VDU_QUEUE[7] + VDU_T_WIN_L;
+		VDU_T_CURS_Y = (int8_t)VDU_QUEUE[8] + VDU_T_WIN_T;
+		if (!_LCEE8_check_text_cursor_bounds()) {
+			SET_CURS_CHARSCANAX(VDU_TOP_SCAN);				
+		} else {
+			VDU_T_CURS_X = sx;
+			VDU_T_CURS_Y = sy;
+		}
+
+	}
+}
+
+
+/*************************************************************************
+ *									 *
+ *	 VDU 30 - HOME CURSOR						 *
+ *									 *
+ *************************************************************************/
+
+void VDU_30(void) {
+	if (VDU_STATUS & VDUSTATUS_GFX)
+	{
+		//TODO: VDU5
+	} else {
+		VDU_QUEUE[7] = 0;
+		VDU_QUEUE[8] = 0;
+		VDU_31();
+	}
+}
+
+/*************************************************************************
+ *									 *
+ *	 VDU 12 - CLEAR TEXT SCREEN					 *
+ *	 CLS								 *
+ *									 *
+ *************************************************************************/
+void VDU_12(void) {
+	if (VDU_STATUS & VDUSTATUS_GFX)
+	{
+		//TODO: VDU5
+	} else {
+		if (VDU_STATUS & VDUSTATUS_SOFT_SCROLL) {
+			for (VDU_T_CURS_Y=VDU_T_WIN_T; VDU_T_CURS_Y <= VDU_T_WIN_B; VDU_T_CURS_Y++)
+				_LCEAC_clear_line();
+			VDU_30();		// home
+		} else 
+			_LCBC1_DOCLS();
+	}
+}
+
+/*************************************************************************
+ *									 *
+ *	 VDU 13 - CARRIAGE RETURN					 *
+ *									 *
+ *************************************************************************/
+void VDU_13(void) {
+	if (VDU_STATUS & VDUSTATUS_GFX)
+	{
+		//TODO: VDU5
+	} else {
+		VDU_T_CURS_X = VDU_T_WIN_L;
+		SET_CURS_CHARSCANAX(_LCF06_calc_text_scan());
+	}
+}
+
 void VDU_OUT_CHAR(uint8_t c) {
 	memcpy(SCREENADDR(VDU_TOP_SCAN), mos_FONT + (c-32)*8, 8);
 }
@@ -707,12 +899,12 @@ const VDU_FN _TBL_VDU_ROUTINES[33] = {
 	VDU_0,		// VDU  5   - &C5B9, no parameters
 	VDU_0,		// VDU  6   - &C511, no parameters
 	VDU_0,		// VDU  7   - &E86F, no parameters
-	VDU_0,		// VDU  8   - &C5C5, no parameters
+	VDU_8,		// VDU  8   - &C5C5, no parameters
 	VDU_9,		// VDU  9   - &C664, no parameters
-	VDU_0,		// VDU 10  - &C6F0, no parameters
-	VDU_0,		// VDU 11  - &C65B, no parameters
-	VDU_0,		// VDU 12  - &C759, no parameters
-	VDU_0,		// VDU 13  - &C7AF, no parameters
+	VDU_10,		// VDU 10  - &C6F0, no parameters
+	VDU_11,		// VDU 11  - &C65B, no parameters
+	VDU_12,		// VDU 12  - &C759, no parameters
+	VDU_13,		// VDU 13  - &C7AF, no parameters
 	VDU_0,		// VDU 14  - &C58D, no parameters
 	VDU_0,		// VDU 15  - &C5A6, no parameters
 	VDU_0,		// VDU 16  - &C7C0, no parameters
@@ -729,8 +921,8 @@ const VDU_FN _TBL_VDU_ROUTINES[33] = {
 	VDU_0,		// VDU 27  - &C511, no parameters
 	VDU_0,		// VDU 28  - &C6FA, 4 parameters
 	VDU_0,		// VDU 29  - &CAA2, 4 parameters
-	VDU_0,		// VDU 30  - &C779, no parameters
-	VDU_0,		// VDU 31  - &C787, 2 parameters
+	VDU_30,		// VDU 30  - &C779, no parameters
+	VDU_31,		// VDU 31  - &C787, 2 parameters
 	VDU_0		// VDU 127 - &CAAC, no parameters
 };
 
