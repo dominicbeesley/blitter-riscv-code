@@ -4,6 +4,7 @@
 #include <stddef.h>
 #include "mos_shared.h"
 #include "buffers.h"
+#include "debug_print.h"
 
 //TODO: check out CTRL-SHIFT-fX not working correctly?
 //TODO: N-key rollover broken: autorepeat cancels, hammering keyboard cancels/sticks
@@ -79,6 +80,7 @@ uint8_t key_keyboard_scan_fromXon(uint8_t flags, uint8_t X, uint8_t Y) {
 		//TODO: figure out correct constants here
 		Y = 0xEE;
 	}
+
 	*((uint8_t *)(0x1df + Y)) = A;
 	X = 9;
 	do {
@@ -160,6 +162,7 @@ void key_irq_keypressed() {
 			key_LF01F();			
 		}		
 	}
+
 	key_EEDA_housekeep();
 }
 
@@ -215,7 +218,7 @@ uint8_t call_KEYV(uint8_t flags, uint8_t *X) {
 	} else {
 		// V = 0
 		if (flags & FLAG_C)
-			return key_keyboard_scan_fromXon(flags, *X, 0);
+			return key_keyboard_scan_fromXon(FLAG_C, *X, 0);
 	}
 	// EF16
 	// V=0, V=0 or V=1, C=1

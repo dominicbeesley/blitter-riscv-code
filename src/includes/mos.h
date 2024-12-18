@@ -197,6 +197,7 @@ struct mos_args {
 
 #define		KEY_REPEAT_CNT		(*((uint8_t *)0x02ca))
 #define		KEY_ROLLOVER_1		(*((uint8_t *)0x02cb))
+#define		KEY_ROLLOVER_1A		(*((uint8_t *)0x02cc))
 #define		KEY_ROLLOVER_2		(*((uint8_t *)0x02cd))
 
 
