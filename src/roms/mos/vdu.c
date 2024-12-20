@@ -508,6 +508,7 @@ uint16_t _LCF06_calc_text_scan() {
 	if (a & 0x8000)
 		a = a - (VDU_MEM_PAGES << 8);
 
+	VDU_TOP_SCAN = a;
 	return a;
 }
 

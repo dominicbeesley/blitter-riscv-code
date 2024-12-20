@@ -89,7 +89,7 @@ mos_enter:
 		lw		ra,4(sp)				// caller ra
 		lw		t0,8(sp)				// caller pc
 		lw		sp,0(sp)				// caller sp
-		addi	sp,sp,(10*4)
+//		addi	sp,sp,(10*4)
 		jr		t0						// return
 
 mos_irq:	

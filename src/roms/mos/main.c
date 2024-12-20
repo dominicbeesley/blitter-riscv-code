@@ -41,7 +41,7 @@ void vdu_str(const char *str) {
 
 void main(void) {
 
-	vdu_str("BOO!");
+	vdu_str("Risc V MOS - Dossy 2024\r\n");
 
 	do {
 

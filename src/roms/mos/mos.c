@@ -45,26 +45,56 @@ void mos_enter_ecall(struct mos_args *args, uint32_t a7) {
 			args->a3 = r;
 			return;
 		case OS_WORD:
-			WORDV(args->a0, (void *)&args->a1);			
-			return;
+			if (args->a0 == 0) {
+				//TODO: HOGLET'S API - change to be beeb compatible somehow?
+				uint8_t *ptr = (uint8_t *)(((uint32_t *)args->a1)[0]);
+				int ix = 0;
+				do {
+					int c = RDCHV();
+					if (c < 0) {
+						args->a2 = -1;
+						return;
+					} else if (c == 0x7F) {
+						if (ix > 0) {
+							ix--;
+							WRCHV(8);
+							WRCHV(' ');
+							WRCHV(8);
+						}
+					} else if (c >= ' ' && c < 0x7F) {
+						ptr[ix++] = c;
+						WRCHV(c);
+					} else if (c == 13) {
+						WRCHV(13);
+						WRCHV(10);
+						ptr[ix++] = 13;
+						args->a2 = ix;					
+						return;
+					}
+
+				} while (1);
+			} else {
+				WORDV(args->a0, (void *)args->a1);			
+				return;
+			}
 	}
 
-
+	DEBUG_PRINT_STR("ECALL\n");
 	DEBUG_PRINT_STR(" A0:");
 	DEBUG_PRINT_HEX_WORD(args->a0);
-	DEBUG_PRINT_STR(" A1:");
+	DEBUG_PRINT_STR("\n A1:");
 	DEBUG_PRINT_HEX_WORD(args->a1);
-	DEBUG_PRINT_STR(" A2:");
+	DEBUG_PRINT_STR("\n A2:");
 	DEBUG_PRINT_HEX_WORD(args->a2);
-	DEBUG_PRINT_STR(" A3:");
+	DEBUG_PRINT_STR("\n A3:");
 	DEBUG_PRINT_HEX_WORD(args->a3);
-	DEBUG_PRINT_STR(" A4:");
+	DEBUG_PRINT_STR("\n A4:");
 	DEBUG_PRINT_HEX_WORD(args->a4);
-	DEBUG_PRINT_STR(" A5:");
+	DEBUG_PRINT_STR("\n A5:");
 	DEBUG_PRINT_HEX_WORD(args->a5);
-	DEBUG_PRINT_STR(" A6:");
+	DEBUG_PRINT_STR("\n A6:");
 	DEBUG_PRINT_HEX_WORD(args->a6);
-	DEBUG_PRINT_STR(" A7:");
+	DEBUG_PRINT_STR("\n A7:");
 	DEBUG_PRINT_HEX_WORD(a7);
 }
 
@@ -234,11 +264,12 @@ void mos_reset(void) {
 
 
 	// renable T1, T2, EOC, VS
-	sheila_SYSVIA_ier = VIA_IxR_FLAG|VIA_IxR_T1|VIA_IxR_T2|VIA_IxR_CB1|VIA_IxR_CA2;
-	sheila_SYSVIA_pcr = VIA_PCR_CB2_CTL_IN_NEG|VIA_PCR_CB1_CTL_INT_NEG|VIA_PCR_CA2_CTL_IN_POS;
-	sheila_SYSVIA_acr = VIA_ACR_T1_CTL_CONT_NOPB7|VIA_ACR_T2_CTL_PULSE_PB6|VIA_ACR_PB_LATCH_OFF|VIA_ACR_PA_LATCH_OFF;
-
-	sheila_USRVIA_pcr = VIA_PCR_CB2_CTL_IN_NEG|VIA_PCR_CB1_CTL_INT_NEG|VIA_PCR_CA2_CTL_OUT_HIGH|VIA_PCR_CA1_CTL_INT_NEG;
+	//sheila_SYSVIA_ier = VIA_IxR_FLAG|VIA_IxR_T1|VIA_IxR_T2|VIA_IxR_CB1|VIA_IxR_CA1|VIA_IxR_CA2;
+	sheila_SYSVIA_ier = VIA_IxR_FLAG|VIA_IxR_T1|VIA_IxR_T2|VIA_IxR_CA1|VIA_IxR_CA2; // not CB1
+//	sheila_SYSVIA_pcr = VIA_PCR_CB2_CTL_IN_NEG|VIA_PCR_CB1_CTL_INT_NEG|VIA_PCR_CA2_CTL_IN_POS|VIA_PCR_CA1_CTL_INT_NEG;
+//	sheila_SYSVIA_acr = VIA_ACR_T1_CTL_CONT_NOPB7|VIA_ACR_T2_CTL_PULSE_PB6|VIA_ACR_PB_LATCH_OFF|VIA_ACR_PA_LATCH_OFF;
+//
+//	sheila_USRVIA_pcr = VIA_PCR_CB2_CTL_IN_NEG|VIA_PCR_CB1_CTL_INT_NEG|VIA_PCR_CA2_CTL_OUT_HIGH|VIA_PCR_CA1_CTL_INT_NEG;
 
 	buffers_init();
 
@@ -252,7 +283,11 @@ void mos_reset(void) {
 
 	vdu_init(4);
 
+	sheila_SYSVIA_ifr = 0x7F; //clear all
+
 	interrupts_disable(0);
+	key_set_LEDs();
+
 
 }
 
