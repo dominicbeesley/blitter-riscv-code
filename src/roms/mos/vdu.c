@@ -4,9 +4,13 @@
 #include "interrupts.h"
 #include "debug_print.h"
 #include "font.h"
+#include <assert.h>
 
 #include <string.h>
 #include <stdbool.h>
+
+VDUV_FN VDUV;
+
 
 //this must be X^2-1
 #define MAXMODES 7
@@ -31,6 +35,21 @@ const uint8_t _TBL_MODE_COLOURS[] = {
 			// MODE 7 - 1 COLOUR
 			0x00
 	};
+
+const uint8_t GCOL_OPTS[] = {
+	0x00,
+	0xFF,
+	0x00,
+	0x00,
+	0xFF,
+	0xFF,
+	0xFF,
+	0xFF,
+	0x00,
+	0x00,
+	0xFF,
+	0x00
+};
 
 const uint8_t _TXT_BPC_TABLE[] = {
 		0x08,
@@ -484,6 +503,40 @@ uint16_t SET_CRTC_CURS16_adj(uint16_t addr) {
 	return SET_CURS_CHARSCANAX(addr);
 }
 
+int16_t _LD176_calcintcoord(bool rel, int16_t coord, bool isY) {
+
+	int16_t n = (rel)?coord:coord+((isY)?VDU_G_CUR_EXT.y:VDU_G_CUR_EXT.x);
+	if (isY)
+	{
+		VDU_G_CUR_EXT.y = n;
+		n += VDU_G_ORG_EXT.y;
+	} else	{
+		VDU_G_CUR_EXT.x = n;
+		n += VDU_G_ORG_EXT.x;
+	}
+
+	return n / 2;
+
+}
+
+vdu_coord16 _LD149_scale_coord_mode(bool rel, vdu_coord16 coord) {
+	vdu_coord16 ret;
+	ret.y = _LD176_calcintcoord(rel, coord.y, true) / 2;
+	int d;
+	if (VDU_PIX_BYTE > 3)
+		d = 1;
+	else if (VDU_PIX_BYTE == 3)
+		d = 2;
+	else
+		d = 4;
+	if (VDU_MAP_TYPE)
+		d = d * 2;
+	ret.x = _LD176_calcintcoord(rel, coord.x, false) / d;
+
+	return ret;
+}
+
+
 /*************************************************************************
  *									 *
  *	 VDU 24 - DEFINE GRAPHICS WINDOW				 *
@@ -497,7 +550,35 @@ uint16_t SET_CRTC_CURS16_adj(uint16_t addr) {
  &322/3 Top margin
 */
 void VDU_24(void) {
-	//TODO: GRAPHICS
+	vdu_coord16 oldcur = VDU_G_CUR_EXT;
+		
+	assert(!(((int)VDU_QUEUE + 1) & 1)); // must be halfword aligned
+	vdu_box16 new = *((vdu_box16 *)(VDU_QUEUE+1));
+
+	if (
+		(new.topright.x - new.bottomleft.x < 0 )
+	||	(new.topright.y - new.bottomleft.y < 0 )
+	) goto abandon;
+
+	new.bottomleft = _LD149_scale_coord_mode(false, new.bottomleft);
+	new.topright = _LD149_scale_coord_mode(false, new.topright);
+	
+	if (new.bottomleft.x < 0 || new.bottomleft.y <0)
+		goto abandon;
+	if (new.topright.y >= 256)
+		goto abandon;
+	int16_t xx = new.topright.x / 8;
+
+	if (xx > _TEXT_COL_TABLE[VDU_MODE])
+		goto abandon;
+
+	VDU_G_WIN = new;
+	return;
+
+abandon:
+	VDU_G_CUR_EXT = oldcur;
+	return;
+
 }
 
 uint16_t _LCF06_calc_text_scan() {
@@ -707,6 +788,113 @@ void VDU_8(void) {
 	}
 }
 
+uint8_t _LD10F_checkGWINLIMS(vdu_coord16 coord) {
+	uint8_t ret = 0;
+	if (coord.y < VDU_G_WIN.bottomleft.y)
+		ret |= 4;
+	else if (coord.y > VDU_G_WIN.topright.y)
+		ret |= 8;
+
+	if (coord.x < VDU_G_WIN.bottomleft.x)
+		ret |= 1;
+	else if (coord.x > VDU_G_WIN.topright.x)
+		ret |= 2;
+
+	return ret;
+}
+
+void _LD0D9_MOVEGCURS(vdu_coord16 coord) {
+	VDU_G_CURPREV_INT = VDU_G_CURS;
+	VDU_G_CURS = coord;
+}
+
+uint8_t _LD85D_calcpoint(vdu_coord16 coord) {
+	uint8_t r = _LD10F_checkGWINLIMS(coord);
+	if (r)
+		return r;		//out of bounds - exit
+
+	VDU_G_CURS_SCAN = (coord.y & 0x7) ^ 7;	// row within cell
+
+	VDU_G_MEM = VDU_MEM + ((coord.y ^ 0xFF) >> 3) * VDU_BPR;
+
+	VDU_G_PIX_MASK = VDU_MASK_LEFT >> (coord.x & VDU_PIX_BYTE); // a bit mask
+
+	//TODO: speed up with shifts instead of divs?
+	VDU_G_MEM = VDU_G_MEM + 8*(coord.x / (1 + VDU_PIX_BYTE));
+
+	if (VDU_G_MEM & 0x8000)
+		VDU_G_MEM -= (VDU_MEM_PAGES << 8);
+
+	return 0;
+}
+
+void _LD0F0_plot_int(vdu_coord16 coord) {
+	if (_LD85D_calcpoint(coord))
+		return;
+
+	uint8_t *p = (uint8_t *)(0xFFFF0000 + (VDU_G_CURS_SCAN + VDU_G_MEM));
+
+	uint8_t t1 = (VDU_G_PIX_MASK & VDU_G_OR_MASK) | *p;
+
+	*p = (VDU_G_EOR_MASK & VDU_G_PIX_MASK) ^ t1;
+}
+
+void _LD0B3_set_colour_masks(uint8_t c, uint8_t m) {
+
+	VDU_G_OR_MASK = (c | GCOL_OPTS[1+m]) ^ GCOL_OPTS[2+m];
+	VDU_G_EOR_MASK = (c | GCOL_OPTS[0+m]) ^ GCOL_OPTS[5+m];
+
+}
+
+/*************************************************************************
+ *									 *
+ *	 VDU 25 - PLOT							 *
+ *	 PLOT k,x,y							 *
+ *	 DRAW x,y							 *
+ *	 MOVE x,y							 *
+ *	 PLOT x,y							 *
+ *	 5 parameters							 *
+ *									 *
+ *************************************************************************/
+
+void VDU_25(void) {
+	uint8_t n = VDU_QUEUE[4];
+	if (!VDU_PIX_BYTE) {
+		//text mode
+		VDUV(false, n);
+		return;
+	} else {
+		
+		assert(!(((int)VDU_QUEUE + 5) & 1)); // must be halfword aligned
+		vdu_coord16 coord = *((vdu_coord16 *)(VDU_QUEUE+5));
+
+		coord = _LD149_scale_coord_mode(n & 4, coord);
+		
+		if (n == 0x04) {
+			// quick move
+			_LD0D9_MOVEGCURS(coord);
+			return;
+		} else {
+			if (!(n & 3))
+				_LD0B3_set_colour_masks(0, 5);
+			else if (n & 1)
+				_LD0B3_set_colour_masks((n&2)?VDU_G_BG:VDU_G_FG, (n&2)?VDU_P_BG:VDU_P_FG);
+			else
+				_LD0B3_set_colour_masks(0, 4);
+		}
+		if (n & 0x80) {
+			//extension
+			VDUV(false, n);
+			return;
+		}
+
+
+		//TODO: other types
+		_LD0F0_plot_int(coord);
+		_LD0D9_MOVEGCURS(coord);
+	}
+}
+
 
 /*************************************************************************
  *									 *
@@ -761,6 +949,7 @@ void vdu_mode(uint8_t mode) {
 	mos_latch_write(_TAB_LAT4_MOSZ[t]);	
 	VDU_MEM_PAGES = _VDU_MEMSZ_TAB[t];
 	VDU_PAGE = _VDU_MEMLOC_TAB[t];
+
 	VDU_BPR = _TAB_BPR[t];
 	vidula_set(_ULA_SETTINGS[mode]);
 	for (int i = 0; i < 12; i++) {
@@ -917,7 +1106,7 @@ const VDU_FN _TBL_VDU_ROUTINES[33] = {
 	VDU_0,		// VDU 22  - &C8EB, 1 parameter
 	VDU_0,		// VDU 23  - &C8F1, 9 parameters
 	VDU_24,		// VDU 24  - &CA39, 8 parameters
-	VDU_0,		// VDU 25  - &C9AC, 5 parameters
+	VDU_25,		// VDU 25  - &C9AC, 5 parameters
 	VDU_26,		// VDU 26  - &C9BD, no parameters
 	VDU_0,		// VDU 27  - &C511, no parameters
 	VDU_0,		// VDU 28  - &C6FA, 4 parameters
@@ -973,7 +1162,7 @@ VDU_FN VDU_EXEC;
 void vdu_write(uint8_t c) {
 	if (OSB_VDU_QSIZE) {
 		VDU_QUEUE[9+OSB_VDU_QSIZE] = c;
-		if (!OSB_VDU_QSIZE++)	
+		if (!++OSB_VDU_QSIZE)	
 			VDU_EXEC();
 	} else {
 		if (c == 0x7F || c < 0x20) {
@@ -992,3 +1181,6 @@ void vdu_write(uint8_t c) {
 	}
 }
 
+void vdu_default_VDUV(bool vdu23, uint8_t n) {
+
+}

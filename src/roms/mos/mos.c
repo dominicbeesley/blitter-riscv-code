@@ -280,6 +280,7 @@ void mos_reset(void) {
 	BYTEV = osbyte_default_BYTEV;
 	WORDV = osword_default_WORDV;
 	WRCHV = mos_default_WRCHV;
+	VDUV = vdu_default_VDUV;
 
 	vdu_init(4);
 

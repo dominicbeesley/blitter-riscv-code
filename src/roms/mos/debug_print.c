@@ -42,3 +42,8 @@ void debug_print_hex_word(uint32_t n) {
 	debug_print_hex_byte((uint8_t)(n >> 8));
 	debug_print_hex_byte((uint8_t)(n));
 }
+
+void debug_print_hex_halfword(uint16_t n) {
+	debug_print_hex_byte((uint8_t)(n >> 8));
+	debug_print_hex_byte((uint8_t)(n));
+}

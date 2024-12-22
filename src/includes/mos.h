@@ -2,6 +2,7 @@
 #define __MOS_H__
 
 #include <stdint.h>
+#include <stdbool.h>
 #include "hardware.h"
 
 //TODO: split out into internal secrets vs API and move to internal header / top level header
@@ -270,10 +271,13 @@ typedef uint8_t (*CNPV_FN)(uint8_t buffer, uint8_t flags);
 
 typedef void (*WRCHV_FN)(uint8_t c);
 
+typedef void (*VDUV_FN)(bool vdu23, uint8_t n);
+
 extern INSV_FN INSV;
 extern REMV_FN REMV;
 extern RDCHV_FN RDCHV;
 extern CNPV_FN CNPV;
 extern WRCHV_FN WRCHV;
+extern VDUV_FN VDUV;
 
 #endif
