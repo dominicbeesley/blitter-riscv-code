@@ -9,6 +9,7 @@
 #include <stddef.h>
 #include "debug_print.h"
 #include "vdu.h"
+#include <string.h>
 
 INSV_FN INSV;
 REMV_FN REMV;
@@ -281,6 +282,10 @@ void mos_reset(void) {
 	WORDV = osword_default_WORDV;
 	WRCHV = mos_default_WRCHV;
 	VDUV = vdu_default_VDUV;
+
+	//VDU font explode - TODO: make this like master
+	VDU_FONT_FLAGS = 0x0F;
+	memset(VDU_FONT_LOC, 8, 7);
 
 	vdu_init(4);
 

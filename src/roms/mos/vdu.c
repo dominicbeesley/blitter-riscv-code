@@ -15,7 +15,7 @@ VDUV_FN VDUV;
 //this must be X^2-1
 #define MAXMODES 7
 
-#define SCREENADDR(A) (uint8_t *)(0xFFFF0000 | (uint32_t)A)
+#define SCREENADDR(A) (uint8_t *)(0xFFFF0000 | ((uint32_t)A))
 
 const uint8_t _TBL_MODE_COLOURS[] = {
 			// MODE 0 - 2 COLOURS
@@ -35,6 +35,42 @@ const uint8_t _TBL_MODE_COLOURS[] = {
 			// MODE 7 - 1 COLOUR
 			0x00
 	};
+
+const uint8_t _LC432_COLOURS_TAB[] = {
+//********** 2 COLOUR MODES PARAMETER LOOK UP TABLE WITHIN TABLE **********
+
+			0x00,
+			0xff,
+
+
+//*************** 4 COLOUR MODES PARAMETER LOOK UP TABLE ******************
+
+			0x00,
+			0x0f,
+			0xf0,
+			0xff,
+
+
+//***************16 COLOUR MODES PARAMETER LOOK UP TABLE ******************
+
+			0x00,
+			0x03,
+			0x0c,
+			0x0f,
+			0x30,
+			0x33,
+			0x3c,
+			0x3f,
+			0xc0,
+			0xc3,
+			0xcc,
+			0xcf,
+			0xf0,
+			0xf3,
+			0xfc,
+			0xff
+		};
+
 
 const uint8_t GCOL_OPTS[] = {
 	0x00,
@@ -313,7 +349,48 @@ const uint8_t _TEXT_COL_TABLE[] = {
 };
 
 
+//*********** TELETEXT CHARACTER CONVERSION TABLE  ************************
 
+uint8_t _TELETEXT_CHAR_TAB[] = {
+
+	0x23,				// '#' -> '_'
+	0x5f,				// '_' -> '`'
+	0x60,				// '`' -> '#'
+	0x23				// '#'
+};
+
+
+//****** 16 COLOUR MODE BYTE MASK LOOK UP TABLE******
+// also used to translate a nybble of font def to 4 colour pixel values
+
+uint8_t _COL16_MASK_TAB[] = {
+	0x00,
+	0x11,
+	0x22,
+	0x33,
+	0x44,
+	0x55,
+	0x66,
+	0x77,
+	0x88,
+	0x99,
+	0xaa,
+	0xbb,
+	0xcc,
+	0xdd,
+	0xee,
+	0xff
+};
+
+//****** 4 COLOUR MODE BYTE MASK LOOK UP TABLE******
+// also used to translate a pair of bits in a font definition to MODE 2 pixels
+
+uint8_t _COL4_MASK_TAB[] = {
+	0x00,
+	0x55,
+	0xaa,
+	0xff
+};
 
 
 void vidula_set(uint8_t n) {
@@ -780,6 +857,7 @@ void VDU_8(void) {
 			if (VDU_CRTC_CUR < (VDU_PAGE << 8)) {
 				VDU_CRTC_CUR += VDU_MEM_PAGES << 8;
 			}
+			VDU_T_CURS_X = X;
 			SET_CRTC_CURS16_adj(VDU_CRTC_CUR);
 			return;
 		}
@@ -1066,8 +1144,103 @@ void VDU_13(void) {
 	}
 }
 
+void _BC7FF(uint8_t Y) {
+	uint8_t c = VDU_QUEUE[8];
+	if (c & 0x80)
+		Y++;;
+	c = c & VDU_COL_MASK;
+	if (!VDU_COL_MASK)
+		return;
+	uint8_t X = (VDU_COL_MASK & 7) + c - 1;
+	uint8_t f = _LC432_COLOURS_TAB[X];
+	((uint8_t *)&VDU_T_FG)[Y] = f;
+	if (Y>=2) {
+		// graphics mode
+		((uint8_t *)&VDU_G_FG)[Y] = VDU_QUEUE[7]; // GCOL code
+	} else {
+		VDU_T_EOR_MASK = VDU_T_FG ^ 0xFF;
+		VDU_T_OR_MASK = VDU_T_EOR_MASK ^ VDU_T_BG;		
+	}
+}
+
+/*************************************************************************
+ *									 *
+ *	 VDU 17 - DEFINE TEXT COLOUR					 *
+ *	 COLOUR n							 *
+ *									 *
+ *	 1 parameter							 *
+ *									 *
+ *************************************************************************/
+
+void VDU_17(void) {
+	_BC7FF(0);
+}
+
+/*************************************************************************
+ *									 *
+ *	 VDU 18 - DEFINE GRAPHICS COLOUR				 *
+ *	 GCOL k,c							 *
+ *									 *
+ *	 2 parameters							 *
+ *									 *
+ *************************************************************************/
+
+void VDU_18(void) {
+	_BC7FF(2);
+}
+
+
+const uint8_t *_LD03E_font_addr(uint8_t c) {
+	uint8_t r = c >> 6;		// usrdef region index	
+	if (VDU_FONT_FLAGS & (0x80 >> r))
+		return (uint8_t *) ((c & 0xF8) + (VDU_FONT_LOC[r-1] << 8));
+	else
+		return mos_FONT + (c-32) * 8;
+}
+
 void VDU_OUT_CHAR(uint8_t c) {
-	memcpy(SCREENADDR(VDU_TOP_SCAN), mos_FONT + (c-32)*8, 8);
+	if (VDU_COL_MASK == 0) {
+		//MODE 7
+		int Y = 2;
+		do {
+			if (_TELETEXT_CHAR_TAB[Y] == c) {
+				c = _TELETEXT_CHAR_TAB[Y+1];
+			}
+			Y--;
+		} while (Y >= 0);
+		*SCREENADDR(VDU_TOP_SCAN) = c;
+		return;
+	} else {
+		const uint8_t *fa = _LD03E_font_addr(c);
+		if (VDU_STATUS & VDUSTATUS_GFX)
+		{
+			//TODO: VDU5
+		} else {
+			if (VDU_COL_MASK == 1)
+				memcpy(SCREENADDR(VDU_TOP_SCAN), fa, 8);
+			else if (VDU_COL_MASK == 3) {
+				// mode 1/5
+				for (int i = 0; i < 8; i++) {
+					uint8_t d = fa[i];
+					*SCREENADDR(VDU_TOP_SCAN+i) = 
+						(_COL16_MASK_TAB[d >> 4] | VDU_T_OR_MASK) ^ VDU_T_EOR_MASK;
+					*SCREENADDR(VDU_TOP_SCAN+i+8) = 
+						(_COL16_MASK_TAB[d & 0xF] | VDU_T_OR_MASK) ^ VDU_T_EOR_MASK;
+				}
+			} else {
+				// mode 2
+				for (int i = 0; i < 8; i++) {
+					uint8_t d = fa[i];
+					for (int j = 0; j < 4; j++) {
+						uint8_t d2 = d >> 6;
+						d = d << 2;
+						*SCREENADDR(VDU_TOP_SCAN+i+8*j) = 
+							(_COL4_MASK_TAB[d2] | VDU_T_OR_MASK) ^ VDU_T_EOR_MASK;
+					}
+				}
+			}
+		}
+	}
 }
 
 void vdu_init(uint8_t mode) {
@@ -1098,12 +1271,12 @@ const VDU_FN _TBL_VDU_ROUTINES[33] = {
 	VDU_0,		// VDU 14  - &C58D, no parameters
 	VDU_0,		// VDU 15  - &C5A6, no parameters
 	VDU_0,		// VDU 16  - &C7C0, no parameters
-	VDU_0,		// VDU 17  - &C7F9, 1 parameter
-	VDU_0,		// VDU 18  - &C7FD, 2 parameters
+	VDU_17,		// VDU 17  - &C7F9, 1 parameter
+	VDU_18,		// VDU 18  - &C7FD, 2 parameters
 	VDU_19,		// VDU 19  - &C892, 5 parameters
 	VDU_20,		// VDU 20  - &C839, no parameters
 	VDU_0,		// VDU 21  - &C59B, no parameters
-	VDU_0,		// VDU 22  - &C8EB, 1 parameter
+	VDU_22,		// VDU 22  - &C8EB, 1 parameter
 	VDU_0,		// VDU 23  - &C8F1, 9 parameters
 	VDU_24,		// VDU 24  - &CA39, 8 parameters
 	VDU_25,		// VDU 25  - &C9AC, 5 parameters

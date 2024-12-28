@@ -81,13 +81,7 @@ typedef struct {
 #define VDU_TI_CURS_Y		(*((uint8_t *)0x0365))
 #define VDU_TTX_CURSOR		(*((uint8_t *)0x0366))
 #define VDU_FONT_FLAGS		(*((uint8_t *)0x0367))
-#define VDU_FONTLOC_20		(*((uint8_t *)0x0368))
-#define VDU_FONTLOC_40		(*((uint8_t *)0x0369))
-#define VDU_FONTLOC_60		(*((uint8_t *)0x036a))
-#define VDU_FONTLOC_80		(*((uint8_t *)0x036b))
-#define VDU_FONTLOC_A0		(*((uint8_t *)0x036c))
-#define VDU_FONTLOC_B0		(*((uint8_t *)0x036d))
-#define VDU_FONTLOC_C0		(*((uint8_t *)0x036e))
+#define VDU_FONT_LOC		((uint8_t *)0x0368)	//7 cell array
 #define VDU_PALETTE		((uint8_t *)0x036f)
 
 
