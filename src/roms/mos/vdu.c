@@ -973,6 +973,18 @@ void VDU_25(void) {
 	}
 }
 
+//***** calculate external coordinates from internal coordinates************
+
+void _LD1B8_calc_ext(void) {
+	VDU_G_CUR_EXT.y = (VDU_G_CURS.y << 2) - VDU_G_ORG_EXT.y;
+	int n = VDU_PIX_BYTE;
+	int s = 4;
+	do {
+		s--;
+		n >>= 1;
+	} while (n);
+	VDU_G_CUR_EXT.x = (VDU_G_CURS.x << s) - VDU_G_ORG_EXT.x;
+}
 
 /*************************************************************************
  *									 *
@@ -1190,6 +1202,20 @@ void VDU_18(void) {
 }
 
 
+/*************************************************************************
+ *									 *
+ *	 VDU 29 - SET GRAPHICS ORIGIN					 *
+ *									 *
+ *	 4 parameters							 *
+ *									 *
+ *************************************************************************/
+
+void VDU_29(void) {
+	VDU_G_ORG_EXT = *((vdu_coord16 *)(VDU_QUEUE+5));
+	_LD1B8_calc_ext();
+}
+
+
 const uint8_t *_LD03E_font_addr(uint8_t c) {
 	uint8_t r = c >> 6;		// usrdef region index	
 	if (VDU_FONT_FLAGS & (0x80 >> r))
@@ -1283,7 +1309,7 @@ const VDU_FN _TBL_VDU_ROUTINES[33] = {
 	VDU_26,		// VDU 26  - &C9BD, no parameters
 	VDU_0,		// VDU 27  - &C511, no parameters
 	VDU_0,		// VDU 28  - &C6FA, 4 parameters
-	VDU_0,		// VDU 29  - &CAA2, 4 parameters
+	VDU_29,		// VDU 29  - &CAA2, 4 parameters
 	VDU_30,		// VDU 30  - &C779, no parameters
 	VDU_31,		// VDU 31  - &C787, 2 parameters
 	VDU_0		// VDU 127 - &CAAC, no parameters
