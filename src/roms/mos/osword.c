@@ -16,6 +16,14 @@ void osword_default_WORDV(uint8_t A, void *block) {
 			*q++=*p--;	// reverse endian
 		}
 		return;
+	} else if (A == 2) {
+		//write time
+		volatile uint8_t *p = TIME_VAL1_MSB + (OSB_TIME_SWITCH ^ 0xF) - 1;
+		volatile uint8_t *q = (uint8_t *)block;
+		for (int i = 0 ; i < 5; i++) {
+			*p--=*q++;	// reverse endian
+		}
+		return;
 	}
 
 	DEBUG_PRINT_STR("UNKNOWN OSWORD:");
