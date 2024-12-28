@@ -123,7 +123,7 @@ void mos_default_IRQ1V() {
 		sysviaifr = sysviaifr & sheila_SYSVIA_ier; //TODO: *OSB_VIA_IER mask from mos vars
 		if (sysviaifr & VIA_IxR_CA1)
 		{
-			//TODO:
+		//TODO:CFS?
 //
 //; System VIA CA1 interupt (Frame Sync)
 //
@@ -131,29 +131,20 @@ void mos_default_IRQ1V() {
 //			lda	RS423_TIMEOUT			; A=RS423 Timeout counter
 //			bpl	_BDD1E				; if +ve then DD1E
 //			inc	RS423_TIMEOUT			; else increment it
-//_BDD1E:			lda	OSB_FLASH_TIME			; load flash counter
-//			beq	_BDD3D				; if 0 then system is not in use, ignore it
-//			dec	OSB_FLASH_TIME			; else decrement counter
-//			bne	_BDD3D				; and if not 0 go on past reset routine
-//
-//			ldx	OSB_FLASH_SPC			; else get mark period count in X
-//			lda	OSB_VIDPROC_CTL			; current VIDEO ULA control setting in A
-//			lsr					; shift bit 0 into C to check if first colour
-//			bcc	_BDD34				; is effective if so C=0 jump to DD34
-//
-//			ldx	OSB_FLASH_MARK			; else get space period count in X
-//_BDD34:			rol					; restore bit
-//			eor	#$01				; and invert it
-//			jsr	VID_ULA_SET				; then change colour
-//
-//			stx	OSB_FLASH_TIME			; &0251=X resetting the counter
-//
-//_BDD3D:			ldy	#$04				; Y=4 and call E494 to check and implement vertical
-//			jsr	_OSEVEN				; sync event (4) if necessary
 
+			if (OSB_FLASH_TIME) {
+				if (!(--OSB_FLASH_TIME)) {
+					uint8_t v = OSB_VIDPROC_CTL;
+					if (v & 1) 
+						OSB_FLASH_TIME = OSB_FLASH_MARK;
+					else
+						OSB_FLASH_TIME = OSB_FLASH_SPC;
+					vidula_set(v ^ 1);
+				}
+			}
 
-//			lda	#$02				; A=2
-//			jmp	_LDE6E				; clear interrupt 1 and exit
+			mos_event_raise(EVENT_04_VSYNC, 0, 0);
+
 			sheila_SYSVIA_ifr = VIA_IxR_CA1;
 			return;
 		} else if (sysviaifr & VIA_IxR_T2) {
@@ -254,6 +245,11 @@ void mos_reset(void) {
 	OSB_ESCAPE = 27;
 	OSB_ESC_ACTION = 0;
 	OSB_ESC_EFFECTS = 0;
+
+	OSB_FLASH_MARK = 19;
+	OSB_FLASH_SPC = 19;
+	OSB_FLASH_TIME = OSB_FLASH_MARK;
+
 
 	OSB_VDU_QSIZE = 0;
 

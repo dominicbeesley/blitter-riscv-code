@@ -13,6 +13,8 @@ extern void vdu_osbyte_155_SET_PALETTE(uint8_t X);
 
 extern void vdu_default_VDUV(bool vdu23, uint8_t n);
 
+extern void vidula_set(uint8_t n);
+
 typedef struct {
 	int16_t	x;
 	int16_t y;

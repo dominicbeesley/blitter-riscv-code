@@ -218,6 +218,7 @@ struct mos_args {
 #define EVENT_00_OUTPUT_BUFFER_EMPTY	0
 #define EVENT_01_INPUT_BUFFER_FULL	1
 #define EVENT_02_CHAR_ENTER_BUFFER 	2
+#define EVENT_04_VSYNC			4
 #define EVENT_06_ESCAPE			6
 
 #define OSBYTE_0_HOST_OS			0
