@@ -727,10 +727,12 @@ void _LCEAC_clear_line(void) {
 }
 
 void _LCDFF_soft_scroll_up(void) {
+    //TODO:_LCDFF_soft_scroll_up
     DEBUG_PRINT_STR("SOFT SCROLL UP");
 }
 
 void _LCDA4_soft_scroll_down(void) {
+    //TODO:_LCDA4_soft_scroll_down
     DEBUG_PRINT_STR("SOFT SCROLL DOWN");
 }
 
@@ -907,15 +909,20 @@ uint8_t _LD85D_calcpoint(vdu_coord16 coord) {
     return 0;
 }
 
-void _LD0F0_plot_int(vdu_coord16 coord) {
-    if (_LD85D_calcpoint(coord))
-        return;
+void point_at_G_MEM(void) {
 
     uint8_t *p = (uint8_t *)(0xFFFF0000 + (VDU_G_CURS_SCAN + VDU_G_MEM));
 
     uint8_t t1 = (VDU_G_PIX_MASK & VDU_G_OR_MASK) | *p;
 
     *p = (VDU_G_EOR_MASK & VDU_G_PIX_MASK) ^ t1;
+
+}
+
+void _LD0F0_plot_int(vdu_coord16 coord) {
+    if (_LD85D_calcpoint(coord))
+        return;
+    point_at_G_MEM();
 }
 
 void _LD0B3_set_colour_masks(uint8_t c, uint8_t m) {
@@ -932,33 +939,54 @@ vdu_coord16 subtract_coords(vdu_coord16 a, vdu_coord16 b) {
     return r;
 }
 
-void drawline_major_up(void) {}
-void drawline_major_right(void) {}
+void _LD3ED_drawline_right_cell(void) {
+    VDU_G_PIX_MASK = VDU_MASK_LEFT;
+    VDU_G_MEM += 8;
+    if (VDU_G_MEM & 0x8000)
+        VDU_G_MEM -= (VDU_MEM_PAGES << 8);
+}
 
-typedef void (*fn_maj)(void);
+void _LD3FD_drawline_left_cell(void) {
+    VDU_G_PIX_MASK = VDU_MASK_RIGHT;
+    VDU_G_MEM -= 8;
+    if (VDU_G_MEM < (VDU_PAGE << 8))
+        VDU_G_MEM += (VDU_MEM_PAGES << 8);
+}
+
+void _LD3D3_drawline_upone_cell(void) {
+    VDU_G_MEM -= VDU_BPR;
+    if (VDU_G_MEM < (VDU_PAGE << 8))
+        VDU_G_MEM += (VDU_MEM_PAGES << 8);
+    VDU_G_CURS_SCAN = 7;
+}
+
+void _drawline_downone_cell(void) {
+    VDU_G_MEM += VDU_BPR;
+    if (VDU_G_MEM & 0x8000)
+        VDU_G_MEM -= (VDU_MEM_PAGES << 8);
+    VDU_G_CURS_SCAN = 0;
+}
 
 void _LD1ED_draw_line(vdu_coord16 coord) {
+
     vdu_coord16 sz = subtract_coords(VDU_G_CURS, coord);
 
     int slope;
-
-    fn_maj fnmaj;
-
-    if (abs(sz.y) > abs(sz.x))
-    {
-        fnmaj = drawline_major_up;
-        slope = 2;
-    } else {
-        fnmaj = drawline_major_right;
-        slope = 0;
-    }
-
     int16_t endmaj;
     vdu_coord16 xy;
     vdu_coord16 end;
-    uint8_t flags = (VDU_QUEUE[4] & 0x10) << 3;
+    uint8_t flags = (VDU_QUEUE[4] & 0x10) << 3;     //set dot flag if requested in bit 7
+    bool flip = false;
+    if (abs(sz.y) > abs(sz.x))
+    {
+        slope = 2;
+        flip = sz.y > 0;
+    } else {
+        slope = 0;
+        flip = sz.x > 0;
+    }
 
-    if (sz.x > 0) {
+    if (flip) {
         xy = coord;
         end = VDU_G_CURS;
     } else {
@@ -972,7 +1000,9 @@ void _LD1ED_draw_line(vdu_coord16 coord) {
         flags |= 0x40;
     uint8_t limsend = _LD10F_checkGWINLIMS(end);
     if (limstart & limsend)
+    {
         return;                 // both ends out of bounds in same dimension must be off screen
+    }
 
     if (slope)
         limstart >>= 2;
@@ -983,7 +1013,7 @@ void _LD1ED_draw_line(vdu_coord16 coord) {
     uint16_t delta_minor;
     uint16_t delta_major;
     int32_t  error_acc;
-    int loopcounter = -abs(endmaj - (slope)?xy.y:xy.x);
+    int loopcounter = -abs(endmaj - ((slope)?xy.y:xy.x));
 
     //limits all worked out now initialise the Bresenham deltas and accumulator
     if (slope) {
@@ -996,7 +1026,130 @@ void _LD1ED_draw_line(vdu_coord16 coord) {
     error_acc = delta_major >> 1;
 
     //now work out which minor function we need
+    uint8_t slope2 = slope ^ 2;
+    if ((sz.x < 0) != (sz.y < 0)) {
+        // if X/Y slopes different
+        slope2++;
+    }
 
+
+    bool dotornot = true;
+    uint8_t minorcounter;
+    
+    switch (slope) {
+        case 0:
+            //right
+            minorcounter = VDU_G_WIN.topright.x - xy.x;
+            break;
+        case 1:
+            //left
+            minorcounter = VDU_G_WIN.bottomleft.x - xy.x;
+            break;
+        case 2:
+            //up
+            minorcounter = VDU_G_WIN.topright.y - xy.y;
+            break;
+        case 3:
+            //down
+            minorcounter = VDU_G_WIN.bottomleft.y - xy.y;
+            break;
+    }
+    minorcounter = abs(minorcounter)+1;
+
+    _LD85D_calcpoint(xy);
+
+    loopcounter--;
+
+
+//    DEBUG_PRINTF("W:%d,H:%d\n,X:%d,Y:%d\nEMAJ:%d,S:%d,S2:%d,F:%x,LC:%d,LC2:%d\n", (int)sz.x, (int)sz.y, (int)xy.x, (int)xy.y, (int)endmaj, (int)slope, (int)slope2, (int)flags, (int)loopcounter, (int)minorcounter);
+
+
+    do {        
+        bool dopoint = false;
+        if (flags & 0x80) {
+            dopoint = dotornot;
+            dotornot = !dotornot;
+        } else if (flags == 0) {
+            dopoint = true;
+        } else {
+            //OOB: check 
+            dopoint = _LD85D_calcpoint(xy) == 0;
+        }
+
+
+        if (dopoint)
+        {
+            point_at_G_MEM();
+        }
+        
+        error_acc -= delta_minor;
+        if (error_acc < 0) {
+            if (((flags & 0x40) == 0) && !(--minorcounter))
+            {
+                return;
+            }
+
+            error_acc += delta_major;
+            
+            switch (slope2) {
+                case 0: // right
+                    if (VDU_G_PIX_MASK & 0x01)
+                        _LD3ED_drawline_right_cell();
+                    else
+                        VDU_G_PIX_MASK >>= 1;
+                    if (flags & 0x40)
+                        xy.x++;
+                    break;
+                case 1: // left
+                    if (VDU_G_PIX_MASK & 0x80)
+                        _LD3FD_drawline_left_cell();
+                    else
+                        VDU_G_PIX_MASK <<= 1;
+                    if (flags & 0x40)
+                        xy.x--;
+                    break;
+                case 2: // up
+                    if (!VDU_G_CURS_SCAN)
+                        _LD3D3_drawline_upone_cell();
+                    else
+                        VDU_G_CURS_SCAN--;
+                    if (flags & 0x40)   
+                        xy.y++;
+                    break;
+                case 3: // down
+                    if (VDU_G_CURS_SCAN == 7)
+                        _drawline_downone_cell();
+                    else
+                        VDU_G_CURS_SCAN++;
+                    if (flags & 0x40)   
+                        xy.y--;
+                    break;
+            }
+        }
+        //major
+        if (slope) {
+            if (!VDU_G_CURS_SCAN)
+                _LD3D3_drawline_upone_cell();
+            else
+                VDU_G_CURS_SCAN--;
+            if (flags & 0x40)   
+                xy.y++;
+        } else {
+            if (VDU_G_PIX_MASK & 0x01)
+                _LD3ED_drawline_right_cell();
+            else
+                VDU_G_PIX_MASK >>= 1;
+            if (flags & 0x40)
+                xy.x++;
+        }
+        
+        if (!++loopcounter)
+        {
+            return;
+        }
+
+
+    } while (1);
 
 }
 
@@ -1019,6 +1172,8 @@ void VDU_25(void) {
         return;
     } else {
         
+//        DEBUG_PRINTF("VDU25,%x,%d,%d\n", (int)n, (int)*((int16_t *)(VDU_QUEUE+5)),(int)*((int16_t *)(VDU_QUEUE+7)));
+
         assert(!(((int)VDU_QUEUE + 5) & 1)); // must be halfword aligned
         vdu_coord16 coord = *((vdu_coord16 *)(VDU_QUEUE+5));
 
@@ -1101,10 +1256,6 @@ void _LCBC1_DOCLS() {
     OSB_HALT_LINES = 0;
     VDU_T_CURS_X = 0;
     VDU_T_CURS_Y = 0;
-
-    DEBUG_PRINT_STR("CLS");
-    DEBUG_PRINT_HEX_WORD((uint32_t)SCREENADDR(VDU_MEM));
-    DEBUG_PRINT_HEX_WORD(((uint16_t)VDU_MEM_PAGES << 8));
 
     memset(SCREENADDR(VDU_MEM), VDU_T_BG, (uint16_t)VDU_MEM_PAGES << 8);
 

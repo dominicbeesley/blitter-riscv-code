@@ -1,11 +1,15 @@
 #include "debug_print.h"
 #include "deice.h"
+#include <stdarg.h>
+#include <stdio.h>
 
 uint8_t * const SCREENBASE = (unsigned char *)0xFFFF7C00;
 extern unsigned char const splash;
 
 volatile uint8_t *scrptr;
 char a = 'x';
+
+char buf[256];
 
 void debug_print_init() {
 	
@@ -46,4 +50,13 @@ void debug_print_hex_word(uint32_t n) {
 void debug_print_hex_halfword(uint16_t n) {
 	debug_print_hex_byte((uint8_t)(n >> 8));
 	debug_print_hex_byte((uint8_t)(n));
+}
+
+
+void debug_printf(const char *format, ...) {
+	va_list args;
+  	va_start (args, format);
+	vsnprintf(buf, 256, format, args);
+	va_end (args);
+	debug_print_str(buf);
 }
