@@ -43,6 +43,8 @@ void main(void) {
 
 	vdu_str("Risc V MOS - Dossy 2024\r\n");
 
+	do {} while (1);
+
 	do {
 
 		int c = mos_osrdch();
