@@ -20,35 +20,52 @@ RELDIR:=$(shell realpath --relative-to=$(TOP) $(shell dirname $(CALLER_MAKE)))
 
 # BUILD_TOP topmost build path - may be overridden
 BUILD_TOP?=$(TOP)/../build
-
-# current build folder
-BUILD=$(BUILD_TOP)/$(RELDIR)
-
-# SSDS - folder where SSDS should be built
-SSDS?=$(BUILD_TOP)/ssds
-
-x:=$(shell mkdir -p $(SSDS))
-x:=$(shell mkdir -p $(BUILD))
-
 # DEPLOY_TOP - the deploy target will extract .ssd files to subfolders of this folder
 DEPLOY_TOP?=~/hostfs
+
+
 
 
 RISCV_GNU_TOOLCHAIN_INSTALL_PREFIX = /opt/riscv
 TOOLCHAIN_PREFIX = $(RISCV_GNU_TOOLCHAIN_INSTALL_PREFIX)/bin/riscv32-unknown-elf-
 
-COMPRESSED_ISA=C
-#COMPRESSED_ISA=
+ifndef FLAVOUR
+$(error FLAVOUR not specified)
+else
+ifeq ("$(FLAVOUR)", "HAZARD3")
+MARCH=rv32imczicsr
+TOPDEFS=-DFLAVOUR_HAZARD3
+else
+ifeq ("$(FLAVOUR)", "PICORV32")
+MARCH=rv32imc
+TOPDEFS=-DFLAVOUR_PICORV32
+else
+$(error unrecognized FLAVOUR $(FLAVOUR) should be one of (HAZARD3,PICORV32))
+endif
+endif
+endif
+
+# current build folder
+BUILD=$(BUILD_TOP)/$(FLAVOUR)/$(RELDIR)
+
+
+# SSDS - folder where SSDS should be built
+SSDS?=$(BUILD)/$(FLAVOUR)/ssds
+
+x:=$(shell mkdir -p $(BUILD))
+x:=$(shell mkdir -p $(SSDS))
+
+
 
 RISCV_CC=$(TOOLCHAIN_PREFIX)gcc
 #TODO -Wno-array-bounds needed for aparent bug in gcc (xxx *)(0xXXXX) access always give warning
-RISCV_CC_FLAGS=-I $(INC) -mabi=ilp32 -march=rv32im$(subst C,c,$(COMPRESSED_ISA)) --freestanding -Wall -Wno-array-bounds
+RISCV_CC_FLAGS=-I $(INC) -mabi=ilp32 -march=$(MARCH) --freestanding -Wall -Wno-array-bounds
 
 RISCV_LD=$(TOOLCHAIN_PREFIX)gcc
-RISCV_LD_FLAGS=-mabi=ilp32 -march=rv32im$(subst C,c,$(COMPRESSED_ISA))
+RISCV_LD_FLAGS=-mabi=ilp32 -march=$(MARCH)
 
 RISCV_AS=$(TOOLCHAIN_PREFIX)gcc
-RISCV_AS_FLAGS=-I $(INC) -mabi=ilp32 -march=rv32im$(subst C,c,$(COMPRESSED_ISA))
+RISCV_AS_FLAGS=-I $(INC) -mabi=ilp32 -march=$(MARCH)
 
 RISCV_OBJCOPY=$(TOOLCHAIN_PREFIX)objcopy
 RISCV_OBJDUMP=$(TOOLCHAIN_PREFIX)objcopy
