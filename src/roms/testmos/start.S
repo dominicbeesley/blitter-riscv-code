@@ -1,6 +1,16 @@
 #ifdef FLAVOUR_PICORV32
 		#include "custom_ops.S"
 #endif
+
+#ifdef FLAVOUR_HAZARD3
+#define hazard3_csr_meiea      0xbe0 // External interrupt pending array
+#define hazard3_csr_meipa      0xbe1 // External interrupt enable array
+#define hazard3_csr_meifa      0xbe2 // External interrupt force array
+#define hazard3_csr_meipra     0xbe3 // External interrupt priority array
+#define hazard3_csr_meinext    0xbe4 // Next external interrupt
+#define hazard3_csr_meicontext 0xbe5 // External interrupt context register
+#endif
+
 		#include "hardware.S"
 
 sheila			= 0xFFFFFE00
@@ -305,10 +315,16 @@ rllp:		sb	t0, sheila_SYSVIA_orb(zero)
 		
 
 #ifdef FLAVOUR_HAZARD3
-		// this is not using the Hazard3 custom interrupt controller - all interrupts come in as "external?"
+
+		// set up the H3 custom irq controller
+		li	t0, (7<<16)|(0)
+		csrrs	x0, hazard3_csr_meiea, t0	// enable all external interrupts (debug, nmi, irq)
+
+		// and the general priv mode interrupts stuff
 		li	t0, 1<<11
 		csrrs	x0, mie, t0			// enable external interrupts
 		csrrsi	x0, mstatus, 1<<3		// enable global interrupts
+
 #endif
 
 
@@ -493,12 +509,20 @@ interrupts_handle_enter:
 		sw	x1, 124(zero)
 		picorv32_getq_insn(x1, q1)
 		sw	x1, 128(zero)
+		picorv32_getq_insn(x1, q2)
+		sw	x1, 132(zero)
+		picorv32_getq_insn(x1, q3)
+		sw	x1, 136(zero)
 #endif
 #ifdef FLAVOUR_HAZARD3
 		csrr	x1, mcause
 		sw	x1, 124(zero)
 		csrr	x1, mepc
 		sw	x1, 128(zero)
+		csrr	x1, hazard3_csr_meicontext
+		sw	x1, 132(zero)
+		csrrs	x1, hazard3_csr_meipa, 0
+		sw	x1, 136(zero)
 #endif
 
 		// we're not really expecting interrupts, display an error screen
@@ -533,7 +557,7 @@ skQ2:		jal	hexbyte
 		jal	printch
 isk:		addi	a4, a4, 1
 		addi	a5, a5, 4
-		slti	a0, a4, 34
+		slti	a0, a4, 36
 		bnez	a0, ilp
 
 sop:		j sop
