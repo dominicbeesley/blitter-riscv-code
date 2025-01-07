@@ -37,8 +37,8 @@ interrupts_init:
 		// for now assume external interrupt controller present
 
 		//TODO: vector to at least separate out soft/external/etc interrupts but that requires some space
-		//la		a0, handle_trap	//NOT VECTORED!
-		//csrrw	x0, mtvec, a0
+		la	a0, trap_table+1		//vectored through table in shims area
+		csrrw	x0, mtvec, a0
 
 		// set up the H3 custom irq controller
 		li	t0, (0xFF0<<16)|(0)
@@ -345,20 +345,100 @@ interrupts_handle:
 
 		picorv32_retirq_insn()
 
+str_unex:	.asciz "An unexpected exception: "
 
+trap_unex:	// an unexpected exception occurred just dump to deice log - don't worry about
+		// actually entering deice yet?
+		//	caller's sp,ra,a1,a0 stacked 
+		la	a0, str_unex
+		jal	deice_print_str
+
+		csrr	a0, mcause
+		jal	deice_print_hex_word
+
+		li	a0, '\n'
+		jal	deice_print_ch
+
+lock:		j	lock
+
+
+
+
+//////////////////////////////////////// SHIMS AREA /////////////////////////////////////////////
+
+		.macro VEC dest
+s\@:		j	\dest
+		.align(2)
+		.endm
 
 		// this must be placed in top-half of ROM with the vectors
 		// to ensure it's mapped in to memory at FF FF00 at boot time
 		// and will jump "down" to correct memory 7D 0000 when running
 		.section entry_shims, "ax", @progbits
-		.align(2)
-ih_addr:	.word interrupts_handle
-interrupts_handle_enter:
-		// need to do a long/absolute jump here as CPU will think we're running
-		// in FFFFCxxx when we're actually in 007D0xxx
-		picorv32_setq_insn(q2, ra)	// save return address
-		lw	ra,ih_addr
-		jr	ra
+		// hopefully this is at the start of the section and already aligned
+		// it needs to be aligned to the nearest power of two beyond the vector
+		// table's end
+		.align(6)			
+trap_table:	VEC(trap_exception_s)	// 0 - internal interrupt
+		VEC(trap_unex_s)	// 1
+		VEC(trap_unex_s)	// 2
+		VEC(trap_unex_s)	// 3 - software interrupt
+		VEC(trap_unex_s)	// 4
+		VEC(trap_unex_s)	// 5
+		VEC(trap_unex_s)	// 6
+		VEC(trap_unex_s)	// 7 - timer interrupt
+		VEC(trap_unex_s)	// 8
+		VEC(trap_unex_s)	// 9
+		VEC(trap_unex_s)	// 10
+		VEC(trap_external_s)	// 11 - external interrupt
+
+
+		// an unexpected trap occurred
+trap_unex_s:	// fall through an check mcause when stack set up
+
+trap_exception_s:
+		csrrw	x0, mscratch, ra
+		la	ra, trap_unex		
+		// we're gonna need a stack...
+		la	ra, mos_stack_base
+		blt	sp, ra, t_newstack
+		la	ra, mos_stack_top
+		blt	sp, ra, t_okstack
+t_newstack:	mv	ra, sp			// save old stack pointer
+		la	sp, mos_stack_top	// set up stack - TODO: this should be stored somewhere when re-entering upcalls/event handlers
+t_okstack:
+		// we now have a stack 
+		addi	sp, sp, -16
+		sw	ra, 12(sp)		// 12(sp)	caller's sp
+		csrr	ra, mscratch		
+		sw	ra, 8(sp)		// 8(sp)	caller's ra
+		sw	a1, 4(sp)		// 4(sp)	caller's a1
+		sw	a0, 0(sp)		// 0(sp)	caller's a0
+
+		csrr	a0, mcause
+		bgez	a0, t_unx
+		// use table to enter relevant routine in non-shims area
+		slli	a0, a0, 2
+		la	a1, tbl_except
+		addi	a0, a1, a0
+		jr	a0			// jump to table entry
+
+t_unx:		// mcause top bit set
+		la	ra, trap_unex
+		jr	ra			// unex trap in main code
+
+tbl_except:	.addr	handle_ex_0_inst_misalign
+		.addr	handle_ex_1_inst_access_fault
+		.addr	handle_ex_2_inst_illegal
+		.addr	handle_ex_3_inst_breakpoint
+		.addr	handle_ex_4_load_misalign
+		.addr	handle_ex_5_load_access_fault
+		.addr	handle_ex_6_store_misalign
+		.addr	handle_ex_7_store_access_fault
+		.addr	trap_unex
+		.addr	trap_unex
+		.addr	trap_unex
+		.addr	handle_ex_11_ecall
 
 		.section irq, "ax", @progbits
-irq_hw:		j 	interrupts_handle_enter
+irq_hw:		j 	trap_unex_s		// treat an early interrupt as an unexpected event

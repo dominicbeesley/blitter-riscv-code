@@ -2,16 +2,16 @@
 
 ASMINCS=$(wildcard $(TOP)/asm-includes/*.inc) $(filter-out version-date.inc, $(wildcard *.inc))
 DEPS=$(INCS) $(ASMINCS)
-OBJS=	start splash main deice \
+OBJS=	start splash main deice deice_stack \
 		mos moslib keyboard \
 		buffers events osbyte osword debug_print \
-		font_cushion vdu mos_stack
+		font_cushion vdu mos_stack 
 
 ifeq ("$(FLAVOUR)","HAZARD3")
-OBJS+=	interrupts_hazard3
+OBJS+=	interrupts_hazard3 deice_hazard3
 endif
 ifeq ("$(FLAVOUR)","PICORV32")
-OBJS+=	interrupts_picorv32
+OBJS+=	interrupts_picorv32 deice_picorv32
 endif
 
 

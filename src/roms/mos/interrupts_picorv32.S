@@ -1,4 +1,5 @@
 		#include "custom_ops_picorv32.h"
+		#include "deice.h"
 
 
 		.globl interrupts_disable
@@ -8,7 +9,7 @@
 
 		.bss
 		.align(4)
-//int interrupts_regs[32+4];						// 32 caller regs + q0..3
+//int interrupts_regs[32+4];						// 31 caller regs, PC, Q1..3
 interrupts_regs:
 		.space (32+4)*4
 
@@ -212,112 +213,117 @@ interrupts_handle:
 
 
 .notecall:
+
 		picorv32_getq_insn(x1, q1)
-		andi	x2,x1,0x10
+		andi	x2, x1, 0x10
 		bnez	x2, mos_irq
 
-		la x1, interrupts_regs
+		// we're about to enter DeIce, get registers stacked then
+		// enter deice_enter_picorv32 to faff with the interrupt level/host status
+
+		la sp, deice_stack_top - 4 * DEICE_INTERRUPT_REGISTERS
 		// q0 is set to return address of interrupt
-		picorv32_getq_insn(x2, q0)
-		sw x2,   31*4(x1)
+		picorv32_getq_insn(x1, q0)
+		sw x1,   31*4(sp)
 
 		// q1 is set to pending interrupts
-		picorv32_getq_insn(x2, q1)
-		sw x2,   32*4(x1)
+		picorv32_getq_insn(x1, q1)
+		sw x1,   32*4(sp)
 
 		// saved x1/ra above
-		picorv32_getq_insn(x2, q2)
-		sw x2,   33*4(x1)
-		sw x2,   0*4(x1)
+		picorv32_getq_insn(x1, q2)
+		sw x1,   33*4(sp)
+		sw x1,   0*4(sp)
 
 		// saved x2/sp above
-		picorv32_getq_insn(x2, q3)
-		sw x2,   34*4(x1)
-		sw x2,   1*4(x1)
+		picorv32_getq_insn(x1, q3)
+		sw x1,   34*4(sp)
+		sw x1,   1*4(sp)
 
 
-		sw x3,   2*4(x1)
-		sw x4,   3*4(x1)
-		sw x5,   4*4(x1)
-		sw x6,   5*4(x1)
-		sw x7,   6*4(x1)
-		sw x8,   7*4(x1)
-		sw x9,   8*4(x1)
-		sw x10, 9*4(x1)
-		sw x11, 10*4(x1)
-		sw x12, 11*4(x1)
-		sw x13, 12*4(x1)
-		sw x14, 13*4(x1)
-		sw x15, 14*4(x1)
-		sw x16, 15*4(x1)
-		sw x17, 16*4(x1)
-		sw x18, 17*4(x1)
-		sw x19, 18*4(x1)
-		sw x20, 19*4(x1)
-		sw x21, 20*4(x1)
-		sw x22, 21*4(x1)
-		sw x23, 22*4(x1)
-		sw x24, 23*4(x1)
-		sw x25, 24*4(x1)
-		sw x26, 25*4(x1)
-		sw x27, 26*4(x1)
-		sw x28, 27*4(x1)
-		sw x29, 28*4(x1)
-		sw x30, 29*4(x1)
-		sw x31, 30*4(x1)
+		sw x3,   2*4(sp)
+		sw x4,   3*4(sp)
+		sw x5,   4*4(sp)
+		sw x6,   5*4(sp)
+		sw x7,   6*4(sp)
+		sw x8,   7*4(sp)
+		sw x9,   8*4(sp)
+		sw x10,  9*4(sp)
+		sw x11,  10*4(sp)
+		sw x12,  11*4(sp)
+		sw x13,  12*4(sp)
+		sw x14,  13*4(sp)
+		sw x15,  14*4(sp)
+		sw x16,  15*4(sp)
+		sw x17,  16*4(sp)
+		sw x18,  17*4(sp)
+		sw x19,  18*4(sp)
+		sw x20,  19*4(sp)
+		sw x21,  20*4(sp)
+		sw x22,  21*4(sp)
+		sw x23,  22*4(sp)
+		sw x24,  23*4(sp)
+		sw x25,  24*4(sp)
+		sw x26,  25*4(sp)
+		sw x27,  26*4(sp)
+		sw x28,  27*4(sp)
+		sw x29,  28*4(sp)
+		sw x30,  29*4(sp)
+		sw x31,  30*4(sp)
 
-		jal deice_enter
+		mv a0, sp
+		jal deice_enter_picorv32
 
-		la x1, interrupts_regs
+		la sp, deice_stack_top - 4 * DEICE_INTERRUPT_REGISTERS
 
-		lw x3,   2*4(x1)
-		lw x4,   3*4(x1)
-		lw x5,   4*4(x1)
-		lw x6,   5*4(x1)
-		lw x7,   6*4(x1)
-		lw x8,   7*4(x1)
-		lw x9,   8*4(x1)
-		lw x10, 9*4(x1)
-		lw x11, 10*4(x1)
-		lw x12, 11*4(x1)
-		lw x13, 12*4(x1)
-		lw x14, 13*4(x1)
-		lw x15, 14*4(x1)
-		lw x16, 15*4(x1)
-		lw x17, 16*4(x1)
-		lw x18, 17*4(x1)
-		lw x19, 18*4(x1)
-		lw x20, 19*4(x1)
-		lw x21, 20*4(x1)
-		lw x22, 21*4(x1)
-		lw x23, 22*4(x1)
-		lw x24, 23*4(x1)
-		lw x25, 24*4(x1)
-		lw x26, 25*4(x1)
-		lw x27, 26*4(x1)
-		lw x28, 27*4(x1)
-		lw x29, 28*4(x1)
-		lw x30, 29*4(x1)
-		lw x31, 30*4(x1)
+		lw x3,   2*4(sp)
+		lw x4,   3*4(sp)
+		lw x5,   4*4(sp)
+		lw x6,   5*4(sp)
+		lw x7,   6*4(sp)
+		lw x8,   7*4(sp)
+		lw x9,   8*4(sp)
+		lw x10, 9*4(sp)
+		lw x11, 10*4(sp)
+		lw x12, 11*4(sp)
+		lw x13, 12*4(sp)
+		lw x14, 13*4(sp)
+		lw x15, 14*4(sp)
+		lw x16, 15*4(sp)
+		lw x17, 16*4(sp)
+		lw x18, 17*4(sp)
+		lw x19, 18*4(sp)
+		lw x20, 19*4(sp)
+		lw x21, 20*4(sp)
+		lw x22, 21*4(sp)
+		lw x23, 22*4(sp)
+		lw x24, 23*4(sp)
+		lw x25, 24*4(sp)
+		lw x26, 25*4(sp)
+		lw x27, 26*4(sp)
+		lw x28, 27*4(sp)
+		lw x29, 28*4(sp)
+		lw x30, 29*4(sp)
+		lw x31, 30*4(sp)
 
 
 		// get back ra, sp and stash in q2/q3
-		lw x2,	 0*4(x1)
-		picorv32_setq_insn(q2, x2)	// save return address
-		lw x2,	 1*4(x1)
-		picorv32_setq_insn(q3, x2)	// save stack pointer
+		lw x1,	 0*4(sp)
+		picorv32_setq_insn(q2, x1)	// save return address
+		lw x1,	 1*4(sp)
+		picorv32_setq_insn(q3, x1)	// save stack pointer
 
 		// q0 is set to return address of interrupt
-		lw x2,   31*4(x1)
-		picorv32_setq_insn(q0, x2)
+		lw x1,   31*4(sp)
+		picorv32_setq_insn(q0, x1)
 
 		// q1 is set to pending interrupts
-		lw x2,   32*4(x1)
-		picorv32_setq_insn(q1, x2)
+		lw x1,   32*4(sp)
+		picorv32_setq_insn(q1, x1)
 
 		// stashed above
-		picorv32_getq_insn(x1, q2)
-		picorv32_getq_insn(x2, q3)
+		picorv32_getq_insn(ra, q2)
+		picorv32_getq_insn(sp, q3)
 
 		picorv32_retirq_insn()
 

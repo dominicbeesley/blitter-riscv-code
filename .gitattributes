@@ -1,4 +1,5 @@
 
+/src/roms/extras/_21BOOT.txt -text	#BBC file preserve line endings
 
 *.xxx binary
 *.png binary

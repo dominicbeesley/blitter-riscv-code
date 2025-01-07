@@ -10,6 +10,7 @@
 #include "debug_print.h"
 #include "vdu.h"
 #include <string.h>
+#include "events.h"
 
 INSV_FN INSV;
 REMV_FN REMV;
@@ -100,10 +101,6 @@ void mos_enter_ecall(struct mos_args *args, uint32_t a7) {
 }
 
 
-void mos_event_raise(uint8_t eventno, uint8_t X, uint8_t Y) {
-	//TODO
-}
-
 void mos_default_IRQ1V() {
 
 
@@ -143,7 +140,7 @@ void mos_default_IRQ1V() {
 				}
 			}
 
-			mos_event_raise(EVENT_04_VSYNC, 0, 0);
+			event_raise(EVENT_04_VSYNC, 0, 0);
 
 			sheila_SYSVIA_ifr = VIA_IxR_CA1;
 			return;
