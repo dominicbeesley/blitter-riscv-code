@@ -206,6 +206,9 @@ void mos_default_WRCHV(uint8_t c) {
 }
 
 void mos_reset(void) {
+	DEBUG_PRINT_STR("INT INIT\n");
+	interrupts_init();
+
 	// disable SYSVIA interrupts
 	sheila_SYSVIA_ier = 0x7F;
 	sheila_SYSVIA_ifr = 0x7F;
@@ -268,6 +271,7 @@ void mos_reset(void) {
 //
 //	sheila_USRVIA_pcr = VIA_PCR_CB2_CTL_IN_NEG|VIA_PCR_CB1_CTL_INT_NEG|VIA_PCR_CA2_CTL_OUT_HIGH|VIA_PCR_CA1_CTL_INT_NEG;
 
+	DEBUG_PRINT_STR("BUF INIT\n");
 	buffers_init();
 
 	INSV = buffers_default_INSV;
@@ -283,13 +287,16 @@ void mos_reset(void) {
 	VDU_FONT_FLAGS = 0x0F;
 	memset(VDU_FONT_LOC, 8, 7);
 
+	DEBUG_PRINT_STR("VDU INIT\n");
 	vdu_init(4);
 
 	sheila_SYSVIA_ifr = 0x7F; //clear all
 
+	DEBUG_PRINT_STR("INT DIS 0\n");
 	interrupts_disable(0);
 	key_set_LEDs();
 
+	DEBUG_PRINT_STR("GO\n");
 
 }
 

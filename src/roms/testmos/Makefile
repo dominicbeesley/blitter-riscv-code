@@ -39,17 +39,17 @@ endif
 
 
 $(BUILD)/%.s:	%.c 
-	$(RISCV_CC) $(RISCV_CC_FLAGS) $(TOPDEFS) $(DEPFLAGS) -fomit-frame-pointer -O3 -Os -c -S -o $@ -g $<
+	$(RISCV_CC) $(RISCV_CC_FLAGS) $(DEPFLAGS) -fomit-frame-pointer -O3 -Os -c -S -o $@ -g $<
 
 $(BUILD)/%.o: 	$(BUILD)/%.s $(DEPS) 
-	$(RISCV_AS) $(RISCV_AS_FLAGS) $(TOPDEFS) -c -o $@ -g -Wa,-alghmns=$(basename $@).lst $<
+	$(RISCV_AS) $(RISCV_AS_FLAGS) -c -o $@ -g -Wa,-alghmns=$(basename $@).lst $<
 
 
 $(BUILD)/%.o: 	%.S $(DEPS) 
-	$(RISCV_AS) $(RISCV_AS_FLAGS) $(TOPDEFS) -I $(BUILD) -c -o $@ -g -Wa,-alghmns=$(basename $@).lst $<
+	$(RISCV_AS) $(RISCV_AS_FLAGS) -I $(BUILD) -c -o $@ -g -Wa,-alghmns=$(basename $@).lst $<
 
 $(BUILD)/%.elf: $(OBJS_O) %.lds
-	$(RISCV_LD) $(RISCV_LD_FLAGS) $(TOPDEFS) -Os -ffreestanding -nostdlib -o $@ \
+	$(RISCV_LD) $(RISCV_LD_FLAGS) -Os -ffreestanding -nostdlib -o $@ \
 	-Wl,--build-id=none,-Bstatic,-T,$(filter %.lds, $^),-Map,$(basename $@).map,--strip-debug \
 		$(filter %.o,$^) -lgcc 
 	$(RISCV_NM) --format=posix $@ >$(basename $@).sy1

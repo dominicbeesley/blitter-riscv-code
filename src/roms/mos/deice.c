@@ -46,6 +46,8 @@ void deice_init(void) {
 		ACIA_STAT = 0b01010110; // RTS high, no interrupts, 8N1, div64
 		
 		//deice_run_flag=0
+
+		ACIA_DATA = 0x43;
 }
 
 int deice_put_byte(uint8_t b) {

@@ -50,7 +50,7 @@ BUILD=$(BUILD_TOP)/$(FLAVOUR)/$(RELDIR)
 
 
 # SSDS - folder where SSDS should be built
-SSDS?=$(BUILD)/$(FLAVOUR)/ssds
+SSDS?=$(BUILD_TOP)/$(FLAVOUR)/ssds
 
 x:=$(shell mkdir -p $(BUILD))
 x:=$(shell mkdir -p $(SSDS))
@@ -59,13 +59,13 @@ x:=$(shell mkdir -p $(SSDS))
 
 RISCV_CC=$(TOOLCHAIN_PREFIX)gcc
 #TODO -Wno-array-bounds needed for aparent bug in gcc (xxx *)(0xXXXX) access always give warning
-RISCV_CC_FLAGS=-I $(INC) -mabi=ilp32 -march=$(MARCH) --freestanding -Wall -Wno-array-bounds
+RISCV_CC_FLAGS=-I $(INC) -mabi=ilp32 -march=$(MARCH) --freestanding -Wall -Wno-array-bounds $(TOPDEFS)
 
 RISCV_LD=$(TOOLCHAIN_PREFIX)gcc
-RISCV_LD_FLAGS=-mabi=ilp32 -march=$(MARCH)
+RISCV_LD_FLAGS=-mabi=ilp32 -march=$(MARCH) $(TOPDEFS)
 
 RISCV_AS=$(TOOLCHAIN_PREFIX)gcc
-RISCV_AS_FLAGS=-I $(INC) -mabi=ilp32 -march=$(MARCH)
+RISCV_AS_FLAGS=-I $(INC) -mabi=ilp32 -march=$(MARCH) $(TOPDEFS)
 
 RISCV_OBJCOPY=$(TOOLCHAIN_PREFIX)objcopy
 RISCV_OBJDUMP=$(TOOLCHAIN_PREFIX)objcopy

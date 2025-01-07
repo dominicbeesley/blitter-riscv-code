@@ -1,36 +1,59 @@
-		#include "custom_ops.S"
-
+		#include "custom_ops_hazard3.h"
+		#include "interrupts.h"
 
 		.globl interrupts_disable
 		.globl interrupts_handle
 		.globl interrupts_regs
+		.globl interrupts_init
 
 		.bss
-		.align(4)
-//int interrupts_regs[32+4];						// 32 caller regs + q0..3
+		.align(2)
+//int interrupts_regs[32+4];			// 32 caller regs + q0..3
 interrupts_regs:
 		.space (32+4)*4
 
 
 		.text
+		.align(2)
+
 interrupts_disable:
+		// this was started as a disable on picorv32, for now retain that behaviour but TODO: change interface to enable?
 
 		// ensure bus, instr, timer
-		andi	a0, a0, ~7
+		andi	a0, a0, INT_ALL
+		xori	a0, a0, INT_ALL
+		slli	a0, a0, 16			// shift into WINDOW part of register
 
-		picorv32_maskirq_insn(a0, a0)
+		csrrw	a0, hazard3_csr_meiea, a0
+		srli	a0, a0, 16			// shift back and return old value for restore
+		xori	a0, a0, INT_ALL
 
 		ret
 
-		.bss
-		.align(4)
-		.globl mos_stack_base
-		.globl mos_stack_top
-mos_stack_base:
-		.space (0x1000)
-mos_stack_top:
-mos_stack_len = mos_stack_top-mos_stack_base
-		.text
+
+interrupts_init:
+		// set up irq vectors stuff
+		//csrrs	a0, misa, x0		// TODO: detect whether using external interrupt controller
+		// for now assume external interrupt controller present
+
+		//TODO: vector to at least separate out soft/external/etc interrupts but that requires some space
+		//la		a0, handle_trap	//NOT VECTORED!
+		//csrrw	x0, mtvec, a0
+
+		// set up the H3 custom irq controller
+		li	t0, (0xFF0<<16)|(0)
+		csrrw	x0, hazard3_csr_meipra, t0	// make irq low priority, debug and nmi high (assume only 1 bit of priority)
+		
+		li	t0, (0 << 16)|(0)
+		csrrw	x0, hazard3_csr_meiea, t0	// disable all external interrupts
+
+		li	t0, 1<<11
+		csrrs	x0, mie, t0			// enable external interrupts
+		csrrsi	x0, mstatus, 1<<3		// enable global interrupts
+
+		ret
+
+
 
 		//TODO: move this to own file
 mos_enter:
@@ -321,3 +344,21 @@ interrupts_handle:
 		picorv32_getq_insn(x2, q3)
 
 		picorv32_retirq_insn()
+
+
+
+		// this must be placed in top-half of ROM with the vectors
+		// to ensure it's mapped in to memory at FF FF00 at boot time
+		// and will jump "down" to correct memory 7D 0000 when running
+		.section entry_shims, "ax", @progbits
+		.align(2)
+ih_addr:	.word interrupts_handle
+interrupts_handle_enter:
+		// need to do a long/absolute jump here as CPU will think we're running
+		// in FFFFCxxx when we're actually in 007D0xxx
+		picorv32_setq_insn(q2, ra)	// save return address
+		lw	ra,ih_addr
+		jr	ra
+
+		.section irq, "ax", @progbits
+irq_hw:		j 	interrupts_handle_enter
