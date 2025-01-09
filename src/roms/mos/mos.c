@@ -101,6 +101,10 @@ void mos_enter_ecall(struct mos_args *args, uint32_t a7) {
 }
 
 
+void mos_default_NMI() {
+	//TODO: reset NMI edge detector in fb_cpu_hazard3
+}
+
 void mos_default_IRQ1V() {
 
 

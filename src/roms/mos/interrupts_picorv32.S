@@ -7,13 +7,6 @@
 		.globl interrupts_regs
 		.globl interrupts_init
 
-		.bss
-		.align(4)
-//int interrupts_regs[32+4];						// 31 caller regs, PC, Q1..3
-interrupts_regs:
-		.space (32+4)*4
-
-
 		.text
 		.align(2)
 interrupts_init:

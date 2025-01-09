@@ -9,6 +9,7 @@
 
 sheila			= 0xFFFFFE00
 
+		.align(2)
 start:	
 #ifdef FLAVOUR_PICORV32
 		// disable all but timer, illins, bus interrupts

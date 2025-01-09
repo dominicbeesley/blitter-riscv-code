@@ -1,17 +1,21 @@
 		#include "custom_ops_hazard3.h"
 		#include "interrupts.h"
+		#include "deice.h"
 
 		.globl interrupts_disable
 		.globl interrupts_handle
 		.globl interrupts_regs
 		.globl interrupts_init
 
-		.bss
-		.align(2)
-//int interrupts_regs[32+4];			// 32 caller regs + q0..3
-interrupts_regs:
-		.space (32+4)*4
 
+#define SAVEX(rn)	\
+		sw	rn, deice_REG_OFF(rn)(sp)
+#define LOADX(rn)	\
+		lw	rn, deice_REG_OFF(rn)(sp)
+		
+		
+		.section rodata
+str_unex:	.asciz "An unexpected exception: "
 
 		.text
 		.align(2)
@@ -56,308 +60,166 @@ interrupts_init:
 
 
 		//TODO: move this to own file
-mos_enter:
+handle_ex_11_ecall:
 		// we should be entered with
-		// q0 = address after ecall
-		// q1 = interrupt status - we will cancel bit 2
-		// q2 = callers ra
-		// q3 = callers sp
+		// sp set up to MOS stack pointing at a deice frame
+		// with the following registers saved in frame: a0, a1, sp, mepc, meicontext, mstatus, mcause
 
-		// if q3 isn't in MOS stack then set to MOS stack - allow MOS to reenter, maybe change this?
-		picorv32_getq_insn(sp, q3)
-		la		ra,mos_stack_base
-		blt		sp,ra,.news
-		la		ra,mos_stack_top
-		blt		sp,ra,.nonews
-
-		// we weren't in the mos set to MOS stack
-.news:	la		sp,mos_stack_top
-.nonews:
-		addi	sp,sp,-(10*4)			// reserved space on stack, 7 arguments, ra, sp, pc
-		picorv32_getq_insn(ra, q3)		// get back caller's sp and push
-		sw		ra,0(sp)
-		picorv32_getq_insn(ra, q2)		// get back caller's ra and push
-		sw		ra,4(sp)
-		picorv32_getq_insn(ra, q0)		// get back caller's pc and push
-		sw		ra,8(sp)
-		// reset the illegal instruction bit in q1
-		picorv32_getq_insn(ra, q1)
-		andi	ra,ra,~2
-		picorv32_setq_insn(q1, ra)
-		la		ra,.cont
-		picorv32_setq_insn(q0, ra)
-		picorv32_retirq_insn()			// continue at .cont but allow other irqs to re-fire
-////////////////////////////////////////////////////////////
-.cont:	
-		sw		a0,12(sp)
-		sw		a1,16(sp)	
-		sw		a2,20(sp)	
-		sw		a3,24(sp)	
-		sw		a4,28(sp)	
-		sw		a5,32(sp)	
-		sw		a6,36(sp)	
-		addi	a0,sp,12				// argument 0 to mos_enter_call
-		mv		a1,a7
-		jal		mos_enter_ecall			// jump to mos_entry_point
-		lw		a0,12(sp)
-		lw		a1,16(sp)	
-		lw		a2,20(sp)	
-		lw		a3,24(sp)	
-		lw		a4,28(sp)	
-		lw		a5,32(sp)	
-		lw		a6,36(sp)	
+		// save the arguments and return address register, trust GCC to trash Tx and save Sx
+		SAVEX(ra)
+		SAVEX(a2)
+		SAVEX(a3)
+		SAVEX(a4)
+		SAVEX(a5)
+		SAVEX(a6)
+		SAVEX(a7)
 		
-		// we now need to return to the caller with all registers intact
-		//TODO: this uses t0 and trashes it - need to speak with Hoglet about this and maybe look at change API
-		lw		ra,4(sp)				// caller ra
-		lw		t0,8(sp)				// caller pc
-		lw		sp,0(sp)				// caller sp
-//		addi	sp,sp,(10*4)
-		jr		t0						// return
+		addi		a0,sp,deice_REG_OFF(a0)		// point at arguments as first param
+		mv		a1,a7				// ecall number
+		
+		// exit interrupts and enter mos_enter_ecall
+		la		ra, handle_ex_11_ecall_exit
+		la		a2, mos_enter_ecall
+		csrw		mepc, a2
+		mret
+		
+handle_ex_11_ecall_exit:
+		
+		LOADX(ra)
+		LOADX(a0)
+		LOADX(a1)
+		LOADX(a2)
+		LOADX(a3)
+		LOADX(a4)
+		LOADX(a5)
+		LOADX(a6)
+		LOADX(a7)
+		LOADX(t0)
+		LOADX(t1)
+		LOADX(t2)
+		LOADX(t3)
+		LOADX(t4)
+		LOADX(t5)
+		LOADX(t6)
 
-mos_irq:	
-		//TODO: this is very much belt-and-braces, we could probably
-		//rely on C properly preserving some of these registers
+		lw	t0, deice_REG_OFF(mepc)(sp)		// get return address from stack
+		addi	t0, t0, 4				// ecall is always 32 bit
 
-
-		//on entry:
-		// q0 = address after ecall
-		// q1 = interrupt status - we will cancel bit 2
-		// q2 = callers ra
-		// q3 = callers sp
-		// x2,x2 already corrupted
-
-		// if q3 isn't in MOS stack then set to MOS stack - allow MOS to reenter, maybe change this?
-		picorv32_getq_insn(sp, q3)
-		la		ra,mos_stack_base
-		blt		sp,ra,.news2
-		la		ra,mos_stack_top
-		blt		sp,ra,.nonews2
-
-		// we weren't in the mos set to MOS stack
-.news2:	la		sp,mos_stack_top
-.nonews2:
-
-		// stack all remaining regs
-		addi	sp,sp,-(4*29)
-		sw x3,   0*4(sp)
-		sw x4,   1*4(sp)
-		sw x5,   2*4(sp)
-		sw x6,   3*4(sp)
-		sw x7,   4*4(sp)
-		sw x8,   5*4(sp)
-		sw x9,   6*4(sp)
-		sw x10,  7*4(sp)
-		sw x11,  8*4(sp)
-		sw x12,  9*4(sp)
-		sw x13, 10*4(sp)
-		sw x14, 11*4(sp)
-		sw x15, 12*4(sp)
-		sw x16, 13*4(sp)
-		sw x17, 14*4(sp)
-		sw x18, 15*4(sp)
-		sw x19, 16*4(sp)
-		sw x20, 17*4(sp)
-		sw x21, 18*4(sp)
-		sw x22, 19*4(sp)
-		sw x23, 20*4(sp)
-		sw x24, 21*4(sp)
-		sw x25, 22*4(sp)
-		sw x26, 23*4(sp)
-		sw x27, 24*4(sp)
-		sw x28, 25*4(sp)
-		sw x29, 26*4(sp)
-		sw x30, 27*4(sp)
-		sw x31, 28*4(sp)
-
-		//TODO: jump through IRQ1V
-		jal		mos_default_IRQ1V
-
-		lw x3,   0*4(sp)
-		lw x4,   1*4(sp)
-		lw x5,   2*4(sp)
-		lw x6,   3*4(sp)
-		lw x7,   4*4(sp)
-		lw x8,   5*4(sp)
-		lw x9,   6*4(sp)
-		lw x10,  7*4(sp)
-		lw x11,  8*4(sp)
-		lw x12,  9*4(sp)
-		lw x13, 10*4(sp)
-		lw x14, 11*4(sp)
-		lw x15, 12*4(sp)
-		lw x16, 13*4(sp)
-		lw x17, 14*4(sp)
-		lw x18, 15*4(sp)
-		lw x19, 16*4(sp)
-		lw x20, 17*4(sp)
-		lw x21, 18*4(sp)
-		lw x22, 19*4(sp)
-		lw x23, 20*4(sp)
-		lw x24, 21*4(sp)
-		lw x25, 22*4(sp)
-		lw x26, 23*4(sp)
-		lw x27, 24*4(sp)
-		lw x28, 25*4(sp)
-		lw x29, 26*4(sp)
-		lw x30, 27*4(sp)
-		lw x31, 28*4(sp)
-
-		//mask irq
-		picorv32_getq_insn(ra, q1)
-		andi	ra,ra,~0x10
-		picorv32_setq_insn(q1, ra)
-
-		picorv32_getq_insn(x1, q2)
-		picorv32_getq_insn(x2, q3)
-
-		picorv32_retirq_insn()
+		LOADX(sp)	
+		
+		jr	t0					// return to caller
 
 
-interrupts_handle:
 
-		picorv32_setq_insn(q3, sp)	// save stack pointer
-
-		// quick check for ecall - TODO: make this more efficient when we sort out interrupts		
-		picorv32_getq_insn(x1, q1)
-		andi	x2,x1,2
-		beqz	x2,.notecall		// not an illegal instr
-		picorv32_getq_insn(x1, q0)
-		andi	x2,x1,1
-		bnez	x2,.notecall		// not a full-fat instr
-		//need to do half-word loads here because of misalign 
-		lh		x2,-4(x1)
-		xori	x2,x2,0x73
-		bnez	x2,.notecall
-		lh		x2,-2(x1)
-		xori	x2,x2,0x0
-		bnez	x2,.notecall
-		j		mos_enter
+handle_breakpoint:
+		// save other caller save regs in ABI TODO: check out __attribute__ interrupt and tweak...
+		SAVEX(ra)
+		SAVEX(t0)
+		SAVEX(t1)
+		SAVEX(t2)
+		SAVEX(t3)
+		SAVEX(t4)
+		SAVEX(t5)
+		SAVEX(t6)
+		SAVEX(a2)
+		SAVEX(a3)
+		SAVEX(a4)
+		SAVEX(a5)
+		SAVEX(a6)
+		SAVEX(a7)
 
 
-.notecall:
-		picorv32_getq_insn(x1, q1)
-		andi	x2,x1,0x10
-		bnez	x2, mos_irq
 
-		la x1, interrupts_regs
-		// q0 is set to return address of interrupt
-		picorv32_getq_insn(x2, q0)
-		sw x2,   31*4(x1)
+handle_debug:
+		//we're going to enter deice so we need to get out of the interrupt handler somehow but keep
+		//all the interrupts turned off...
 
-		// q1 is set to pending interrupts
-		picorv32_getq_insn(x2, q1)
-		sw x2,   32*4(x1)
+		//save rest of registers in deice frame		
+		SAVEX(gp)
+		SAVEX(tp)
+		SAVEX(s0)
+		SAVEX(s1)
+		SAVEX(s2)
+		SAVEX(s3)
+		SAVEX(s4)
+		SAVEX(s5)
+		SAVEX(s6)
+		SAVEX(s7)
+		SAVEX(s8)
+		SAVEX(s9)
+		SAVEX(s10)
+		SAVEX(s11)
+		
+		mv	a0, sp		// parameter to deice_enter_hazard3
+		
+		jal	deice_enter_hazard3
 
-		// saved x1/ra above
-		picorv32_getq_insn(x2, q2)
-		sw x2,   33*4(x1)
-		sw x2,   0*4(x1)
+		//TODO: just set PC here - should maybe tweak interrupt regs?
+		lw	a0, deice_REG_OFF(mepc)(sp)
+		csrw	mepc, a0
 
-		// saved x2/sp above
-		picorv32_getq_insn(x2, q3)
-		sw x2,   34*4(x1)
-		sw x2,   1*4(x1)
+		LOADX(ra)
+		LOADX(t0)
+		LOADX(t1)
+		LOADX(t2)
+		LOADX(t3)
+		LOADX(t4)
+		LOADX(t5)
+		LOADX(t6)
+		LOADX(a0)
+		LOADX(a1)
+		LOADX(a2)
+		LOADX(a3)
+		LOADX(a4)
+		LOADX(a5)
+		LOADX(a6)
+		LOADX(a7)
+		LOADX(gp)
+		LOADX(tp)
+		LOADX(s0)
+		LOADX(s1)
+		LOADX(s2)
+		LOADX(s3)
+		LOADX(s4)
+		LOADX(s5)
+		LOADX(s6)
+		LOADX(s7)
+		LOADX(s8)
+		LOADX(s9)
+		LOADX(s10)
+		LOADX(s11)
+		LOADX(sp)
 
+		mret
 
-		sw x3,   2*4(x1)
-		sw x4,   3*4(x1)
-		sw x5,   4*4(x1)
-		sw x6,   5*4(x1)
-		sw x7,   6*4(x1)
-		sw x8,   7*4(x1)
-		sw x9,   8*4(x1)
-		sw x10, 9*4(x1)
-		sw x11, 10*4(x1)
-		sw x12, 11*4(x1)
-		sw x13, 12*4(x1)
-		sw x14, 13*4(x1)
-		sw x15, 14*4(x1)
-		sw x16, 15*4(x1)
-		sw x17, 16*4(x1)
-		sw x18, 17*4(x1)
-		sw x19, 18*4(x1)
-		sw x20, 19*4(x1)
-		sw x21, 20*4(x1)
-		sw x22, 21*4(x1)
-		sw x23, 22*4(x1)
-		sw x24, 23*4(x1)
-		sw x25, 24*4(x1)
-		sw x26, 25*4(x1)
-		sw x27, 26*4(x1)
-		sw x28, 27*4(x1)
-		sw x29, 28*4(x1)
-		sw x30, 29*4(x1)
-		sw x31, 30*4(x1)
-
-		jal deice_enter
-
-		la x1, interrupts_regs
-
-		lw x3,   2*4(x1)
-		lw x4,   3*4(x1)
-		lw x5,   4*4(x1)
-		lw x6,   5*4(x1)
-		lw x7,   6*4(x1)
-		lw x8,   7*4(x1)
-		lw x9,   8*4(x1)
-		lw x10, 9*4(x1)
-		lw x11, 10*4(x1)
-		lw x12, 11*4(x1)
-		lw x13, 12*4(x1)
-		lw x14, 13*4(x1)
-		lw x15, 14*4(x1)
-		lw x16, 15*4(x1)
-		lw x17, 16*4(x1)
-		lw x18, 17*4(x1)
-		lw x19, 18*4(x1)
-		lw x20, 19*4(x1)
-		lw x21, 20*4(x1)
-		lw x22, 21*4(x1)
-		lw x23, 22*4(x1)
-		lw x24, 23*4(x1)
-		lw x25, 24*4(x1)
-		lw x26, 25*4(x1)
-		lw x27, 26*4(x1)
-		lw x28, 27*4(x1)
-		lw x29, 28*4(x1)
-		lw x30, 29*4(x1)
-		lw x31, 30*4(x1)
-
-
-		// get back ra, sp and stash in q2/q3
-		lw x2,	 0*4(x1)
-		picorv32_setq_insn(q2, x2)	// save return address
-		lw x2,	 1*4(x1)
-		picorv32_setq_insn(q3, x2)	// save stack pointer
-
-		// q0 is set to return address of interrupt
-		lw x2,   31*4(x1)
-		picorv32_setq_insn(q0, x2)
-
-		// q1 is set to pending interrupts
-		lw x2,   32*4(x1)
-		picorv32_setq_insn(q1, x2)
-
-		// stashed above
-		picorv32_getq_insn(x1, q2)
-		picorv32_getq_insn(x2, q3)
-
-		picorv32_retirq_insn()
-
-str_unex:	.asciz "An unexpected exception: "
 
 trap_unex:	// an unexpected exception occurred just dump to deice log - don't worry about
 		// actually entering deice yet?
 		//	caller's sp,ra,a1,a0 stacked 
 		la	a0, str_unex
-		jal	deice_print_str
+		jal	debug_print_str
 
 		csrr	a0, mcause
-		jal	deice_print_hex_word
+		jal	debug_print_hex_word
 
 		li	a0, '\n'
-		jal	deice_print_ch
+		jal	debug_print_ch
+		
+		li	s0, 1
+		mv	s1, sp
+		li	s2, 35
+tu_lp:		mv	a0, s0
+		jal	debug_print_hex_byte
+		li	a0, ':'
+		jal	debug_print_ch
+		lw	a0, 0(s1)
+		jal	debug_print_hex_word
+		li	a0, '\n'
+		jal	debug_print_ch
+		addi	s1,s1,4
+		addi	s0,s0,1
+		bne	s0,s2,tu_lp
+
 
 lock:		j	lock
 
@@ -366,10 +228,14 @@ lock:		j	lock
 
 //////////////////////////////////////// SHIMS AREA /////////////////////////////////////////////
 
+//TODO: all the interrupts / traps can be moved to main code area using mtvec and dispense with
+//the trampolines
+
 		.macro VEC dest
 s\@:		j	\dest
 		.align(2)
 		.endm
+
 
 		// this must be placed in top-half of ROM with the vectors
 		// to ensure it's mapped in to memory at FF FF00 at boot time
@@ -397,48 +263,179 @@ trap_table:	VEC(trap_exception_s)	// 0 - internal interrupt
 trap_unex_s:	// fall through an check mcause when stack set up
 
 trap_exception_s:
-		csrrw	x0, mscratch, ra
-		la	ra, trap_unex		
-		// we're gonna need a stack...
-		la	ra, mos_stack_base
-		blt	sp, ra, t_newstack
-		la	ra, mos_stack_top
-		blt	sp, ra, t_okstack
-t_newstack:	mv	ra, sp			// save old stack pointer
+		csrrw	x0, mscratch, a0	// save caller's a0
+		// we're gonna need a stack...check what current sp is
+		// if it's not in mos_stack area make it so
+		la	a0, mos_stack_base
+		blt	sp, a0, t_newstack
+		la	a0, mos_stack_top
+		blt	sp, a0, t_okstack
+t_newstack:	mv	a0, sp			// save old stack pointer
 		la	sp, mos_stack_top	// set up stack - TODO: this should be stored somewhere when re-entering upcalls/event handlers
-t_okstack:
-		// we now have a stack 
-		addi	sp, sp, -16
-		sw	ra, 12(sp)		// 12(sp)	caller's sp
-		csrr	ra, mscratch		
-		sw	ra, 8(sp)		// 8(sp)	caller's ra
-		sw	a1, 4(sp)		// 4(sp)	caller's a1
-		sw	a0, 0(sp)		// 0(sp)	caller's a0
+		j	t_oks2
+t_okstack:	mv	a0, sp
+t_oks2:		// we now have a stack 
+		addi	sp, sp, -4*DEICE_INTERRUPT_REGISTERS	// set up DeIce stack frame, but only save minimum of regs for latency
+
+		// save registers we have already stowed
+		sw	a0, deice_REG_OFF(sp)(sp)// caller's sp
+		csrr	a0, mscratch		
+		sw	a0, deice_REG_OFF(a0)(sp)// caller's a0
+
+		// save csrs possibly needed at exit of handler		
+		csrr	a0, mepc
+		sw	a0, deice_REG_OFF(mepc)(sp)// caller's ra
+  		// Set bit 1 when reading to clear+save mie.mtie and mie.msie
+  		csrrsi 	a0, hazard3_csr_meicontext, 0x2
+  		sw 	a0, deice_REG_OFF(meicontext)(sp)
+  		csrr 	a0, mstatus
+  		sw 	a0, deice_REG_OFF(mstatus)(sp)
+
+  		// save mcause - might be wanted by DeIce
+  		csrr 	a0, mcause
+  		sw 	a0, deice_REG_OFF(mcause)(sp)
+
+		// save working registers in dispatch stuff
+  		SAVEX(a1)
 
 		csrr	a0, mcause
-		bgez	a0, t_unx
+		bltz	a0, t_unx
 		// use table to enter relevant routine in non-shims area
 		slli	a0, a0, 2
 		la	a1, tbl_except
-		addi	a0, a1, a0
+		add	a0, a1, a0
+		lw	a0, 0(a0)
 		jr	a0			// jump to table entry
 
-t_unx:		// mcause top bit set
+t_unx:		// mcause top bit set - we must have dropped through from trap_unex_s
 		la	ra, trap_unex
 		jr	ra			// unex trap in main code
 
-tbl_except:	.addr	handle_ex_0_inst_misalign
-		.addr	handle_ex_1_inst_access_fault
-		.addr	handle_ex_2_inst_illegal
-		.addr	handle_ex_3_inst_breakpoint
-		.addr	handle_ex_4_load_misalign
-		.addr	handle_ex_5_load_access_fault
-		.addr	handle_ex_6_store_misalign
-		.addr	handle_ex_7_store_access_fault
-		.addr	trap_unex
-		.addr	trap_unex
-		.addr	trap_unex
-		.addr	handle_ex_11_ecall
+		.align(2)
+tbl_except:	.word	trap_unex		// handle_ex_0_inst_misalign
+		.word	trap_unex		// handle_ex_1_inst_access_fault
+		.word	trap_unex		// handle_ex_2_inst_illegal
+		.word	handle_breakpoint	// handle_ex_3_inst_breakpoint
+		.word	trap_unex		// handle_ex_4_load_misalign
+		.word	trap_unex		// handle_ex_5_load_access_fault
+		.word	trap_unex		// handle_ex_6_store_misalign
+		.word	trap_unex		// handle_ex_7_store_access_fault
+		.word	trap_unex		// 8
+		.word	trap_unex		// 9
+		.word	trap_unex		// 10
+		.word	handle_ex_11_ecall	// 11
+
+///////////////////////////// external interrupt handler
+trap_external_s:
+		csrrw	x0, mscratch, a0	// save caller's a0
+		// we're gonna need a stack...check what current sp is
+		// if it's not in mos_stack area make it so
+		la	a0, mos_stack_base
+		blt	sp, a0, et_newstack
+		la	a0, mos_stack_top
+		blt	sp, a0, et_okstack
+et_newstack:	mv	a0, sp			// save old stack pointer
+		la	sp, mos_stack_top	// set up stack - TODO: this should be stored somewhere when re-entering upcalls/event handlers
+		j	et_oks2
+et_okstack:	mv	a0, sp
+et_oks2:	// we now have a stack 
+		addi	sp, sp, -4*DEICE_INTERRUPT_REGISTERS	// set up DeIce stack frame, but only save minimum of regs for latency
+
+		// save registers we have already stowed
+		sw	a0, deice_REG_OFF(sp)(sp)// caller's sp
+		csrr	a0, mscratch		
+		sw	a0, deice_REG_OFF(a0)(sp)// caller's a0
+
+		// save csrs needed at exit of handler		
+		csrr	a0, mepc
+		sw	a0, deice_REG_OFF(mepc)(sp)// caller's ra
+  		// Set bit 1 when reading to clear+save mie.mtie and mie.msie
+  		csrrsi 	a0, hazard3_csr_meicontext, 0x2
+  		sw 	a0, deice_REG_OFF(meicontext)(sp)
+  		csrr 	a0, mstatus
+  		sw 	a0, deice_REG_OFF(mstatus)(sp)
+  		csrr	a0, mcause
+  		sw	a0, deice_REG_OFF(mcause)(sp)
+
+		// save working registers in dispatch stuff
+  		SAVEX(a1)
+
+		// save other caller save regs in ABI TODO: fewer for NMI?, TODO: check out __attribute__ interrupt and tweak...
+		SAVEX(ra)
+		SAVEX(t0)
+		SAVEX(t1)
+		SAVEX(t2)
+		SAVEX(t3)
+		SAVEX(t4)
+		SAVEX(t5)
+		SAVEX(t6)
+		SAVEX(a2)
+		SAVEX(a3)
+		SAVEX(a4)
+		SAVEX(a5)
+		SAVEX(a6)
+		SAVEX(a7)
+
+
+  		j 	get_next_irq
+dispatch_irq:
+  		// Preemption priority was configured by meinext update, so enable preemption:
+  		csrsi 	mstatus, 0x8
+  		// meinext is pre-shifted by 2, so only an add is required to index table
+  		la 	a1, external_irq_table
+  		add 	a1, a1, a0
+  		jalr 	ra, a1
+  		// Disable IRQs on returning so we can sample the next IRQ
+  		csrci 	mstatus, 0x8
+get_next_irq:
+  		// Sample the current highest-priority active IRQ (left-shifted by 2) from
+  		// meinext, and write 1 to the LSB to tell hardware to tell hw to update
+  		// meicontext with the preemption priority (and IRQ number) of this IRQ
+  		csrrsi 	a0, hazard3_csr_meinext, 0x1
+  		// MSB will be set if there is no active IRQ at the current priority level
+  		bgez 	a0, dispatch_irq
+no_more_irqs:
+  		// Restore saved context and return from handler
+  		lw 	a0, deice_REG_OFF(mepc)(sp)
+  		csrw 	mepc, a0
+  		lw 	a0, deice_REG_OFF(meicontext)(sp)
+  		csrw 	hazard3_csr_meicontext, a0
+  		lw 	a0, deice_REG_OFF(mstatus)(sp)
+  		csrw 	mstatus, a0
+  		lw	ra, deice_REG_OFF(ra)(sp)
+  		lw 	a0, deice_REG_OFF(a0)(sp)
+
+		// restore working registers in dispatch stuff
+  		LOADX(a1)
+
+		// restore other caller save regs in ABI TODO: fewer for NMI?
+		LOADX(ra)
+		LOADX(t0)
+		LOADX(t1)
+		LOADX(t2)
+		LOADX(t3)
+		LOADX(t4)
+		LOADX(t5)
+		LOADX(t6)
+		LOADX(a2)
+		LOADX(a3)
+		LOADX(a4)
+		LOADX(a5)
+		LOADX(a6)
+		LOADX(a7)
+
+
+  		lw 	sp, deice_REG_OFF(sp)(sp)		// we must do this last of course
+  		mret
+
+		.align(4)
+external_irq_table:
+		VEC(mos_default_IRQ1V)
+		VEC(handle_debug)
+		VEC(mos_default_NMI)
+
+
+
 
 		.section irq, "ax", @progbits
 irq_hw:		j 	trap_unex_s		// treat an early interrupt as an unexpected event
