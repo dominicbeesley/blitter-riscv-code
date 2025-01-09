@@ -65,6 +65,7 @@ handle_ex_11_ecall:
 		// sp set up to MOS stack pointing at a deice frame
 		// with the following registers saved in frame: a0, a1, sp, mepc, meicontext, mstatus, mcause
 
+		//TODO: we can dispense with most of this - only a0-a7 need to be restored?
 		// save the arguments and return address register, trust GCC to trash Tx and save Sx
 		SAVEX(ra)
 		SAVEX(a2)
@@ -73,11 +74,35 @@ handle_ex_11_ecall:
 		SAVEX(a5)
 		SAVEX(a6)
 		SAVEX(a7)
+		SAVEX(t0)
+		SAVEX(t1)
+		SAVEX(t2)
+		SAVEX(t3)
+		SAVEX(t4)
+		SAVEX(t5)
+		SAVEX(t6)
+
+		SAVEX(s0)
+		SAVEX(s1)
+		SAVEX(s2)
+		SAVEX(s3)
+		SAVEX(s4)
+		SAVEX(s5)
+		SAVEX(s6)
+		SAVEX(s7)
+		SAVEX(s8)
+		SAVEX(s9)
+		SAVEX(s10)
+		SAVEX(s11)
+		SAVEX(gp)
+		SAVEX(tp)
+
+
 		
 		addi		a0,sp,deice_REG_OFF(a0)		// point at arguments as first param
 		mv		a1,a7				// ecall number
 		
-		// exit interrupts and enter mos_enter_ecall
+		// exit interrupts and enter mos via mos_enter_ecall
 		la		ra, handle_ex_11_ecall_exit
 		la		a2, mos_enter_ecall
 		csrw		mepc, a2
@@ -85,6 +110,9 @@ handle_ex_11_ecall:
 		
 handle_ex_11_ecall_exit:
 		
+		nop
+		nop
+
 		LOADX(ra)
 		LOADX(a0)
 		LOADX(a1)
@@ -101,6 +129,22 @@ handle_ex_11_ecall_exit:
 		LOADX(t4)
 		LOADX(t5)
 		LOADX(t6)
+
+		LOADX(s0)
+		LOADX(s1)
+		LOADX(s2)
+		LOADX(s3)
+		LOADX(s4)
+		LOADX(s5)
+		LOADX(s6)
+		LOADX(s7)
+		LOADX(s8)
+		LOADX(s9)
+		LOADX(s10)
+		LOADX(s11)
+		LOADX(gp)
+		LOADX(tp)
+
 
 		lw	t0, deice_REG_OFF(mepc)(sp)		// get return address from stack
 		addi	t0, t0, 4				// ecall is always 32 bit
