@@ -6,6 +6,7 @@
 #include "buffers.h"
 #include "osbyte.h"
 #include "osword.h"
+#include "oslib.h"
 #include <stddef.h>
 #include "debug_print.h"
 #include "vdu.h"
@@ -47,38 +48,8 @@ void mos_enter_ecall(struct mos_args *args, uint32_t a7) {
 			args->a3 = r;
 			return;
 		case OS_WORD:
-			if (args->a0 == 0) {
-				//TODO: HOGLET'S API - change to be beeb compatible somehow?
-				uint8_t *ptr = (uint8_t *)(((uint32_t *)args->a1)[0]);
-				int ix = 0;
-				do {
-					int c = RDCHV();
-					if (c < 0) {
-						args->a2 = -1;
-						return;
-					} else if (c == 0x7F) {
-						if (ix > 0) {
-							ix--;
-							WRCHV(8);
-							WRCHV(' ');
-							WRCHV(8);
-						}
-					} else if (c >= ' ' && c < 0x7F) {
-						ptr[ix++] = c;
-						WRCHV(c);
-					} else if (c == 13) {
-						WRCHV(13);
-						WRCHV(10);
-						ptr[ix++] = 13;
-						args->a2 = ix;					
-						return;
-					}
-
-				} while (1);
-			} else {
-				WORDV(args->a0, (void *)args->a1);			
-				return;
-			}
+			WORDV(args->a0, (void *)args->a1);			
+			return;
 	}
 
 	DEBUG_PRINT_STR("ECALL\n");

@@ -5,7 +5,7 @@ DEPS=$(INCS) $(ASMINCS)
 OBJS=	start splash main deice deice_stack \
 		mos moslib keyboard \
 		buffers events osbyte osword debug_print \
-		font_cushion vdu mos_stack 
+		font_cushion vdu mos_stack oslib
 
 ifeq ("$(FLAVOUR)","HAZARD3")
 OBJS+=	interrupts_hazard3 deice_hazard3
