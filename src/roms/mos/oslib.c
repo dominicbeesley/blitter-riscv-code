@@ -291,3 +291,26 @@ void oslib_oscli(char *cmd) {      // Execute an emulated OS command
                  : OSCLOBBERS
                  );
 }
+
+
+void oslib_read_unsigned(uint32_t baseflags, const char **str, uint32_t *num) {
+	register uint32_t a0 asm ("a0") = baseflags;
+	register const char * a1 asm ("a1") = *str;
+	register uint32_t a2 asm ("a2") = *num;
+
+	register int a7 asm ("a7") = OS_READUNS;
+   	asm volatile ("ecall"
+                 : // outputs
+                   "+r" (a0),
+                   "+r" (a1),
+                   "+r" (a2)
+                 : // inputs
+                   "r"  (a0),
+                   "r"  (a1),
+                   "r"  (a2),
+                   "r"  (a7)
+                 : OSCLOBBERS
+                 );
+	*str = a1;
+	*num = a2;
+}

@@ -1,6 +1,5 @@
 #include "interrupts.h"
 #include "deice.h"
-#include "moslib.h"
 #include "mos.h"
 #include "hardware.h"
 #include <stddef.h>
@@ -36,13 +35,39 @@ void vdu_str(const char *str) {
 		return;
 	char c;
 	while ((c = *str++)) {
-		mos_oswrch(c);
+		WRCHV(c);
 	}
 }
 
+void hex2(uint32_t n) {
+	if (n >= 0x10)
+		hex2(n >> 4);
+	n = n & 0xF;
+	if (n >= 10)
+		WRCHV('A'-10 + n);
+	else
+		WRCHV('0' + n);
+}
+
+void hex(uint32_t n) {
+	if (n == 0)
+		WRCHV('0');
+	else
+		hex2(n);
+}
 
 void cmd_go(const char *tail) {
-	vdu_str("GOGOGOGO\n\r");
+
+	uint32_t n;
+	oslib_read_unsigned(16, &tail, &n); 
+
+	//TODO: properly start a new execution context
+
+	register uint32_t a0 asm ("a0") = n;
+
+	asm	volatile ("la sp, 0x10000"); // new stack
+	asm volatile ("jr a0" : : "r" (a0));
+
 }
 
 typedef void (*CMD_FN)(const char *tail);
@@ -101,7 +126,7 @@ void main(void) {
 			
 
 			char *p = buf;
-			while (*p && *p <= ' ') p++;
+			while (*p && (*p <= ' ' || *p == '*')) p++;
 
 			//TODO: call OSCLI
 

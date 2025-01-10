@@ -26,7 +26,7 @@
 #define OS_ERROR    (ECALL_BASE + 15)   // Unused
 
 // these are DB additions - TODO: reorder
-#define OS_READUNS  (ECALL_BASE + 16)
+#define OS_READUNS  (ECALL_BASE + 16)	// OS_ReadUnsigned
 
 
 
@@ -37,19 +37,21 @@ struct OSWORD_0 {
 	uint32_t max;
 };
 
-void oslib_ossysctrl(int a);
-void oslib_osquit(int a);
-void oslib_oshandlers(int num, void *handler_fn, void *handler_data, void **old_handler_fn, void **old_handler_data);
-void oslib_oswrch(unsigned char vdu);
-int oslib_osrdch(void);
-void oslib_osbyte(int al, int *x, int *y, int *c);
-int oslib_osword(int al, void *xy);
-unsigned long oslib_osfile(int reason, char *filename, uint32_t *load, uint32_t *exec, uint32_t *start, uint32_t *end);
-void * oslib_osfind(int a, char *p);
-int oslib_osbget(void *chan, int *peof);
-void oslib_osbput(void *chan, unsigned char byte);
-int oslib_osargs(int reason, void *chan, void *data);
-int oslib_osgbpb(uint8_t reason, uint8_t chan, uint32_t *data, uint32_t *num, uint32_t *ptr, int *peof);
-void oslib_oscli(char *cmd);
+extern void oslib_ossysctrl(int a);
+extern void oslib_osquit(int a);
+extern void oslib_oshandlers(int num, void *handler_fn, void *handler_data, void **old_handler_fn, void **old_handler_data);
+extern void oslib_oswrch(unsigned char vdu);
+extern int oslib_osrdch(void);
+extern void oslib_osbyte(int al, int *x, int *y, int *c);
+extern int oslib_osword(int al, void *xy);
+extern unsigned long oslib_osfile(int reason, char *filename, uint32_t *load, uint32_t *exec, uint32_t *start, uint32_t *end);
+extern void * oslib_osfind(int a, char *p);
+extern int oslib_osbget(void *chan, int *peof);
+extern void oslib_osbput(void *chan, unsigned char byte);
+extern int oslib_osargs(int reason, void *chan, void *data);
+extern int oslib_osgbpb(uint8_t reason, uint8_t chan, uint32_t *data, uint32_t *num, uint32_t *ptr, int *peof);
+extern void oslib_oscli(char *cmd);
+
+extern void oslib_read_unsigned(uint32_t baseflags, const char **str, uint32_t *num);
 
 #endif

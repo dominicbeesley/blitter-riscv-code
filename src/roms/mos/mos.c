@@ -30,26 +30,112 @@ void mos_latch_write(uint8_t val) {
 	sheila_SYSVIA_orb = val;
 }
 
-void mos_enter_ecall(struct mos_args *args, uint32_t a7) {
+static int mos_read_number_in_base(const char **p, int base, uint32_t *ret) {
+
+	*ret = 0;
+	bool had_no = false;
+
+	do {
+		char c = **p;
+		int n = (c >= '0' && c <= '9')?c-'0':
+				(c >= 'a' && c <= 'z')?c-'a':
+				(c >= 'A' && c <= 'Z')?c-'A':
+				-1;
+		if (n < 0 || n >= base)
+			break;
+		else
+		{
+			(*ret) = (*ret) * base + n;
+			(*p)++;
+			had_no = true;
+		}
+	} while (1);
+
+	if (!had_no)
+		return -1;
+	else
+		return 0;
+
+}
+
+mos_error ErrorBlock_BadBase = { 0x16A, "BadBase: Bad Base"};
+mos_error ErrorBlock_BadNumb = { 0x16B, "BadNumb: Bad Number"};
+mos_error ErrorBlock_NumbTooBig = { 0x16C, "NumbTooBig:Number too big"};
+mos_error ErrorBlock_NoSuchSwi = { 0x1E6, "NoSuchSWI:SWI not known"};
+
+
+mos_error* mos_read_unsigned(uint32_t base, const char **p, uint32_t *n) {
+	uint8_t flags = base >> 24;
+	base = base & 0xFF;
+	uint32_t max = *n;
+
+	if (base < 2 || base > 36)
+		base = 10;
+
+	while (**p == ' ') (*p)++;
+
+	if (**p == '&')
+	{
+		base = 16;
+		(*p)++;
+	}
+	else {
+		const char *q = *p;
+		uint32_t b = 10;
+		if (!mos_read_number_in_base(&q, 10, &b) && *q == '_')
+		{
+			if (b < 2 || b > 36)
+				return &ErrorBlock_BadBase;
+			else {
+				base = b;
+				*p = q + 1;
+			}
+		}
+	}
+
+	DEBUG_PRINT_STR("BASE:");
+	DEBUG_PRINT_HEX_WORD(base);
+	DEBUG_PRINT_CH('\n');
+
+
+	if (mos_read_number_in_base(p, base, n))
+		return &ErrorBlock_BadNumb;
+
+	if (
+		((flags & 0x20) && *n > max) || 
+		((flags & 0x40) && *n > 255) ) {
+		return &ErrorBlock_NumbTooBig;
+	} else if ((flags & 0x80) && **p > ' ') 
+		return &ErrorBlock_BadNumb;
+
+	return NULL;
+
+}
+
+mos_error * mos_ecall_int(struct mos_args *args, uint32_t a7) {
 	//asm("ebreak");
 	//TODO: check for 0xAC0000?
 	switch (a7 & 0xFF) {
 		case OS_WRCH:
 			WRCHV(args->a0);
-			return;
+			return NULL;
 		case OS_NEWL:
-			DEBUG_PRINT_STR("\n\r");
-			return;
+			WRCHV('\n');
+			WRCHV('\r');
+			return NULL;
 		case OS_RDCH:
 			args->a0 = RDCHV();
-			return;
+			return NULL;
 		case OS_BYTE:
 			uint8_t r = BYTEV(args->a0, (uint8_t *)&args->a1, (uint8_t *)&args->a2);
 			args->a3 = r;
-			return;
+			return NULL;	//TODO: errors here?
 		case OS_WORD:
 			WORDV(args->a0, (void *)args->a1);			
-			return;
+			return NULL;	//TODO: errors here?
+		case OS_READUNS:
+			return mos_read_unsigned(args->a0, (const char **)&args->a1, &args->a2);
+			break;
 	}
 
 	DEBUG_PRINT_STR("ECALL\n");
@@ -69,7 +155,22 @@ void mos_enter_ecall(struct mos_args *args, uint32_t a7) {
 	DEBUG_PRINT_HEX_WORD(args->a6);
 	DEBUG_PRINT_STR("\n A7:");
 	DEBUG_PRINT_HEX_WORD(a7);
+
+	return &ErrorBlock_NoSuchSwi;
 }
+
+void mos_enter_ecall(struct mos_args *args, uint32_t a7) {
+	mos_error *err = mos_ecall_int(args, a7);
+	if (err != NULL) {
+		//TODO: raise error
+		DEBUG_PRINT_STR("ERROR : ");
+		DEBUG_PRINT_HEX_WORD(err->number);
+		DEBUG_PRINT_STR(" : ");
+		DEBUG_PRINT_STR(err->message);
+		DEBUG_PRINT_STR("\n");
+	}
+}
+
 
 
 void mos_default_NMI() {

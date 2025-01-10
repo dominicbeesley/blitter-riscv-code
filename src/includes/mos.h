@@ -262,4 +262,11 @@ extern VDUV_FN VDUV;
 extern BYTEV_FN BYTEV;
 extern WORDV_FN WORDV;
 
+typedef struct mos_error {
+	uint32_t number;
+	const char *message;
+} mos_error;
+
+
+
 #endif
