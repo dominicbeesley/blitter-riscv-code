@@ -4,7 +4,6 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "hardware.h"
-#include "oslib.h"
 
 //TODO: split out into internal secrets vs API and move to internal header / top level header
 
@@ -245,7 +244,7 @@ typedef int (*RDCHV_FN)(void);
 typedef uint8_t (*BYTEV_FN)(uint8_t A, uint8_t *X, uint8_t *Y);
 
 //TODO: define an OSWORD struct or structs - maybe in lib?
-typedef void (*WORDV_FN)(uint8_t A, void *block);
+typedef int8_t (*WORDV_FN)(uint8_t A, void *block);
 
 typedef uint8_t (*CNPV_FN)(uint8_t buffer, uint8_t flags);
 
@@ -264,7 +263,7 @@ extern WORDV_FN WORDV;
 
 typedef struct mos_error {
 	uint32_t number;
-	const char *message;
+	const char message[];
 } mos_error;
 
 

@@ -5,7 +5,8 @@ DEPS=$(INCS) $(ASMINCS)
 OBJS=	start splash main deice deice_stack \
 		mos keyboard \
 		buffers events osbyte osword debug_print \
-		font_cushion vdu mos_stack oslib
+		font_cushion vdu mos_stack oslib handlers \
+		vdu_print
 
 ifeq ("$(FLAVOUR)","HAZARD3")
 OBJS+=	interrupts_hazard3 deice_hazard3
@@ -52,9 +53,9 @@ $(BUILD)/%.o: 	%.S $(DEPS)
 	$(RISCV_AS) $(RISCV_AS_FLAGS) -c -o $@ -g -Wa,-alghmns=$(basename $@).lst $<
 
 $(BUILD)/%.elf: $(OBJS_O) %.lds
-	$(RISCV_LD) $(RISCV_LD_FLAGS) --specs=nano.specs -Os -nostartfiles -o $@ \
+	$(RISCV_LD) $(RISCV_LD_FLAGS) --specs=nano.specs -Os -nostartfiles -nostdlib -o $@ \
 	-Wl,--build-id=none,-Bstatic,-T,$(filter %.lds, $^),-Map,$(basename $@).map,--strip-debug \
-		$(filter %.o,$^) -lgcc 
+		$(filter %.o,$^) -lc 
 	$(RISCV_NM) --format=posix $@ >$(basename $@).sy1
 	sed -n -E 's/^(\w+)\s+\w\s+([0-9a-f]+)/DEF \1 \2/ip' <$(basename $@).sy1 >$(basename $@).noi
 

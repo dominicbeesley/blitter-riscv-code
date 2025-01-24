@@ -6,6 +6,7 @@
 #include "debug_print.h"
 #include "oslib.h"
 #include <string.h>
+#include "vdu_print.h"
 
 /*
 void irq_handle(void) {
@@ -27,16 +28,6 @@ void init(void) {
 
 	DEBUG_PRINT_INIT;
 
-}
-
-
-void vdu_str(const char *str) {
-	if (!str)
-		return;
-	char c;
-	while ((c = *str++)) {
-		WRCHV(c);
-	}
 }
 
 void hex2(uint32_t n) {
@@ -103,9 +94,9 @@ int cmdcmp(const char *name, const char *match, int l) {
 	return -1;
 }
 
-void main(void) {
+const mos_error err_ESCAPE = { 0x27, "ESCAPE" };
 
-	vdu_str("Risc V MOS - Dossy 2024\r\n");
+void supervisor_prompt() {
 
 	char buf[256];
 
@@ -118,51 +109,66 @@ void main(void) {
 			0x7F
 		};
 
-		WORDV(0, &osw0);
-		buf[osw0.size] = 0;		
-
-		if (buf[0] >= ' ') {
-
-			
-
-			char *p = buf;
-			while (*p && (*p <= ' ' || *p == '*')) p++;
-
-			//TODO: call OSCLI
-
-			int l = 0;
-			char *q = p;
-			while (*q > ' ') {
-				q++;
-				l++;
+		if (WORDV(0, &osw0) < 0) {
+			vdu_str("ESCAPE FLAG");
+			vdu_hex8(ESCAPE_FLAG);
+			if (ESCAPE_FLAG & 0x80) {
+				uint8_t X;
+				uint8_t Y;
+				BYTEV(126, &X, &Y);
 			}
+			vdu_str("\r");
+			oslib_oserror(&err_ESCAPE);
+		} else {
+			buf[osw0.size] = 0;		
 
-			while (*q && *q <= ' ') q++;
+			if (buf[0] >= ' ') {
 
-			if (l) {
+				
 
-				CMD_FN c = NULL;
+				char *p = buf;
+				while (*p && (*p <= ' ' || *p == '*')) p++;
 
-				//TODO: .
+				//TODO: call OSCLI
 
-				for (int i = 0; i < N_CMD; i++) {
-					if (!cmdcmp(cmd_tbl[i].name, p, l)) {
-						c = cmd_tbl[i].cmd;
+				int l = 0;
+				char *q = p;
+				while (*q > ' ') {
+					q++;
+					l++;
+				}
+
+				while (*q && *q <= ' ') q++;
+
+				if (l) {
+
+					CMD_FN c = NULL;
+
+					//TODO: .
+
+					for (int i = 0; i < N_CMD; i++) {
+						if (!cmdcmp(cmd_tbl[i].name, p, l)) {
+							c = cmd_tbl[i].cmd;
+						}
+					}
+					
+					if (c) {
+						c(q);
+					} else {
+						vdu_str("Unrecognized command\r");
 					}
 				}
-				
-				if (c) {
-					c(q);
-				} else {
-					vdu_str("Unrecognized command\r\n");
-				}
+			}
 		}
-
-
-		}
-
 	}
-
 }
 
+
+void main(void) {
+
+	vdu_str("Risc V MOS - Dossy 2024\r");
+
+	supervisor_prompt();
+
+}
 

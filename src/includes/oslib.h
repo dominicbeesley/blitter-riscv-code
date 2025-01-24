@@ -2,6 +2,7 @@
 #define __OSLIB_H__
 
 #include <stdint.h>
+#include "mos.h"
 
 // RISC-V Co Processor Sys Call Numbers
 
@@ -13,7 +14,7 @@
 #define OS_BYTE     (ECALL_BASE +  2)
 #define OS_WORD     (ECALL_BASE +  3)
 #define OS_WRCH     (ECALL_BASE +  4)
-#define OS_NEWL     (ECALL_BASE +  5)   // Unused
+#define OS_NEWL     (ECALL_BASE +  5)
 #define OS_RDCH     (ECALL_BASE +  6)
 #define OS_FILE     (ECALL_BASE +  7)
 #define OS_ARGS     (ECALL_BASE +  8)
@@ -23,7 +24,7 @@
 #define OS_FIND     (ECALL_BASE + 12)
 #define OS_SYS_CTRL (ECALL_BASE + 13)
 #define OS_HANDLERS (ECALL_BASE + 14)
-#define OS_ERROR    (ECALL_BASE + 15)   // Unused
+#define OS_ERROR    (ECALL_BASE + 15)
 
 // these are DB additions - TODO: reorder
 #define OS_READUNS  (ECALL_BASE + 16)	// OS_ReadUnsigned
@@ -53,5 +54,7 @@ extern int oslib_osgbpb(uint8_t reason, uint8_t chan, uint32_t *data, uint32_t *
 extern void oslib_oscli(char *cmd);
 
 extern void oslib_read_unsigned(uint32_t baseflags, const char **str, uint32_t *num);
+
+extern void oslib_oserror(const mos_error *err);
 
 #endif

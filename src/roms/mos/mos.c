@@ -12,6 +12,7 @@
 #include "vdu.h"
 #include <string.h>
 #include "events.h"
+#include "handlers.h"
 
 INSV_FN INSV;
 REMV_FN REMV;
@@ -135,6 +136,14 @@ mos_error * mos_ecall_int(struct mos_args *args, uint32_t a7) {
 			return NULL;	//TODO: errors here?
 		case OS_READUNS:
 			return mos_read_unsigned(args->a0, (const char **)&args->a1, &args->a2);
+			break;
+		case OS_HANDLERS:
+			return handlers_set(
+				(int)args->a0, 
+				(void *)args->a1, 
+				(void *)args->a2, 
+				(void **)&args->a1, 
+				(void **)&args->a2);
 			break;
 	}
 
@@ -344,6 +353,8 @@ void mos_reset(void) {
 //
 //	sheila_USRVIA_pcr = VIA_PCR_CB2_CTL_IN_NEG|VIA_PCR_CB1_CTL_INT_NEG|VIA_PCR_CA2_CTL_OUT_HIGH|VIA_PCR_CA1_CTL_INT_NEG;
 
+	DEBUG_PRINT_STR("HAND INIT\n");
+	handlers_init();
 	DEBUG_PRINT_STR("BUF INIT\n");
 	buffers_init();
 

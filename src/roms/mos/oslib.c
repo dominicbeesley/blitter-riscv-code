@@ -292,6 +292,19 @@ void oslib_oscli(char *cmd) {      // Execute an emulated OS command
                  );
 }
 
+void oslib_oserror(const mos_error *error) {      // Execute an emulated OS command
+   register int a0 asm ("a0") = (int)error;
+   register int a7 asm ("a7") = OS_ERROR;
+   asm volatile ("ecall"
+                 : // outputs
+                 : // inputs
+                   "r"  (a0),
+                   "r"  (a7)
+                 : OSCLOBBERS
+                 );
+}
+
+
 
 void oslib_read_unsigned(uint32_t baseflags, const char **str, uint32_t *num) {
 	register uint32_t a0 asm ("a0") = baseflags;

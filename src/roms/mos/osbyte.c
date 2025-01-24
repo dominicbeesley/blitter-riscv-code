@@ -5,6 +5,7 @@
 #include "interrupts.h"
 #include <stddef.h>
 #include "vdu.h"
+#include "handlers.h"
 
 #define XYSET(X,V) {if(X) *X = V;}
 #define XYGET(X) ((X)?*X:0)
@@ -53,15 +54,18 @@ uint8_t osbyte_21_FLUSH_BUFFER(uint8_t *X, uint8_t *Y) {
 
 
 uint8_t osbyte_124_ESCAPE_CLEAR(uint8_t *X, uint8_t *Y) {
-	ESCAPE_FLAG = ESCAPE_FLAG >> 1; // clear
+	ESCAPE_FLAG = ESCAPE_FLAG >> 1; // clear TODO: should this use the handler table value - if so will need BBCBASIC SDL to pass on to default handler
+	HANDLER_ESCAPE_FN(ESCAPE_FLAG >> 1); // TODO: API change to bit 7!? This to be same as Hoglet
 	//TODO: TUBE
 	return 0;
 }
 uint8_t osbyte_125_ESCAPE_SET(uint8_t *X, uint8_t *Y) {
 	ESCAPE_FLAG = 0x80 | (ESCAPE_FLAG >> 1); // clear
+	HANDLER_ESCAPE_FN(ESCAPE_FLAG >> 1); // TODO: API change to bit 7!? This to be same as Hoglet
 	//TODO: TUBE
 	return 0;
 }
+
 uint8_t osbyte_126_ESCAPE_ACK(uint8_t *X, uint8_t *Y) {
 	if (!(ESCAPE_FLAG & FLAG_N))
 		return osbyte_124_ESCAPE_CLEAR(X, Y);

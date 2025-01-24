@@ -4,6 +4,8 @@
 #include "string.h"
 #include "events.h"
 #include "interrupts.h"
+#include "handlers.h"
+#include "osbyte.h"
 
 #include <stddef.h>
 
@@ -40,11 +42,6 @@ void buffers_init(void) {
 	memset(buf_ix_out, 0, sizeof(int) * (BUFNOMAX + 1));
 }
 
-void OSBYTE_125() {
-	ESCAPE_FLAG = 0x80 | (ESCAPE_FLAG >> 1);
-	//TODO: TUBE
-}
-
 // _OSBYTE_153 returns FLAG_C for 
 uint8_t buffers_insert_check_ESC(uint8_t buffer_num, uint8_t data) {
 	if (buffer_num == 0 || (buffer_num == 1 && OSB_RS423_MODE == 0)) {
@@ -52,7 +49,8 @@ uint8_t buffers_insert_check_ESC(uint8_t buffer_num, uint8_t data) {
 				if (!(OSB_ESC_BRK & 0x01)) {
 					if (event_raise(EVENT_06_ESCAPE, 0, data) & FLAG_C) {
 						//not handled - set escape flag
-						OSBYTE_125();
+						uint8_t X, Y;
+						BYTEV(OSBYTE_125_ESCAPE_SET, &X, &Y);
 					}
 				}
 				return 0;
