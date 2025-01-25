@@ -13,7 +13,7 @@ int8_t osword_default_WORDV(uint8_t A, void *block) {
 	if (A == 0) {
 		//TODO: HOGLET'S API - change to be beeb compatible somehow?
 		uint8_t *ptr = (uint8_t *)(((uint32_t *)block)[0]);
-		uint32_t size = (((uint32_t *)block)[1]);
+		uint32_t maxindex = (((uint32_t *)block)[1]);
 		uint32_t min = (((uint32_t *)block)[2]);
 		uint32_t max = (((uint32_t *)block)[3]);
 		int ix = 0;
@@ -22,22 +22,37 @@ int8_t osword_default_WORDV(uint8_t A, void *block) {
 			if (c < 0) {
 				((uint32_t *)block)[1] = -1;
 				return -1;
-			} else if (c == 0x7F && ix > 0) {
-				ix--;
-				WRCHV(8);
-				WRCHV(' ');
-				WRCHV(8);
-			} else if (c >= min && c <= max && ix < size-1) {
-				ptr[ix++] = c;
-				WRCHV(c);
-			} else if (c == 13) {
-				WRCHV(13);
-				WRCHV(10);
-				((uint32_t *)block)[1] = ix;					
-				ptr[ix++] = 13;
-				return 0;
+			} else if (OSB_VDU_QSIZE != 0 && (OSB_OUT_STREAM & 2) == 0) {
+				// output to VDU drivers to complete multibyte sequence
+				WRCHV(c);	 
+			} else if (c == 0x7F) {
+				if (ix > 0) {
+					ix--;
+					WRCHV(0x7F);
+				}
+			} else if (c == 21) {
+				//ctrl-u - delete line
+				while (ix > 0)
+				{
+					WRCHV(0x7F);
+					ix--;
+				}
 			} else {
-				WRCHV(7);
+				ptr[ix] = c;
+				if (c == 13) {
+					//end of line
+					WRCHV(13);
+					WRCHV(10);
+					((uint32_t *)block)[1] = ix;
+					return 0;					
+				} else if (ix >= maxindex) {
+					WRCHV(7);
+				} else {
+					WRCHV(c);
+					if (c >= min && c <= max) {
+						ix++;
+					}
+				}
 			}
 
 		} while (1);
