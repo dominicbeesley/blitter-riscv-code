@@ -30,7 +30,7 @@ uint8_t LAST_EXIT = 0;
 void handlers_default_EXIT(uint8_t exitcode) {
 	// return to supervisor prompt
 
-	vdu_str("User process entered with code ");
+	vdu_str("User process exited with code ");
 	vdu_hex8(exitcode);
 	vdu_str("\r");
 
@@ -40,10 +40,11 @@ void handlers_default_EXIT(uint8_t exitcode) {
 
 }
 
-
-mos_error ERROR_BUFFER;
+char errbuf[256];
+mos_error * const ERROR_BUFFER = (mos_error *)errbuf;
 
 void handlers_default_ERROR(const mos_error *error) {
+
 	vdu_str("Error ");
 	vdu_hex32(error->number);
 	vdu_str(" : ");
@@ -99,5 +100,5 @@ void* handlers_data(int handler_number) {
 const handler_table_entry default_handlers[] = {
 	{ handlers_default_EXIT, &LAST_EXIT },
 	{ handlers_default_ESCAPE, &ESCAPE_FLAG },
-	{ handlers_default_ERROR, &ERROR_BUFFER }
+	{ handlers_default_ERROR, ERROR_BUFFER }
 };

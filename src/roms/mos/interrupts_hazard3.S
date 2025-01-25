@@ -13,6 +13,16 @@
 #define LOADX(rn)	\
 		lw	rn, deice_REG_OFF(rn)(sp)
 		
+		.bss
+		.globl user_error_pend
+		.globl user_stack_frame
+//This is used in mos_enter_ecall to flag up exceptions
+		.align(2)
+user_stack_frame:
+		.word	0
+user_error_pend:
+		.word	0
+
 		
 		.section rodata
 str_unex:	.asciz "An unexpected exception: "
@@ -59,11 +69,31 @@ interrupts_init:
 
 
 
+
 		//TODO: move this to own file
 handle_ex_11_ecall:
 		// we should be entered with
 		// sp set up to MOS stack pointing at a deice frame
 		// with the following registers saved in frame: a0, a1, sp, mepc, meicontext, mstatus, mcause
+
+//CHECK TO SEE IF WE ENTERED OS AT THIS POINT AND SET A PER-PROCEsS/USER ENV pointer
+//TODO: port to pico
+//TODO: detect stack swap earlier
+//TODO: proper user environment
+		lw	a1, deice_REG_OFF(sp)(sp)		// get back caller stack pointer
+		la	a0, mos_stack_base
+		blt	a1, a0, tt_newstack
+		la	a0, mos_stack_top
+		blt	a1, a0, tt_okstack
+tt_newstack:
+		// the stack was swapped entering the OS so setup pointers
+		//TODO: proper user process structure (handlers?)
+		la	a1, user_stack_frame
+		sw	sp, 0(a1)
+		la	a1, user_error_pend
+		sw	zero, 0(a1)	
+
+tt_okstack:	
 
 		//TODO: we can dispense with most of this - only a0-a7 need to be restored?
 		// save the arguments and return address register, trust GCC to trash Tx and save Sx
@@ -122,7 +152,7 @@ handle_ex_11_ecall_exit:
 		LOADX(a5)
 		LOADX(a6)
 		LOADX(a7)
-		LOADX(t0)
+		LOADX(t0)	//TODO: use scratch register to preserve
 		LOADX(t1)
 		LOADX(t2)
 		LOADX(t3)
@@ -145,15 +175,31 @@ handle_ex_11_ecall_exit:
 		LOADX(gp)
 		LOADX(tp)
 
+		la	t0, user_stack_frame
+		lw	t0, 0(t0)
+		bne	sp, t0, not_user_exit
+		
+		// we are about to exit back to user process, check for pending errors //TODO: and other upcalls?
+		la	t0, user_error_pend
+		lw	t0, 0(t0)
+		beqz	t0, not_user_exit
 
+		// error pending call into user's error handler
+		mv	a0, t0	// error pointer
+		la	t0, active_handlers
+		lw	t0, 16(t0)	// error handler
+
+		LOADX(sp)
+		jr	t0					// return to caller
+
+not_user_exit:
 		lw	t0, deice_REG_OFF(mepc)(sp)		// get return address from stack
 		addi	t0, t0, 4				// ecall is always 32 bit
 
 		LOADX(sp)	
 		
 		jr	t0					// return to caller
-
-
+		
 
 handle_breakpoint:
 		// save other caller save regs in ABI TODO: check out __attribute__ interrupt and tweak...

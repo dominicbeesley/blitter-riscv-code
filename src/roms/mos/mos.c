@@ -39,8 +39,8 @@ static int mos_read_number_in_base(const char **p, int base, uint32_t *ret) {
 	do {
 		char c = **p;
 		int n = (c >= '0' && c <= '9')?c-'0':
-				(c >= 'a' && c <= 'z')?c-'a':
-				(c >= 'A' && c <= 'Z')?c-'A':
+				(c >= 'a' && c <= 'z')?10 + c-'a':
+				(c >= 'A' && c <= 'Z')?10 + c-'A':
 				-1;
 		if (n < 0 || n >= base)
 			break;
@@ -59,13 +59,13 @@ static int mos_read_number_in_base(const char **p, int base, uint32_t *ret) {
 
 }
 
-mos_error ErrorBlock_BadBase = { 0x16A, "BadBase: Bad Base"};
-mos_error ErrorBlock_BadNumb = { 0x16B, "BadNumb: Bad Number"};
-mos_error ErrorBlock_NumbTooBig = { 0x16C, "NumbTooBig:Number too big"};
-mos_error ErrorBlock_NoSuchSwi = { 0x1E6, "NoSuchSWI:SWI not known"};
+const mos_error ErrorBlock_BadBase = { 0x16A, "BadBase: Bad Base"};
+const mos_error ErrorBlock_BadNumb = { 0x16B, "BadNumb: Bad Number"};
+const mos_error ErrorBlock_NumbTooBig = { 0x16C, "NumbTooBig:Number too big"};
+const mos_error ErrorBlock_NoSuchSwi = { 0x1E6, "NoSuchSWI:SWI not known"};
 
 
-mos_error* mos_read_unsigned(uint32_t base, const char **p, uint32_t *n) {
+const mos_error* mos_read_unsigned(uint32_t base, const char **p, uint32_t *n) {
 	uint8_t flags = base >> 24;
 	base = base & 0xFF;
 	uint32_t max = *n;
@@ -98,7 +98,6 @@ mos_error* mos_read_unsigned(uint32_t base, const char **p, uint32_t *n) {
 	DEBUG_PRINT_HEX_WORD(base);
 	DEBUG_PRINT_CH('\n');
 
-
 	if (mos_read_number_in_base(p, base, n))
 		return &ErrorBlock_BadNumb;
 
@@ -113,7 +112,7 @@ mos_error* mos_read_unsigned(uint32_t base, const char **p, uint32_t *n) {
 
 }
 
-mos_error * mos_ecall_int(struct mos_args *args, uint32_t a7) {
+const mos_error * mos_ecall_int(struct mos_args *args, uint32_t a7) {
 	//asm("ebreak");
 	//TODO: check for 0xAC0000?
 	switch (a7 & 0xFF) {
@@ -136,7 +135,9 @@ mos_error * mos_ecall_int(struct mos_args *args, uint32_t a7) {
 			return NULL;	//TODO: errors here?
 		case OS_READUNS:
 			return mos_read_unsigned(args->a0, (const char **)&args->a1, &args->a2);
-			break;
+		case OS_SYS_CTRL:
+			// sys control - not implemented, ignore
+			return NULL;
 		case OS_HANDLERS:
 			return handlers_set(
 				(int)args->a0, 
@@ -145,6 +146,8 @@ mos_error * mos_ecall_int(struct mos_args *args, uint32_t a7) {
 				(void **)&args->a1, 
 				(void **)&args->a2);
 			break;
+		case OS_ERROR:
+			return (mos_error *)args->a0;
 	}
 
 	DEBUG_PRINT_STR("ECALL\n");
@@ -168,15 +171,24 @@ mos_error * mos_ecall_int(struct mos_args *args, uint32_t a7) {
 	return &ErrorBlock_NoSuchSwi;
 }
 
+extern mos_error *user_error_pend;
+
 void mos_enter_ecall(struct mos_args *args, uint32_t a7) {
 	mos_error *err = mos_ecall_int(args, a7);
-	if (err != NULL) {
-		//TODO: raise error
-		DEBUG_PRINT_STR("ERROR : ");
-		DEBUG_PRINT_HEX_WORD(err->number);
-		DEBUG_PRINT_STR(" : ");
-		DEBUG_PRINT_STR(err->message);
-		DEBUG_PRINT_STR("\n");
+	if ((int)a7 < 0)
+	{
+		//XOS form, return in a7
+		args->a7 = (uint32_t)err;
+	} else {
+		// uncaught exception raise as error
+
+		if (err) {
+			user_error_pend = HANDLER_ERROR_DATAPTR;
+			user_error_pend->number = err->number;
+			strncpy(user_error_pend->message, err->message, 252); //TODO: message size
+		
+			//TODO: this should check if we are actually being called from user space and if not panic or unwind stack
+		}
 	}
 }
 

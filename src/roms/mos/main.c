@@ -95,6 +95,7 @@ int cmdcmp(const char *name, const char *match, int l) {
 }
 
 const mos_error err_ESCAPE = { 0x27, "ESCAPE" };
+const mos_error err_UNRECOGNIZEDCMD = { 0x28, "Unrecognised command." };
 
 void supervisor_prompt() {
 
@@ -155,7 +156,7 @@ void supervisor_prompt() {
 					if (c) {
 						c(q);
 					} else {
-						vdu_str("Unrecognized command\r");
+						oslib_oserror(&err_UNRECOGNIZEDCMD);
 					}
 				}
 			}

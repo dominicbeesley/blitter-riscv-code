@@ -16,6 +16,7 @@ struct mos_args {
 	uint32_t	a4;
 	uint32_t	a5;
 	uint32_t	a6;
+	uint32_t	a7;		// not normally used except to return mos_error
 };
 
 #define	CRFS_LOAD		(*((uint32_t *)0xb0))
@@ -263,7 +264,7 @@ extern WORDV_FN WORDV;
 
 typedef struct mos_error {
 	uint32_t number;
-	const char message[];
+	char message[];
 } mos_error;
 
 
