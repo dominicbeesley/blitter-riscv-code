@@ -131,7 +131,7 @@ const mos_error * mos_ecall_int(struct mos_args *args, uint32_t a7) {
 			args->a3 = r;
 			return NULL;	//TODO: errors here?
 		case OS_WORD:
-			WORDV(args->a0, (void *)args->a1);			
+			args->a2 = WORDV(args->a0, (void *)args->a1);	//TODO: Discuss return values / errors
 			return NULL;	//TODO: errors here?
 		case OS_READUNS:
 			return mos_read_unsigned(args->a0, (const char **)&args->a1, &args->a2);
