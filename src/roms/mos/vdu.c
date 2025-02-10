@@ -1453,6 +1453,8 @@ void VDU_29(void) {
 }
 
 
+
+
 const uint8_t *_LD03E_font_addr(uint8_t c) {
     uint8_t r = c >> 6;     // usrdef region index  
     if (VDU_FONT_FLAGS & (0x80 >> r))
@@ -1506,6 +1508,19 @@ void VDU_OUT_CHAR(uint8_t c) {
     }
 }
 
+/*************************************************************************
+ *                                                                       *
+ *   VDU 127 (&7F) - DELETE (entry 32)                                   *
+ *                                                                       *
+ *************************************************************************/
+
+void VDU_127(void) {
+    VDU_8();
+    //TODO: GFX:
+    VDU_OUT_CHAR(' '); // write a space but don't move cursor
+}
+
+
 void vdu_init(uint8_t mode) {
     VDU_STATUS = 0;
     memset(&VDU_VARS_BASE, 0, VDU_VARS_SIZE);
@@ -1549,7 +1564,7 @@ const VDU_FN _TBL_VDU_ROUTINES[33] = {
     VDU_29,     // VDU 29  - &CAA2, 4 parameters
     VDU_30,     // VDU 30  - &C779, no parameters
     VDU_31,     // VDU 31  - &C787, 2 parameters
-    VDU_0       // VDU 127 - &CAAC, no parameters
+    VDU_127     // VDU 127 - &CAAC, no parameters
 };
 
 const int8_t _TBL_VDU_PARAMS[33] = {

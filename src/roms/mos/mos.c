@@ -6,10 +6,13 @@
 #include "buffers.h"
 #include "osbyte.h"
 #include "osword.h"
+#include "oslib.h"
 #include <stddef.h>
 #include "debug_print.h"
 #include "vdu.h"
 #include <string.h>
+#include "events.h"
+#include "handlers.h"
 
 INSV_FN INSV;
 REMV_FN REMV;
@@ -28,56 +31,123 @@ void mos_latch_write(uint8_t val) {
 	sheila_SYSVIA_orb = val;
 }
 
-void mos_enter_ecall(struct mos_args *args, uint32_t a7) {
+static int mos_read_number_in_base(const char **p, int base, uint32_t *ret) {
+
+	*ret = 0;
+	bool had_no = false;
+
+	do {
+		char c = **p;
+		int n = (c >= '0' && c <= '9')?c-'0':
+				(c >= 'a' && c <= 'z')?10 + c-'a':
+				(c >= 'A' && c <= 'Z')?10 + c-'A':
+				-1;
+		if (n < 0 || n >= base)
+			break;
+		else
+		{
+			(*ret) = (*ret) * base + n;
+			(*p)++;
+			had_no = true;
+		}
+	} while (1);
+
+	if (!had_no)
+		return -1;
+	else
+		return 0;
+
+}
+
+const mos_error ErrorBlock_BadBase = { 0x16A, "BadBase: Bad Base"};
+const mos_error ErrorBlock_BadNumb = { 0x16B, "BadNumb: Bad Number"};
+const mos_error ErrorBlock_NumbTooBig = { 0x16C, "NumbTooBig:Number too big"};
+const mos_error ErrorBlock_NoSuchSwi = { 0x1E6, "NoSuchSWI:SWI not known"};
+
+
+const mos_error* mos_read_unsigned(uint32_t base, const char **p, uint32_t *n) {
+	uint8_t flags = base >> 24;
+	base = base & 0xFF;
+	uint32_t max = *n;
+
+	if (base < 2 || base > 36)
+		base = 10;
+
+	while (**p == ' ') (*p)++;
+
+	if (**p == '&')
+	{
+		base = 16;
+		(*p)++;
+	}
+	else {
+		const char *q = *p;
+		uint32_t b = 10;
+		if (!mos_read_number_in_base(&q, 10, &b) && *q == '_')
+		{
+			if (b < 2 || b > 36)
+				return &ErrorBlock_BadBase;
+			else {
+				base = b;
+				*p = q + 1;
+			}
+		}
+	}
+
+	DEBUG_PRINT_STR("BASE:");
+	DEBUG_PRINT_HEX_WORD(base);
+	DEBUG_PRINT_CH('\n');
+
+	if (mos_read_number_in_base(p, base, n))
+		return &ErrorBlock_BadNumb;
+
+	if (
+		((flags & 0x20) && *n > max) || 
+		((flags & 0x40) && *n > 255) ) {
+		return &ErrorBlock_NumbTooBig;
+	} else if ((flags & 0x80) && **p > ' ') 
+		return &ErrorBlock_BadNumb;
+
+	return NULL;
+
+}
+
+const mos_error * mos_ecall_int(struct mos_args *args, uint32_t a7) {
 	//asm("ebreak");
 	//TODO: check for 0xAC0000?
 	switch (a7 & 0xFF) {
 		case OS_WRCH:
 			WRCHV(args->a0);
-			return;
+			return NULL;
 		case OS_NEWL:
-			DEBUG_PRINT_STR("\n\r");
-			return;
+			WRCHV('\n');
+			WRCHV('\r');
+			return NULL;
 		case OS_RDCH:
 			args->a0 = RDCHV();
-			return;
+			return NULL;
 		case OS_BYTE:
 			uint8_t r = BYTEV(args->a0, (uint8_t *)&args->a1, (uint8_t *)&args->a2);
 			args->a3 = r;
-			return;
+			return NULL;	//TODO: errors here?
 		case OS_WORD:
-			if (args->a0 == 0) {
-				//TODO: HOGLET'S API - change to be beeb compatible somehow?
-				uint8_t *ptr = (uint8_t *)(((uint32_t *)args->a1)[0]);
-				int ix = 0;
-				do {
-					int c = RDCHV();
-					if (c < 0) {
-						args->a2 = -1;
-						return;
-					} else if (c == 0x7F) {
-						if (ix > 0) {
-							ix--;
-							WRCHV(8);
-							WRCHV(' ');
-							WRCHV(8);
-						}
-					} else if (c >= ' ' && c < 0x7F) {
-						ptr[ix++] = c;
-						WRCHV(c);
-					} else if (c == 13) {
-						WRCHV(13);
-						WRCHV(10);
-						ptr[ix++] = 13;
-						args->a2 = ix;					
-						return;
-					}
-
-				} while (1);
-			} else {
-				WORDV(args->a0, (void *)args->a1);			
-				return;
-			}
+			args->a2 = WORDV(args->a0, (void *)args->a1);	//TODO: Discuss return values / errors
+			return NULL;	//TODO: errors here?
+		case OS_READUNS:
+			return mos_read_unsigned(args->a0, (const char **)&args->a1, &args->a2);
+		case OS_SYS_CTRL:
+			// sys control - not implemented, ignore
+			return NULL;
+		case OS_HANDLERS:
+			return handlers_set(
+				(int)args->a0, 
+				(void *)args->a1, 
+				(void *)args->a2, 
+				(void **)&args->a1, 
+				(void **)&args->a2);
+			break;
+		case OS_ERROR:
+			return (mos_error *)args->a0;
 	}
 
 	DEBUG_PRINT_STR("ECALL\n");
@@ -97,11 +167,35 @@ void mos_enter_ecall(struct mos_args *args, uint32_t a7) {
 	DEBUG_PRINT_HEX_WORD(args->a6);
 	DEBUG_PRINT_STR("\n A7:");
 	DEBUG_PRINT_HEX_WORD(a7);
+
+	return &ErrorBlock_NoSuchSwi;
+}
+
+extern mos_error *user_error_pend;
+
+void mos_enter_ecall(struct mos_args *args, uint32_t a7) {
+	mos_error *err = mos_ecall_int(args, a7);
+	if ((int)a7 < 0)
+	{
+		//XOS form, return in a7
+		args->a7 = (uint32_t)err;
+	} else {
+		// uncaught exception raise as error
+
+		if (err) {
+			user_error_pend = HANDLER_ERROR_DATAPTR;
+			user_error_pend->number = err->number;
+			strncpy(user_error_pend->message, err->message, 252); //TODO: message size
+		
+			//TODO: this should check if we are actually being called from user space and if not panic or unwind stack
+		}
+	}
 }
 
 
-void mos_event_raise(uint8_t eventno, uint8_t X, uint8_t Y) {
-	//TODO
+
+void mos_default_NMI() {
+	//TODO: reset NMI edge detector in fb_cpu_hazard3
 }
 
 void mos_default_IRQ1V() {
@@ -143,7 +237,7 @@ void mos_default_IRQ1V() {
 				}
 			}
 
-			mos_event_raise(EVENT_04_VSYNC, 0, 0);
+			event_raise(EVENT_04_VSYNC, 0, 0);
 
 			sheila_SYSVIA_ifr = VIA_IxR_CA1;
 			return;
@@ -206,6 +300,9 @@ void mos_default_WRCHV(uint8_t c) {
 }
 
 void mos_reset(void) {
+	DEBUG_PRINT_STR("INT INIT\n");
+	interrupts_init();
+
 	// disable SYSVIA interrupts
 	sheila_SYSVIA_ier = 0x7F;
 	sheila_SYSVIA_ifr = 0x7F;
@@ -268,6 +365,9 @@ void mos_reset(void) {
 //
 //	sheila_USRVIA_pcr = VIA_PCR_CB2_CTL_IN_NEG|VIA_PCR_CB1_CTL_INT_NEG|VIA_PCR_CA2_CTL_OUT_HIGH|VIA_PCR_CA1_CTL_INT_NEG;
 
+	DEBUG_PRINT_STR("HAND INIT\n");
+	handlers_init();
+	DEBUG_PRINT_STR("BUF INIT\n");
 	buffers_init();
 
 	INSV = buffers_default_INSV;
@@ -283,13 +383,16 @@ void mos_reset(void) {
 	VDU_FONT_FLAGS = 0x0F;
 	memset(VDU_FONT_LOC, 8, 7);
 
+	DEBUG_PRINT_STR("VDU INIT\n");
 	vdu_init(4);
 
 	sheila_SYSVIA_ifr = 0x7F; //clear all
 
+	DEBUG_PRINT_STR("INT DIS 0\n");
 	interrupts_disable(0);
 	key_set_LEDs();
 
+	DEBUG_PRINT_STR("GO\n");
 
 }
 

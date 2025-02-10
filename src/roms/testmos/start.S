@@ -1,4 +1,11 @@
-		#include "custom_ops.S"
+#ifdef FLAVOUR_PICORV32
+		#include "custom_ops_picorv32.h"
+#endif
+
+#ifdef FLAVOUR_HAZARD3
+		#include "custom_ops_hazard3.h"
+#endif
+
 		#include "hardware.S"
 
 sheila			= 0xFFFFFE00
@@ -278,11 +285,14 @@ playend:	mv	ra, t5
 
 
 
-reset_handle_enter:		
+reset_handle_enter:	
+
+
+#ifdef FLAVOUR_PICORV32
 		// disable all but timer, illegal instruction, bus interrupts, debug button
 		li	t0,0xFFFFFFD8
 		picorv32_maskirq_insn(t0, t0)
-
+#endif
 		// disable SYS and USR VIA interrupts - just in case
 		li	t0, 0x7F
 		sb	t0, sheila_SYSVIA_ier(zero)
@@ -299,11 +309,23 @@ rllp:		sb	t0, sheila_SYSVIA_orb(zero)
 		bge	t0, t1, rllp
 		
 
-		// reenable CA1 interrupt, we use this to test for VSYNC
-		li	t0, VIA_IxR_FLAG|VIA_IxR_CA1
-		sb	t0, sheila_SYSVIA_ier(zero)
+#ifdef FLAVOUR_HAZARD3
+
+		// set up the H3 custom irq controller
+		li	t0, (7<<16)|(0)
+		csrrs	x0, hazard3_csr_meiea, t0	// enable all external interrupts (debug, nmi, irq)
+
+		// and the general priv mode interrupts stuff
+		li	t0, 1<<11
+		csrrs	x0, mie, t0			// enable external interrupts
+		csrrsi	x0, mstatus, 1<<3		// enable global interrupts
+
+#endif
+
 
 main_loop:
+
+
 
 		jal	mode7
 
@@ -313,11 +335,16 @@ main_loop:
 		la	a0, splash
 		la	a1, 0xFFFF7C00
 		li	a2, 0xFFFF7C00 + 40 * 25
-splashlp:	lw	t0, 0(a0)
-		sw	t0, 0(a1)
+splashlp:	lw	a3, 0(a0)
+		nop
+		nop
+		nop
+		nop
+		sw	a3, 0(a1)
 		addi	a0, a0, 4
 		addi	a1, a1, 4
 		bne	a1, a2, splashlp
+
 
 		
 		la	a0, vgmdata
@@ -472,10 +499,26 @@ interrupts_handle_enter:
 		sw	x30, 116(zero)
 		sw	x31, 120(zero)
 
+#ifdef FLAVOUR_PICORV
 		picorv32_getq_insn(x1, q0)
 		sw	x1, 124(zero)
 		picorv32_getq_insn(x1, q1)
 		sw	x1, 128(zero)
+		picorv32_getq_insn(x1, q2)
+		sw	x1, 132(zero)
+		picorv32_getq_insn(x1, q3)
+		sw	x1, 136(zero)
+#endif
+#ifdef FLAVOUR_HAZARD3
+		csrr	x1, mcause
+		sw	x1, 124(zero)
+		csrr	x1, mepc
+		sw	x1, 128(zero)
+		csrr	x1, hazard3_csr_meicontext
+		sw	x1, 132(zero)
+		csrrs	x1, hazard3_csr_meipa, 0
+		sw	x1, 136(zero)
+#endif
 
 		// we're not really expecting interrupts, display an error screen
 		jal	mode7
@@ -509,7 +552,7 @@ skQ2:		jal	hexbyte
 		jal	printch
 isk:		addi	a4, a4, 1
 		addi	a5, a5, 4
-		slti	a0, a4, 34
+		slti	a0, a4, 36
 		bnez	a0, ilp
 
 sop:		j sop

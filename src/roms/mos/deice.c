@@ -2,8 +2,8 @@
 #include "interrupts.h"
 #include "debug_print.h"
 
-uint8_t	deice_host_status;			// when deice_main is running this holds the target status
-
+uint8_t		deice_host_status;			// when deice_main is running this holds the target status
+uint32_t *	deice_registers;			// passed in when entered
 
 
 /* local forward declarations */
@@ -89,69 +89,9 @@ void deice_print_str(const char *str) {
 }
 
 
-void deice_enter(void) {
-	//TODO: not sure this is the right place for this but we need
-	//to readjust the PC pointer depending on the type of interrupt
-	//adjust back to previous instruction if illegal op / break / bus error
-	uint32_t irq_type = interrupts_regs[32];
-	if (irq_type & 0x6) {
-		if (interrupts_regs[31] & 1) {
-			//16 bit instruction
-			interrupts_regs[31]-=2;
-		} else {
-			interrupts_regs[31]-=4;
-		}
-	}
-
-	//we deduce target state from interrupt register
-	if (irq_type & 1) {
-		deice_host_status = TS_RV_TIMER;
-		interrupts_regs[32] &= ~1;
-	}
-	else if (irq_type & 2)
-	{
-		uint8_t *pc = (uint8_t *)(interrupts_regs[31] & 0xFFFFFFFE);
-
-		// check for a c.ebreak/break at PC
-		if (
-			((pc[0] == 0x02) && (pc[1] == 0x90))
-			| ((pc[0] == 0x73) && (pc[1] == 0x00) && (pc[2] == 0x10) && (pc[1] == 0x00))
-			)
-			// break or c.break
-			deice_host_status = TS_BP;
-		else if ((pc[0] == 0x73) && (pc[1] == 0x00) && (pc[2] == 0x00) && (pc[1] == 0x00))
-			// ecall
-			deice_host_status = TS_RV_CALL;
-		else
-			deice_host_status = TS_ILLEGAL;
-		interrupts_regs[32] &= ~2;
-	}
-	else if (irq_type & 4) {
-		deice_host_status = TS_RV_BUSERROR;
-		interrupts_regs[32] &= ~4;		
-	}
-	else if (irq_type & 8) {
-		deice_host_status = TS_RV_NMI;
-		interrupts_regs[32] &= ~8;		
-	}
-	else if (irq_type & 16) {
-		deice_host_status = TS_RV_IRQ;
-		interrupts_regs[32] &= ~16;		
-	}
-	else if (irq_type & 32) {
-		deice_host_status = TS_RV_DEBUG;
-		interrupts_regs[32] &= ~32;		
-	} else {
-		deice_host_status = TS_RV_UNKNOWN;		
-		uint32_t m = 1;
-		while (m) {
-			if (m & irq_type) {
-				interrupts_regs[32] &= m;
-			} else {
-				m = m << 1;
-			}
-		}
-	}
+void deice_enter(uint8_t status, uint32_t * registers) {
+	deice_host_status = status;
+	deice_registers = registers;
 
 	deice_fn_read_rg(FN_RUN_TARG);
 
@@ -300,12 +240,12 @@ void deice_fn_write_m(void) {
 
 void deice_fn_read_rg(uint8_t fn) {
 	combuf[0] = fn;
-	combuf[1] = (INTERRUPTS_REGS_N*4)+1;			// registers + target status
+	combuf[1] = (DEICE_INTERRUPT_REGISTERS*4)+1;			// registers + target status
 
 	//copy as bytes - alignment!
 	uint8_t *p = (uint8_t *)combuf+2;
-	uint8_t *q = (uint8_t *)interrupts_regs;
-	int n = (INTERRUPTS_REGS_N*4);
+	uint8_t *q = (uint8_t *)deice_registers;
+	int n = (DEICE_INTERRUPT_REGISTERS*4);
 	while (n) {
 		*p++=*q++;
 		n--;
@@ -316,11 +256,11 @@ void deice_fn_read_rg(uint8_t fn) {
 }
 
 void deice_fn_write_rg(void) {
-	if (combuf[1] != (INTERRUPTS_REGS_N*4)+1) 
+	if (combuf[1] != (DEICE_INTERRUPT_REGISTERS*4)+1) 
 		deice_send_status(1);	// error - wrong length
 	uint8_t *p = (uint8_t *)combuf+2;
-	uint8_t *q = (uint8_t *)interrupts_regs;
-	int n = (INTERRUPTS_REGS_N*4);
+	uint8_t *q = (uint8_t *)deice_registers;
+	int n = (DEICE_INTERRUPT_REGISTERS*4);
 	while (n) {
 		*q++=*p++;
 		n--;

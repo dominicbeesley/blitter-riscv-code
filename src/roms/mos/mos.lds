@@ -40,11 +40,16 @@ SECTIONS {
 	_data_size = SIZEOF(.data);
     _data_load_start = LOADADDR(.data);
 
-	.shims ORIGIN(ROM) + 0x7F00 : {
+	.shims ORIGIN(ROM) + 0x7A00 : {
 		. = ALIGN(4);
 		*(entry_shims);
 		_bob2 = .;
 	} >ROM
+
+	.hwwindow ORIGIN(ROM) + 0x7C00 : {
+
+
+	} > ROM
 
 	.hwvects ORIGIN(ROM) + 0x7FF8 : {
 		. = ALIGN(4);

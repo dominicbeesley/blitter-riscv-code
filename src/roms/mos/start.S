@@ -1,13 +1,25 @@
-		#include "custom_ops.S"
+
+USER_STACK_TOP = 0x10000
+
+#ifdef FLAVOUR_PICORV32
+		#include "custom_ops_picorv32.h"
+#endif
+#ifdef FLAVOUR_HAZARD3
+		#include "custom_ops_hazard3.h"
+#endif
 
 
 sheila			= 0xFFFFFE00
 
-start:		// disable all but timer, illins, bus interrupts
+		.align(2)
+start:	
+#ifdef FLAVOUR_PICORV32
+		// disable all but timer, illins, bus interrupts
 		li	t0,0xFFFFFFF8
 		picorv32_maskirq_insn(t0, t0)
+#endif
 
-		la 	sp,0x10000		// setup set stack in ChipRAM at 00010000 growing downwards
+		la 	sp, USER_STACK_TOP		// setup set stack in ChipRAM at 00010000 growing downwards
 
 		// copy r/w data to RAM from ROM
 		//ASSERT data_size & 3 == 0
@@ -38,34 +50,39 @@ start:		// disable all but timer, illins, bus interrupts
 
 		//application
 		jal	init
-		j	main
+
+		la	a0, main
+		j	enter_user
+
+		
+		.globl enter_user
+		// enter user make a new user environment and enters the void(void) function in a0
+enter_user:	li	sp, USER_STACK_TOP
+		jr	a0
 
 		// this must be placed in top-half of ROM with the vectors
 		// to ensure it's mapped in to memory at FF FF00 at boot time
 		// and will jump "down" to correct memory 7D 0000 when running
+
+		.globl _sbrk
+_sbrk:		li	a0,-1
+		ret
+
+
 	.section entry_shims, "ax", @progbits
 
 		// TODO: this is the only way I've found to get the linker to tell us
 		// the absolute address....li doesn't work and la is PC relative which
 		// is no good for this purpose!
 start_addr:	.word start
-ih_addr:	.word interrupts_handle
 
 reset_handle_enter:
 		// need to do a long/absolute jump here as CPU will think we're running
 		// in FFFFCxxx when we're actually in 007D0xxx
 		lw	t0,start_addr
 		jr	t0
-interrupts_handle_enter:
-		// need to do a long/absolute jump here as CPU will think we're running
-		// in FFFFCxxx when we're actually in 007D0xxx
-		picorv32_setq_insn(q2, ra)	// save return address
-		lw	ra,ih_addr
-		jr	ra
 
 	.section reset, "ax", @progbits
 reset_hw:	j reset_handle_enter
-	.section irq, "ax", @progbits
-irq_hw:		j interrupts_handle_enter
 
 

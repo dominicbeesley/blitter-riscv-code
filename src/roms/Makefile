@@ -1,7 +1,7 @@
 		include ../Makefile.defs
 
 SSD=$(SSDS)/romsriscV.ssd
-DEPLOY=$(DEPLOY_TOP)/romsriscV
+DEPLOY=$(DEPLOY_TOP)/romsriscV-$(FLAVOUR)
 
 SUBDIRS=testmos mos
 OBJS=testmos/testmos.mos mos/mos.mos

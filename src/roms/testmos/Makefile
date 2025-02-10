@@ -29,7 +29,14 @@ deploy:	all
 
 #$(BUILD)/blttest.o: $(BUILD)/version-date.inc
 
-$(BUILD)/splash.o:splash.mo7
+ifeq ("$(FLAVOUR)","HAZARD3")
+$(BUILD)/splash.o:splash_hazard3.mo7
+endif
+
+ifeq ("$(FLAVOUR)","PICORV32")
+$(BUILD)/splash.o:splash_picorv32.mo7
+endif
+
 
 $(BUILD)/%.s:	%.c 
 	$(RISCV_CC) $(RISCV_CC_FLAGS) $(DEPFLAGS) -fomit-frame-pointer -O3 -Os -c -S -o $@ -g $<
