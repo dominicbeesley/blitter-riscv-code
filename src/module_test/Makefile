@@ -25,18 +25,20 @@ deploy:	all
 .PRECIOUS:$(BUILD)/%.o $(BUILD)/%.s $(BUILD)/%.d $(BUILD)/%.elf
 
 
+RELFLAGS=-fPIE -fPIC
+
 $(BUILD)/%.s:	%.c 
-	$(RISCV_CC) $(RISCV_CC_FLAGS) $(DEPFLAGS) -fPIE -fpic -DDEBUG_PRINT -fomit-frame-pointer -O3 -Os -c -S -o $@ -g $<
+	$(RISCV_CC) $(RISCV_CC_FLAGS) $(DEPFLAGS) $(RELFLAGS) -DDEBUG_PRINT -fomit-frame-pointer -O3 -Os -c -S -o $@ -g $<
 
 $(BUILD)/%.o: 	$(BUILD)/%.s $(DEPS) 
-	$(RISCV_AS) $(RISCV_AS_FLAGS) -fPIE -fpic -c -o $@ -g -Wa,-alghmns=$(basename $@).lst $<
+	$(RISCV_AS) $(RISCV_AS_FLAGS) $(RELFLAGS) -c -o $@ -g -Wa,-alghmns=$(basename $@).lst $<
 
 
 $(BUILD)/%.o: 	%.S $(DEPS) 
-	$(RISCV_AS) $(RISCV_AS_FLAGS) -fPIE -fpic -c -o $@ -g -Wa,-alghmns=$(basename $@).lst $<
+	$(RISCV_AS) $(RISCV_AS_FLAGS) $(RELFLAGS) -c -o $@ -g -Wa,-alghmns=$(basename $@).lst $<
 
 $(BUILD)/%.elf: $(OBJS_O) %.lds
-	$(RISCV_LD) $(RISCV_LD_FLAGS) --static-pie -fPIE -fpic --specs=nano.specs -Os -nostartfiles -o $@ \
+	$(RISCV_LD) $(RISCV_LD_FLAGS) --static-pie $(RELFLAGS) --specs=nano.specs -Os -nostartfiles -o $@ \
 	-Wl,--build-id=none,-Bstatic,-T,$(filter %.lds, $^),-Map,$(basename $@).map,--strip-debug \
 		$(filter %.o,$^) -lgcc 
 	$(RISCV_NM) --format=posix $@ >$(basename $@).sy1
