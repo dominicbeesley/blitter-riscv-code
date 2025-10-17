@@ -289,6 +289,26 @@ reset_handle_enter:
 
 
 #ifdef FLAVOUR_PICORV32
+
+		// we get an ecall/ebreak trap unless there's nops here on real hw at 64M and running from bbram!
+		nop
+		nop
+		nop
+		nop
+		nop
+		nop
+		nop
+		nop
+		nop
+		nop
+		nop
+		nop
+		nop
+		nop
+		nop
+		nop
+		nop
+
 		// disable all but timer, illegal instruction, bus interrupts, debug button
 		li	t0,0xFFFFFFD8
 		picorv32_maskirq_insn(t0, t0)
@@ -380,7 +400,7 @@ clp:		sw	zero,0(a0)
 		jal	mode0
 
 
-		// file system memory screen with a pattern
+		// file system memory screen with a pattern - tests video memory
 
 		li	t0, 0xFE
 		li	t1, 0xFFFF0000
@@ -416,8 +436,96 @@ rlp:		lb	a0, 0(t1)
 		li	a0, 250
 		jal	wait_vsX
 
+		// white on blue
+		PAL	0x0b
+		PAL	0x1b
+		PAL	0x2b
+		PAL	0x3b
+		PAL	0x4b
+		PAL	0x5b
+		PAL	0x6b
+		PAL	0x7b
+
+		PAL	0x88
+		PAL	0x98
+		PAL	0xa8
+		PAL	0xb8
+		PAL	0xc8
+		PAL	0xd8
+		PAL	0xe8
+		PAL	0xf8
+
+		// test copying from video to fast chipram and back
+		li t4, 100		//iterations
+cplp0:
+		li		t1, 0xFFFF0000
+		li		t2, 0x00000000
+		li		t3, 0x00008000
+cplp1:	lw		a0, 0(t1)
+		sw		a0, 0(t2)
+		addi 	t1,t1,4
+		addi	t2,t2,4
+		blt		t2,t3, cplp1
+
+		li		t1, 0xFFFF0000
+		li		t2, 0x00000000
+		li		t3, 0x00008000
+cplp2: lw		a0, 0(t2)
+		sw		a0, 0(t1)
+		addi 	t1,t1,4
+		addi	t2,t2,4
+		blt		t2,t3, cplp2
+
+		jal	wait_vsync
+
+		addi	t4, t4, -1
+		bnez	t4, cplp0
 
 
+		// yellow on blue
+		PAL	0x0b
+		PAL	0x1b
+		PAL	0x2b
+		PAL	0x3b
+		PAL	0x4b
+		PAL	0x5b
+		PAL	0x6b
+		PAL	0x7b
+
+		PAL	0x8c
+		PAL	0x9c
+		PAL	0xac
+		PAL	0xbc
+		PAL	0xcc
+		PAL	0xdc
+		PAL	0xec
+		PAL	0xfc
+
+		// test copying from video to fast chipram and back
+		li t4, 100		//iterations
+cplp0x:
+		li		t1, 0xFFFF0000
+		li		t2, 0x00700000
+		li		t3, 0x00708000
+cplp1x:	lw		a0, 0(t1)
+		sw		a0, 0(t2)
+		addi 	t1,t1,4
+		addi	t2,t2,4
+		blt		t2,t3, cplp1x
+
+		li		t1, 0xFFFF0000
+		li		t2, 0x00700000
+		li		t3, 0x00708000
+cplp2x: lw		a0, 0(t2)
+		sw		a0, 0(t1)
+		addi 	t1,t1,4
+		addi	t2,t2,4
+		blt		t2,t3, cplp2x
+
+		jal	wait_vsync
+
+		addi	t4, t4, -1
+		bnez	t4, cplp0x
 
 
 		j	main_loop
@@ -499,7 +607,7 @@ interrupts_handle_enter:
 		sw	x30, 116(zero)
 		sw	x31, 120(zero)
 
-#ifdef FLAVOUR_PICORV
+#ifdef FLAVOUR_PICORV32
 		picorv32_getq_insn(x1, q0)
 		sw	x1, 124(zero)
 		picorv32_getq_insn(x1, q1)

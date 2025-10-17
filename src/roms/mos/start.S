@@ -77,6 +77,26 @@ _sbrk:		li	a0,-1
 start_addr:	.word start
 
 reset_handle_enter:
+
+#ifdef FLAVOUR_PICORV32
+		nop
+		nop
+		nop
+		nop
+		nop
+		nop
+		nop
+		nop
+		nop
+		nop
+		nop
+		nop
+		nop
+		nop
+#endif		
+		
+
+
 		// need to do a long/absolute jump here as CPU will think we're running
 		// in FFFFCxxx when we're actually in 007D0xxx
 		lw	t0,start_addr
