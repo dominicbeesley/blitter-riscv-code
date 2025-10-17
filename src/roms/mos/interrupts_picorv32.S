@@ -7,6 +7,13 @@
 		.globl interrupts_regs
 		.globl interrupts_init
 
+		.bss
+		.globl user_error_pend
+
+user_error_pend:
+		.word	0
+
+
 		.text
 		.align(2)
 interrupts_init:
