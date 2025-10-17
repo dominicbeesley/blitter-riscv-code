@@ -60,9 +60,15 @@ $(BUILD)/%.elf: $(OBJS_O) %.lds
 	sed -n -E 's/^(\w+)\s+\w\s+([0-9a-f]+)/DEF \1 \2/ip' <$(basename $@).sy1 >$(basename $@).noi
 
 
-$(BUILD)/mos.mos: $(BUILD)/mos.elf
+$(BUILD)/mos.mos $(BUILD)/mos.mox.1 $(BUILD)/mos.mox.2: $(BUILD)/mos.elf
 	$(RISCV_OBJCOPY) -O binary $< $@
 	echo "M.MOS 007CC000 007CC000" >$@.inf
+	dd if=$(BUILD)/mos.mos of=$(BUILD)/mos.mox.1 bs=16384 count=1
+	dd if=$(BUILD)/mos.mos of=$(BUILD)/mos.mox.2 bs=16384 skip=1 count=1
+	cat $(BUILD)/mos.mox.2 $(BUILD)/mos.mox.1 > $(BUILD)/mos.mox
+	echo "M.MOX1 007CC000 007CC000" >$(BUILD)/mos.mox.1.inf
+	echo "M.MOX2 007D0000 007D0000" >$(BUILD)/mos.mox.2.inf
+
 
 #DEPFILES := $(OBJS_O:%.o=%.d)
 #$(DEPFILES):

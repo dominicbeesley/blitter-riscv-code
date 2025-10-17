@@ -4,7 +4,7 @@ SSD=$(SSDS)/romsriscV.ssd
 DEPLOY=$(DEPLOY_TOP)/romsriscV-$(FLAVOUR)
 
 SUBDIRS=testmos mos
-OBJS=testmos/testmos.mos mos/mos.mos
+OBJS=testmos/testmos.mos mos/mos.mos mos/mos.mox.2 mos/mos.mox.1
 EXTRAS=$(wildcard extras/*.inf) $(basename $(wildcard extras/*.inf))
 
 OBJS_O=$(addprefix $(BUILD)/, $(OBJS))
