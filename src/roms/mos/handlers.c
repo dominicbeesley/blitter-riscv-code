@@ -30,7 +30,7 @@ uint8_t LAST_EXIT = 0;
 void handlers_default_EXIT(uint8_t exitcode) {
 	// return to supervisor prompt
 
-	vdu_str("User process exited with code ");
+	vdu_str("\r\rUser process exited with code ");
 	vdu_hex8(exitcode);
 	vdu_str("\r");
 

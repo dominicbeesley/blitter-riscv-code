@@ -7,6 +7,7 @@
 #include "oslib.h"
 #include <string.h>
 #include "vdu_print.h"
+#include "handlers.h"
 
 /*
 void irq_handle(void) {
@@ -52,12 +53,18 @@ void cmd_go(const char *tail) {
 	uint32_t n;
 	oslib_read_unsigned(16, &tail, &n); 
 
+	vdu_hex32(n);
+
 	//TODO: properly start a new execution context
 
-	register uint32_t a0 asm ("a0") = n;
+	uint32_t r = (uint32_t)handlers_fn(HANDLER_EXIT);
 
-	asm	volatile ("la sp, 0x10000"); // new stack
-	asm volatile ("jr a0" : : "r" (a0));
+
+	asm	volatile (
+		"\tlw a0, %0\n"
+		"\tlw ra, %1\n"
+		"\tla sp, 0x10000\n"
+		"\tjr a0\n" : : "m" (n), "m" (r));
 
 }
 

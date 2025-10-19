@@ -1,6 +1,6 @@
 	include ./Makefile.defs
 
-SUBDIRSWIMAKE:=roms
+SUBDIRSWIMAKE:=roms bbcbasic
 
 $(TOPTARGETS): $(SUBDIRSWIMAKE)
 

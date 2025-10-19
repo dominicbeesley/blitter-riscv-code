@@ -30,6 +30,14 @@
 #define OS_READUNS  (ECALL_BASE + 16)	// OS_ReadUnsigned
 
 
+#define HANDLER_EXIT -1
+#define HANDLER_ESCAPE -2
+#define HANDLER_ERROR -3
+#define HANDLER_EVENT -4
+#define HANDLER_UKIRQ -5
+#define HANDLER_UKECALL -6
+#define HANDLER_UKEXCEPT -7
+
 
 struct OSWORD_0 {
 	char * buf;
