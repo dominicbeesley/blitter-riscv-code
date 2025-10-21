@@ -7,9 +7,8 @@ start:
 #zero bss area
         la      a0, _bss_start
         la      a1, _bss_end
-        li      a2, 0
         beq     a0, a1, bsssk
-bsslp:  sw      a2, 0(a0)
+bsslp:  sw      zero, 0(a0)
         addi    a0, a0, 4
         bne     a0, a1, bsslp
 bsssk:

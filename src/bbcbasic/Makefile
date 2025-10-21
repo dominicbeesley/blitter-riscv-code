@@ -2,7 +2,7 @@
 
 ASMINCS=$(wildcard $(TOP)/asm-includes/*.inc) $(filter-out version-date.inc, $(wildcard *.inc))
 DEPS=$(INCS) $(ASMINCS)
-OBJS=crt0 main
+OBJS=crt0 tokenstable RISCVBAS
 
 SSD=$(SSDS)/bbcbasic-$(FLAVOUR).ssd
 DEPLOY=$(DEPLOY_TOP)/romsriscV-$(FLAVOUR)

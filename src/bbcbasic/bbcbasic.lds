@@ -1,6 +1,6 @@
 OUTPUT_ARCH( "riscv" )
 OUTPUT_FORMAT("elf32-littleriscv")
-ENTRY( _start )
+ENTRY( start )
 SECTIONS
 {
   /* text: code section */

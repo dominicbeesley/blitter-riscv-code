@@ -1,0 +1,5 @@
+#define VAR_TYPE_BYTE			0x00
+#define VAR_TYPE_INT			0x04
+#define VAR_TYPE_REAL			0x05
+#define VAR_TYPE_STRING_STAT	0x80
+#define VAR_TYPE_STRING_DYN		0x81
