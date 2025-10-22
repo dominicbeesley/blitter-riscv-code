@@ -65,6 +65,7 @@ ZP_VARTYPE:		.space 1
 ZP_TOK_FLAGS_A:		.space 1
 ZP_TOK_FLAGS_B:		.space 1
 ZP_TOK_FLAGS_C:		.space 1
+ZP_TOP_FLAGS_D:		.space 1
 
 //	ZP_OPT:			.space 1
 //	ZP_ASS_OPBUF:		.space 1	;; overlaps ZP_DUNNO, ZP_INT_WA stores opcode/postbytes being assembled

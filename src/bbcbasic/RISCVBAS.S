@@ -963,6 +963,7 @@ ROM_LANGST:
 		 * 
 		 * return 
 		 * 	a0 = number of chars moved 
+		 * 	a4 = unchanged
 		 * 	tp = pointer to next char to parse (after inserted token)
 		 * 
 		 * TODO: check if return value used anywhere
@@ -972,107 +973,113 @@ ROM_LANGST:
  storeTokenAndCloseUpLine:
 
 		sb	a0, (a4)
-		addi	a4, a4, 1
+		mv	t3, a4
+		addi	t3, t3, 1
 		mv	t2, tp			// where to copy from (end of untokenised text)
-		addi	tp, a4, -1		// where to continue parsing from on return
+		mv	tp, t3			// where to continue parsing from on return
 		li	a0, 0
 
 		li	t1, 0x0D
 stclp:		addi	a0, a0, 1
 		lb	t0, 0(t2)
-		sb	t0, 0(a4)
+		sb	t0, 0(t3)
 		addi	t2, t2, 1
-		addi	a4, a4, 1
+		addi	t3, t3, 1
 		bne	t0, t1, stclp
 		ret
 
 
  // 
- // 		// on entry A contains a numeric digit
- // 		// parse number and store in at U as 8D XX YY ZZ
- // 		// TODO, there may be a quicker / smaller way of doing this
- // 		// use shift and add instead of mul and add?
- tokenizeLineNo:
- 		ebreak
- // 		ANDA	#0x0F
- // 		STA	ZP_FPB + 3		// low byte
- // 		CLR	ZP_FPB + 2		// convert '0'-'9' to 0-9 and store as 16bit at ZP_FPB + 2	
- // 
- // tokLinLp	LDA	,U+
- // 		CALL	checkIsNumeric
- // 		BCC	tokLineNoSk1
- // 		ANDA	#0xF
- // 		STA	ZP_GEN_PTR+1
- // 
- // 		// mul existing number by 10
- // 		LDD	ZP_FPB+2
- // 		ASLB
- // 		ROLA		
- // 		ASLB
- // 		ROLA
- // 		ADDD	ZP_FPB+2
- // 		ASLB
- // 		ROLA
- // 		BCS	tokLinOv
- // 
- // 		// add in new number and check for overflow
- // 		ADDB	ZP_GEN_PTR+1
- // 		ADCA	#0
- // 		STD	ZP_FPB+2
- // 		BCS	tokLinOv
- // 		BPL	tokLinLp
- // 
- // tokLinOv
- // 		SEC
- // 		RTS				// unstack result
- // tokLineNoSk1					// found end of number
- // 		LEAU	-1,U			// point at char after last read digit
- // 		LDA	#tknLineNo
- // 		CALL	storeTokenAndCloseUpLine	// B + ZP_GEN_PTR is end of line
- // 		LDU	ZP_GEN_PTR+2
- // 		LEAX	3,U				// make space for line number and length (3)
- // 		STX	ZP_GEN_PTR+2
- // 		INCB
- // 		ABX
- // 		CLRA					
- // 		LEAU	D,U				// point at end of strings + 1
- // //L8D59:
- // 1
- // 		LDA	,-U			// move end of line on 3 bytes and leave gap for rest of tokenized number
- // 		STA	,-X
- // 		DECB
- // 		BNE	1B
- // //L8D62: - when moving stuff to point here beware line number must be in ZP_FPB + 2,3 in bigendian, Y must point at byte before first of the three bytes
- // int16atZP_FPB2toBUFasTOKENIZED
- // 		LDA	ZP_FPB + 2		// see p.40 of ROM UG (note diagram is wrong see text)
- // 		ORA	#0x40
- // 		STA	3,U			// byte 3 = "01" & MSB[5 downto 0] 
- // 		LDA	ZP_FPB + 3		// lsb
- // 		ANDA	#0x3F
- // 		ORA	#0x40
- // 		STA	2,U			// byte 2 = "01" & MSB[5 downto 0] 
- // 
- // 	IF CPU_6309
- // 		AIM	#0xC0,ZP_FPB + 3
- // 	ELSE
- // 		LDA	ZP_FPB + 3
- // 		ANDA	#0xC0		
- // 		STA	ZP_FPB + 3		// mask off all but top two bits of LSB
- // 	ENDIF
- // 
- // 		LDA	ZP_FPB + 2
- // 		ANDA	#0xC0
- // 		LSRA
- // 		LSRA
- // 		ORA	ZP_FPB + 3
- // 		LSRA
- // 		LSRA
- // 		EORA	#0x54
- // 		STA	1,U			// byte 1 = "01" & MSB[7 downto 6] & LSB[7 downto 6] & "00"
- // 		LEAU	4,U			// pointer after tokenized number
- // 		CLC
- // 		RTS
- // 
+ // 		// on entry cu contains a numeric digit
+ // 		// parse number and store in dest buffer as 8D XX YY ZZ
+tokenizeLineNo:
+		addi 	sp, sp, -4
+		sw	ra, 0(sp)
+
+		andi	a3, cu, 0x0F			// this is the integer accumulator (16 bits)
+tokLinLp:	lb	cu, 0(tp)
+		addi	tp, tp, 1
+		li	a1, 10
+		li	a2, 0xFFFF8000
+ 		jal	checkIsNumeric
+ 		beqz	a0, tokLineNoSk1
+		andi	cu, cu, 0x0F
+		// mul existing number by 10
+		mul	a3, a3, a1
+
+		add	a3, a3, cu
+		and	t0, a3, a2
+		beqz	t0, tokLinLp
+tokLinOv:
+		li	a0, 1
+		lw	ra, 0(sp)
+		addi	sp, sp, 4
+		ret				
+tokLineNoSk1:					
+		addi	tp, tp, -1			// point at char after last read digit
+		li	a0, tknLineNo
+		jal	storeTokenAndCloseUpLine	// B + ZP_GEN_PTR is end of line
+		// we now need to move the rest of string right after then 8D token 
+		// leaving 3 bytes after the 8D token free for the mangled line number
+
+
+		mv	tp, a4
+		addi	a4, a4, 3
+		addi	a0, a0, 1			// rest of string length
+		add	a4, a4, a0			// point a4 at end of string (dest)
+		add	tp, tp, a0			// point tp at end of string (source)
+tokline3lp:	lb	t0, 0(tp)
+		sb	t0, 0(a4)
+		addi	tp, tp, -1
+		addi	a4, a4, -1
+		addi	a0, a0, -1
+		bnez	a0, tokline3lp
+
+		j	a3_short_toBUFasTOKENIZED_int
+ //L8D62: 
+a3_short_toBUFasTOKENIZED:
+		addi 	sp, sp, -4
+		sw	ra, 0(sp)
+
+a3_short_toBUFasTOKENIZED_int:
+
+		// follow Plumbley ROM UG p.40 text (note: diagram wrong?)
+		
+		// LSByte low 6 bits in byte 2
+		andi	t0, a3, 0x3F
+		ori     t0, t0, 0x40
+		sb	t0, 2(tp)
+
+		// MSByte low 6 bits in byte 2
+		srli	t0, a3, 8
+		andi	t0, t0, 0x3F
+		ori     t0, t0, 0x40
+		sb	t0, 3(tp)
+		
+		// MS 2 bits of MS byte into t0 3,2
+		srli	t0, a3, 12
+		andi	t0, t0, 0x0C
+		// MS 2 bits of LS byte into t0 5,4		
+		srli	t1, a3, 2
+		andi	t1, t1, 0x30
+
+		//combine
+		or	t0, t0, t1
+
+		// flip bits to make decoding easier
+		xori	t0, t0, 0x54
+		sb	t0, 1(tp)
+
+		addi	tp, tp, 4
+
+		li	a0, 0					// indicate success
+
+		lw	ra, 0(sp)
+		addi	sp, sp, 4
+		ret
+
+
+
  // 		// returns CY=1 if [_£a-zA-Z0-9]
 
 	/*****************************************************************
@@ -1276,7 +1283,7 @@ tokKeyFound:						//L8E84:
 		mv	a1, t1
 		// a1 contains token
 		lb	a0, 0(a3)			// get flags in a0
-		sb	a0, ZP_TOK_FLAGS_C(wp)		// store flags
+		sb	a0, ZP_TOP_FLAGS_D(wp)		// store flags
 		andi	t1, a0, TOK_FLAG_CONDITIONAL					
 		beqz	t1, tokKeyFound2		// if flags[0]='0' we've got a full keyword
 		lb	cu, 0(tp)			// if not check if next is a valid variable char
@@ -1284,6 +1291,7 @@ tokKeyFound:						//L8E84:
 		bnez	a0, tokNotKey_SkipVarName	// and we have a variable name char treat it as such and skip to
  							// end of variable
 tokKeyFound2:						//L8E95
+		lb	a0, ZP_TOP_FLAGS_D(wp)		// get back flags
 		andi	t1, a0, TOK_FLAG_PSEUDO_VAR
 		beqz	t1, tokNOTPSEUDO
 		lb	t1, ZP_TOK_FLAGS_B(wp)
@@ -1292,7 +1300,7 @@ tokKeyFound2:						//L8E95
 tokNOTPSEUDO:	//L8EA0
 		mv	a0, a1
 		jal	storeTokenAndCloseUpLine 	// attention check regs trashed
-		lb	t0, ZP_TOK_FLAGS_C(wp)
+		lb	t0, ZP_TOP_FLAGS_D(wp)
 		andi	t1, t0, TOK_FLAG_NEXT_MID
 		beqz	t1, tokNOTNEXTMID
 		li	a0, -1
@@ -1317,11 +1325,11 @@ tokSkipPROCNAMElp:					//L8EBD:
 		mv	a4, tp				// now pointing at last char of name
 		
 tokSkipNotFNPROC:			//L8ECA:
-		lb	t0, ZP_TOK_FLAGS_C(wp)
+		lb	t0, ZP_TOP_FLAGS_D(wp)
 		andi	t1, t0, TOK_FLAG_NEXTLINENO
 		beqz	t1, tokNotNEXTLINENO
 		li	t1, -1
-		sb	t1, ZP_TOK_FLAGS_B(wp)			// FF
+		sb	t1, ZP_TOK_FLAGS_C(wp)			// FF
 tokNotNEXTLINENO:	//L8ECF:
 		andi	t1, t0, TOK_FLAG_SKIP_EOL
 		bnez	t1, rtsL8DDF
@@ -2097,7 +2105,7 @@ execImmediateLine:			//L901E:
  // 		STD	ZP_FPB+2		// store in FPB+2
  // 		LDU	,S			// get back the intra-line pointer from pass3
  // 		LEAU	-1,U			// point back at 8D instruction
- // 		CALL	int16atZP_FPB2toBUFasTOKENIZED	//store updated number back in program at 1,U and move U on
+ // 		CALL	a3_short_toBUFasTOKENIZED	//store updated number back in program at 1,U and move U on
  // 		PULS	Y,U			// get back our pointers
  // 		BRA	ren3CharLoop
  // ren4nomatch
