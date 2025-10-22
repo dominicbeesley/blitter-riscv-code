@@ -31,15 +31,15 @@
 #include	"oslib.S"
 
 
-
-
+		.macro	TOKI r, tkn
+		li	\r, -((\tkn ^ 0xFF) + 1)
+		.endm
 
 		.macro DO_BRK_B
-		.local after
 		li	a7, OS_ERROR
-		la	a0, after
+		la	a0, after\@
 		ecall
-after:
+after\@:
 		.endm
 
 
@@ -1264,7 +1264,7 @@ tokSkipEndTryNext:					//L8E5D:
  		addi	a3, a3,1
  		andi	t2, t1,	0x80
 		beqz	t2, tokSkipEndTryNext
- 		li	t2, tknWIDTH
+ 		TOKI	t2, tknWIDTH
  		bne	t1, t2,	tokMoveNextTkn		// not the last one, increment pointer and carry on
  		j	tokNotKey_SkipVarName		
 
@@ -1341,11 +1341,11 @@ tokNotNEXTLINENO:	//L8ECF:
  // 		//  leaves PTR unchanged returns next non white pointer + 1 in Y, char in A
  // skipSpacesPTRB
  // 		LDU	ZP_TXTPTR2
- // skipSpacesY		   
- // 		LDA	,U+
- // 		CMPA	#' '
- // 		BEQ	skipSpacesY
- // anRTS7		RTS
+skipSpacesY:	lb	cu, 0(tp)
+		addi	tp, tp, 1
+		addi	t0, cu, -' '
+		beqz	t0, skipSpacesY
+		ret
  // 
  // inySkipSpacesYStepBack
  // 		LEAU	1,U
@@ -3122,40 +3122,59 @@ execImmediateLine:			//L901E:
  // 		RTS
  // //		
  // //		
- // skipSpacesDecodeLineNumberNewAPIbrkSyntax
- // 		CALL	skipSpacesDecodeLineNumberNewAPI
- // 		BCC	brkSyntax
- // 		RTS
- // 
- // 
- // 		// API changed used to scan from ZP_TXTPTR now scan from Y
- skipSpacesDecodeLineNumberNewAPI:
- 		ebreak
+skipSpacesDecodeLineNumberNewAPIbrkSyntax:
+		addi	sp, sp, -4
+		sw	ra, 0(sp)
 
- // 		//		LDU	ZP_TXTPTR
- // 		CALL	skipSpacesY
- // 		CMPA	#tknLineNo
- // 		BEQ	decodeLineNumber
- // 		LEAU	-1,U
- // 		STU	ZP_TXTPTR				//  Not line number, return CC
- // 		CLC
- // 		RTS
- // decodeLineNumber
- // 		LDA	,U+
- // 		ASLA
- // 		ASLA
- // 		TFR	A,B
- // 		ANDA	#0xC0
- // 		EORA	,U+
- // 		STA	ZP_INT_WA + 3
- // 		TFR	B,A
- // 		ASLA
- // 		ASLA
- // 		EORA	,U+
- // 		STA	ZP_INT_WA + 2
- // 		STU	ZP_TXTPTR
- // 		SEC
- // 		RTS
+ 		jal	skipSpacesDecodeLineNumberNewAPI
+ 		blt	a1, zero, brkSyntax
+ 		
+ 		lw	ra, 0(sp)
+ 		addi	sp, sp, 4
+ 		ret
+ 
+ 
+  		// API changed used to scan from ZP_TXTPTR now scan from tp
+ 		// return a0 = -1 for not line number (was cy = 0)
+ 		// return a0, ZP_INT_WA = line number > 32768 only bottom half of ZP_INT_WA
+skipSpacesDecodeLineNumberNewAPI:
+		addi	sp, sp, -4
+		sw	ra, 0(sp)
+		jal	skipSpacesY
+		TOKI	t0, tknLineNo
+		beq	cu, t0, decodeLineNumber_int
+		addi	tp, tp, -1
+		sw	tp, ZP_TXTPTR(wp)		//  Not line number, return CC
+		li	a0, 0
+
+ 		lw	ra, 0(sp)
+ 		addi	sp, sp, 4
+ 		ret
+
+  		// API changed used to scan from ZP_TXTPTR now scan from tp
+ 		// return a0, ZP_INT_WA = line number > 32768 only bottom half of ZP_INT_WA
+decodeLineNumber:
+		addi	sp, sp, -4
+		sw	ra, 0(sp)
+
+decodeLineNumber_int:
+		lb	t0, 0(tp)
+		slli	t0, t0, 2
+		andi	t1, t0, 0xC0
+		lb	t2, 1(tp)
+		xor	t1, t1, t2		// low byte decoded
+		slli	t0, t0, 2
+		andi	t0, t0, 0xC0
+		lb	t2, 2(tp)
+		xor	t0, t0, t2
+		slli	t0, t0, 8
+		or	a0, t1, t0
+		sh	a0, ZP_INT_WA(wp)
+	
+ 		lw	ra, 0(sp)
+ 		addi	sp, sp, 4
+ 		ret
+
  // //			//  Line number, return CS
  // //			//  Expression Evaluator
  // //			//  ====================
@@ -3173,22 +3192,27 @@ execImmediateLine:			//L901E:
  // 		CALL	skipSpacesPTRB			//  Skip spaces
  // 		CMPA	#'='
  // 		BEQ	evalAtYExpectColonElseCRThenRTS	//  '=' found, evaluate following expression
- // brkMistake
- // 		DO_BRK_B
- // 		FCB  0x04
- // 		FCB  "Mistake", 0
- // brkSyntax
- // 		DO_BRK_B
- // 		FCB  0x10
- // 		FCB  "Syntax error", 0
- // brkNoPROC
- // 		DO_BRK_B
- // 		FCB  0x0D
- // 		FCB  "No ", tknPROC, 0
- errEscape:
+brkMistake:
+		DO_BRK_B
+		.byte	0x04
+		.asciz	"Mistake"
+		.align	2
+brkSyntax:
+		DO_BRK_B
+		.byte  	0x10
+		.asciz  "Syntax error"
+		.align	2
+brkNoPROC:
+		DO_BRK_B
+		.byte	0x0D
+		.ascii	"No "
+		.byte   tknPROC, 0
+		.align	2
+errEscape:
  		DO_BRK_B
  		.byte		0x11
  		.asciz		"Escape"
+		.align	2
  // 		
  // //		
  // //		
@@ -8354,7 +8378,7 @@ clearPRLINCOUNT:					// LBA95
  		jal	tokenizeATY
  		lw	tp, ZP_TXTPTR(wp)
  		jal	skipSpacesDecodeLineNumberNewAPI
- 		bnez	a0, tokenizeAndStoreAlreadyLineNoDecoded_int	// has a program line, store in program space...
+ 		bleu	zero, a0, tokenizeAndStoreAlreadyLineNoDecoded_int	// has a program line, store in program space...
  		
  tokret:	lw	ra, 0(sp)
  		addi	sp, sp, 4
