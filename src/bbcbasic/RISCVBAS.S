@@ -38,6 +38,14 @@
 after\@:
 		.endm
 
+		.macro NOTIMPL str
+		la	a0, msg\@
+		jal	PRSTRING
+		j	resetVarsImmedPrompt
+msg\@:		.asciz	"\str"
+		.align 	2
+		.endm
+
 
 		.macro RESET_MACH_STACK
 		lw 	sp, NEW_WKSP_SP(wp)
@@ -788,125 +796,131 @@ fpl_ge:		slt	a0, a0, t0
  // 		SBCA	ZP_FPB + 2
  // 		STA	ZP_FPA + 3
  // 		JUMP	NormaliseRealA_2
- // //		
- // //			//  00000000
- // //			//  FUNCTION/COMMAND DISPATCH TABLE
- // //			//  ===============================
- // tblCmdDispatch
- // 		 FDB fnOPENIN			//  0x8E - OPENIN
- // 		 FDB varGetPTR			//  0x8F - =PTR
- // 		 FDB varGetPAGE			//  0x90 - =PAGE
- // 		 FDB varGetTIME			//  0x91 - =TIME
- // 		 FDB varGetLOMEM		//  0x92 - =LOMEM
- // 		 FDB varGetHIMEM		//  0x93 - =HIMEM
- // 		 FDB fnABS			//  0x94 - ABS
- // 		 FDB fnACS			//  0x95 - ACS
- // 		 FDB fnADVAL			//  0x96 - ADVAL
- // 		 FDB fnASC			//  0x97 - ASC
- // 		 FDB fnASN			//  0x98 - ASN
- // 		 FDB fnATN			//  0x99 - ATN
- // 		 FDB fnBGET			//  0x9A - BGET
- // 		 FDB fnCOS			//  0x9B - COS
- // 		 FDB fnCOUNT			//  0x9C - COUNT
- // 		 FDB fnDEG			//  0x9D - DEG
- // 		 FDB varERL			//  0x9E - ERL
- // 		 FDB varERR			//  0x9F - ERR
- // 		 FDB fnEVAL			//  0xA0 - EVAL
- // 		 FDB fnEXP			//  0xA1 - EXP
- // 		 FDB fnEXT			//  0xA2 - EXT
- // 		 FDB varFALSE			//  0xA3 - FALSE
- // 		 FDB fnFN			//  0xA4 - FN
- // 		 FDB fnGET			//  0xA5 - GET
- // 		 FDB fnINKEY			//  0xA6 - INKEY
- // 		 FDB fnINSTR			//  0xA7 - INSTR(
- // 		 FDB fnINT			//  0xA8 - INT
- // 		 FDB fnLEN			//  0xA9 - LEN
- // 		 FDB fnLN			//  0xAA - LN
- // 		 FDB fnLOG			//  0xAB - LOG
- // 		 FDB fnNOT			//  0xAC - NOT
- // 		 FDB fnOPENUP			//  0xAD - OPENUP
- // 		 FDB fnOPENOUT			//  0xAE - OPENOUT
- // 		 FDB fnPI			//  0xAF - PI
- // 		 FDB fnPOINT			//  0xB0 - POINT(
- // 		 FDB fnPOS			//  0xB1 - POS
- // 		 FDB fnRAD			//  0xB2 - RAD
- // 		 FDB fnRND			//  0xB3 - RND
- // 		 FDB fnSGN			//  0xB4 - SGN
- // 		 FDB fnSIN			//  0xB5 - SIN
- // 		 FDB fnSQR			//  0xB6 - SQR
- // 		 FDB fnTAN			//  0xB7 - TAN
- // 		 FDB fnTO			//  0xB8 - TO
- // 		 FDB returnINTminus1		//  0xB9 - TRUE
- // 		 FDB fnUSR			//  0xBA - USR
- // 		 FDB fnVAL			//  0xBB - VAL
- // 		 FDB fnVPOS			//  0xBC - VPOS
- // 		 FDB fnCHR			//  0xBD - CHR0x
- // 		 FDB fnGETDOLLAR		//  0xBE - GET0x
- // 		 FDB fnINKEYDOLLAR		//  0xBF - INKEY0x
- // 		 FDB fnLEFT			//  0xC0 - LEFT0x(
- // 		 FDB fnMIDstr			//  0xC1 - MID0x(
- // 		 FDB fnRIGHT			//  0xC2 - RIGHT0x(
- // 		 FDB fnSTR			//  0xC3 - STR0x(
- // 		 FDB fnSTRING			//  0xC4 - STRING0x(
- // 		 FDB fnEOF			//  0xC5 - EOF
- // 		 FDB cmdAUTO			//  0xC6 - AUTO
- // 		 FDB cmdDELETE			//  0xC7 - DELETE
- // 		 FDB cmdLOAD			//  0xC8 - LOAD
- // 		 FDB cmdLIST			//  0xC9 - LIST
- // 		 FDB cmdNEW			//  0xCA - NEW
- // 		 FDB cmdOLD			//  0xCB - OLD
- // 		 FDB cmdRENUMBER		//  0xCC - RENUMBER
- // 		 FDB cmdSAVE			//  0xCD - SAVE
- // 		 FDB cmdEDIT			//  0xCE - EDIT
- // 		 FDB varSetPTR			//  0xCF - PTR=
- // 		 FDB varSetPAGE			//  0xD0 - PAGE=
- // 		 FDB varSetTIME			//  0xD1 - TIME=
- // 		 FDB varSetLOMEM		//  0xD2 - LOMEM=
- // 		 FDB varSetHIMEM		//  0xD3 - HIMEM=
- // 		 FDB cmdSOUND			//  0xD4 - SOUND
- // 		 FDB cmdBPUT			//  0xD5 - BPUT
- // 		 FDB cmdCALL			//  0xD6 - CALL
- // 		 FDB cmdCHAIN			//  0xD7 - CHAIN
- // 		 FDB cmdCLEAR			//  0xD8 - CLEAR
- // 		 FDB cmdCLOSE			//  0xD9 - CLOSE
- // 		 FDB cmdCLG			//  0xDA - CLG
- // 		 FDB cmdCLS			//  0xDB - CLS
- // 		 FDB cmdREM			//  0xDC - DATA
- // 		 FDB cmdREM			//  0xDD - DEF
- // 		 FDB cmdDIM			//  0xDE - DIM
- // 		 FDB cmdDRAW			//  0xDF - DRAW
- // 		 FDB cmdEND			//  0xE0 - END
- // 		 FDB cmdENDPROC			//  0xE1 - ENDPROC
- // 		 FDB cmdENVELOPE		//  0xE2 - ENVELOPE
- // 		 FDB cmdFOR			//  0xE3 - FOR
- // 		 FDB cmdGOSUB			//  0xE4 - GOSUB
- // 		 FDB cmdGOTO			//  0xE5 - GOTO
- // 		 FDB cmdGCOL			//  0xE6 - GCOL
- // 		 FDB cmdIF			//  0xE7 - IF
- // 		 FDB cmdINPUT			//  0xE8 - INPUT
- // 		 FDB cmdLET			//  0xE9 - LET
- // 		 FDB cmdLOCAL			//  0xEA - LOCAL
- // 		 FDB cmdMode			//  0xEB - MODE
- // 		 FDB cmdMOVE			//  0xEC - MOVE
- // 		 FDB cmdNEXT			//  0xED - NEXT
- // 		 FDB cmdON			//  0xEE - ON
- // 		 FDB cmdVDU			//  0xEF - VDU
- // 		 FDB cmdPLOT			//  0xF0 - PLOT
- // 		 FDB cmdPRINT			//  0xF1 - PRINT
- // 		 FDB cmdPROC			//  0xF2 - PROC
- // 		 FDB cmdREAD			//  0xF3 - READ
- // 		 FDB cmdREM			//  0xF4 - REM
- // 		 FDB cmdREPEAT			//  0xF5 - REPEAT
- // 		 FDB cmdREPORT			//  0xF6 - REPORT
- // 		 FDB cmdRESTORE			//  0xF7 - RESTORE
- // 		 FDB cmdRETURN			//  0xF8 - RETURN
- // 		 FDB cmdRUN			//  0xF9 - RUN
- // 		 FDB cmdSTOP			//  0xFA - STOP
- // 		 FDB cmdCOLOUR			//  0xFB - COLOUR
- // 		 FDB cmdTRACE			//  0xFC - TRACE
- // 		 FDB cmdUNTIL			//  0xFD - UNTIL
- // 		 FDB cmdWIDTH			//  0xFE - WIDTH
- // 		 FDB cmdOSCLI			//  0xFF - OSCLI
+//		
+//			//  00000000
+//			//  FUNCTION/COMMAND DISPATCH TABLE
+//			//  ===============================
+
+	.option push
+	.option norvc	// ensure all 4 byte jumps
+
+tblCmdDispatch:
+		j	fnOPENIN		//  0x8E - OPENIN
+		j	varGetPTR		//  0x8F - =PTR
+		j	varGetPAGE		//  0x90 - =PAGE
+		j	varGetTIME		//  0x91 - =TIME
+		j	varGetLOMEM		//  0x92 - =LOMEM
+		j	varGetHIMEM		//  0x93 - =HIMEM
+		j	fnABS			//  0x94 - ABS
+		j	fnACS			//  0x95 - ACS
+		j	fnADVAL			//  0x96 - ADVAL
+		j	fnASC			//  0x97 - ASC
+		j	fnASN			//  0x98 - ASN
+		j	fnATN			//  0x99 - ATN
+		j	fnBGET			//  0x9A - BGET
+		j	fnCOS			//  0x9B - COS
+		j	fnCOUNT			//  0x9C - COUNT
+		j	fnDEG			//  0x9D - DEG
+		j	varERL			//  0x9E - ERL
+		j	varERR			//  0x9F - ERR
+		j	fnEVAL			//  0xA0 - EVAL
+		j	fnEXP			//  0xA1 - EXP
+		j	fnEXT			//  0xA2 - EXT
+		j	fnFALSE			//  0xA3 - FALSE
+		j	fnFN			//  0xA4 - FN
+		j	fnGET			//  0xA5 - GET
+		j	fnINKEY			//  0xA6 - INKEY
+		j	fnINSTR			//  0xA7 - INSTR(
+		j	fnINT			//  0xA8 - INT
+		j	fnLEN			//  0xA9 - LEN
+		j	fnLN			//  0xAA - LN
+		j	fnLOG			//  0xAB - LOG
+		j	fnNOT			//  0xAC - NOT
+		j	fnOPENUP		//  0xAD - OPENUP
+		j	fnOPENOUT		//  0xAE - OPENOUT
+		j	fnPI			//  0xAF - PI
+		j	fnPOINT			//  0xB0 - POINT(
+		j	fnPOS			//  0xB1 - POS
+		j	fnRAD			//  0xB2 - RAD
+		j	fnRND			//  0xB3 - RND
+		j	fnSGN			//  0xB4 - SGN
+		j	fnSIN			//  0xB5 - SIN
+		j	fnSQR			//  0xB6 - SQR
+		j	fnTAN			//  0xB7 - TAN
+		j	fnTO			//  0xB8 - TO
+		j	fnTRUE			//  0xB9 - TRUE
+		j	fnUSR			//  0xBA - USR
+		j	fnVAL			//  0xBB - VAL
+		j	fnVPOS			//  0xBC - VPOS
+		j	fnCHR			//  0xBD - CHR0x
+		j	fnGETDOLLAR		//  0xBE - GET0x
+		j	fnINKEYDOLLAR		//  0xBF - INKEY0x
+		j	fnLEFT			//  0xC0 - LEFT0x(
+		j	fnMIDstr		//  0xC1 - MID0x(
+		j	fnRIGHT			//  0xC2 - RIGHT0x(
+		j	fnSTR			//  0xC3 - STR0x(
+		j	fnSTRING		//  0xC4 - STRING0x(
+		j	fnEOF			//  0xC5 - EOF
+		j	cmdAUTO			//  0xC6 - AUTO
+		j	cmdDELETE		//  0xC7 - DELETE
+		j	cmdLOAD			//  0xC8 - LOAD
+		j	cmdLIST			//  0xC9 - LIST
+		j	cmdNEW			//  0xCA - NEW
+		j	cmdOLD			//  0xCB - OLD
+		j	cmdRENUMBER		//  0xCC - RENUMBER
+		j	cmdSAVE			//  0xCD - SAVE
+		j	cmdEDIT			//  0xCE - EDIT
+		j	varSetPTR		//  0xCF - PTR=
+		j	varSetPAGE		//  0xD0 - PAGE=
+		j	varSetTIME		//  0xD1 - TIME=
+		j	varSetLOMEM		//  0xD2 - LOMEM=
+		j	varSetHIMEM		//  0xD3 - HIMEM=
+		j	cmdSOUND		//  0xD4 - SOUND
+		j	cmdBPUT			//  0xD5 - BPUT
+		j	cmdCALL			//  0xD6 - CALL
+		j	cmdCHAIN		//  0xD7 - CHAIN
+		j	cmdCLEAR		//  0xD8 - CLEAR
+		j	cmdCLOSE		//  0xD9 - CLOSE
+		j	cmdCLG			//  0xDA - CLG
+		j	cmdCLS			//  0xDB - CLS
+		j	cmdREM			//  0xDC - DATA
+		j	cmdREM			//  0xDD - DEF
+		j	cmdDIM			//  0xDE - DIM
+		j	cmdDRAW			//  0xDF - DRAW
+		j	cmdEND			//  0xE0 - END
+		j	cmdENDPROC		//  0xE1 - ENDPROC
+		j	cmdENVELOPE		//  0xE2 - ENVELOPE
+		j	cmdFOR			//  0xE3 - FOR
+		j	cmdGOSUB		//  0xE4 - GOSUB
+		j	cmdGOTO			//  0xE5 - GOTO
+		j	cmdGCOL			//  0xE6 - GCOL
+		j	cmdIF			//  0xE7 - IF
+		j	cmdINPUT		//  0xE8 - INPUT
+		j	cmdLET			//  0xE9 - LET
+		j	cmdLOCAL		//  0xEA - LOCAL
+		j	cmdMode			//  0xEB - MODE
+		j	cmdMOVE			//  0xEC - MOVE
+		j	cmdNEXT			//  0xED - NEXT
+		j	cmdON			//  0xEE - ON
+		j	cmdVDU			//  0xEF - VDU
+		j	cmdPLOT			//  0xF0 - PLOT
+		j	cmdPRINT		//  0xF1 - PRINT
+		j	cmdPROC			//  0xF2 - PROC
+		j	cmdREAD			//  0xF3 - READ
+		j	cmdREM			//  0xF4 - REM
+		j	cmdREPEAT		//  0xF5 - REPEAT
+		j	cmdREPORT		//  0xF6 - REPORT
+		j	cmdRESTORE		//  0xF7 - RESTORE
+		j	cmdRETURN		//  0xF8 - RETURN
+		j	cmdRUN			//  0xF9 - RUN
+		j	cmdSTOP			//  0xFA - STOP
+		j	cmdCOLOUR		//  0xFB - COLOUR
+		j	cmdTRACE		//  0xFC - TRACE
+		j	cmdUNTIL		//  0xFD - UNTIL
+		j	cmdWIDTH		//  0xFE - WIDTH
+		j	cmdOSCLI		//  0xFF - OSCLI
+
+	.option pop
  // 
  // 		 include "./assembler_share.asm"
  // 
@@ -1340,13 +1354,13 @@ ssylp:		lbu	cu, 0(tp)
  // 		LEAU	-1,U
  // 		RTS
  // 
- // //		
- // //		//  Skip spaces at PTRA
- // //		//  ===================
- // 		//  leaves PTR unchanged returns next non white pointer + 1 in Y, char in A
- // skipSpacesPTRA
- // 		LDU	ZP_TXTPTR
- // 		BRA	skipSpacesY
+ //		
+ //		//  Skip spaces at PTRA
+ //		//  ===================
+ 		//  leaves PTR unchanged returns next non white pointer + 1 in Y, char in A
+ skipSpacesPTRA:
+ 		lw	tp, ZP_TXTPTR(wp)
+ 		j	skipSpacesY
  // 
  // //		
  // //			//  Expect comma
@@ -1357,10 +1371,12 @@ ssylp:		lbu	cu, 0(tp)
  // brkMissingComma
  // 		DO_BRK_B
  // 		FCB	0x05, tknMissing, ',', 0
+cmdCHAIN: NOTIMPL "cmdCHAIN"
  // cmdCHAIN		// L8EFB
  // 
  // 		CALL	loadProg2Page
  // 		BRA	L8F15
+cmdOLD: NOTIMPL "cmdOLD"
  // cmdOLD			// L8F00
  // 			//  OLD
  // 		CALL	scanNextStmtFromY
@@ -1370,19 +1386,18 @@ ssylp:		lbu	cu, 0(tp)
  // 		CLR	,X
  // 		CALL	findTOP
  // 		BRA	resetVarsImmedPrompt
- // cmdRUN
- // 			
- // //			//  RUN
- // 		CALL	scanNextStmtFromY
- // L8F15
- // 		CALL	ResetVars
- // 		LDA	ZP_PAGE_H
- // 		CLRB
- // 		STD	ZP_TXTPTR
- // 		BRA	runFromZP_TXTPTR
+cmdRUN:
+		jal	scanNextStmtFromY
+L8F15:
+		jal	ResetVars
+		lw	tp, ZP_PAGE(wp)
+		sw	tp, ZP_TXTPTR(wp)
+		j	runFromZP_TXTPTR
+cmdLOAD: NOTIMPL "cmdLOAD"
  // cmdLOAD
  // 		CALL	loadProg2Page
  // 		BRA	resetVarsImmedPrompt
+cmdEND: NOTIMPL "cmdEND"
  // cmdEND			// L8F25!
  // 		CALL	scanNextStmtFromY
  // 		CALL	findTOP
@@ -1416,8 +1431,10 @@ reset_prog_enter_immedprompt:
  // ////		BCS resetVarsImmedPrompt
  // ////		CALL tokenizeAndStore
  // ////		BRA 1B
+cmdNEW: NOTIMPL "cmdNEW"
  // cmdNEW									//  NEW
  // 		CALL	scanNextStmtFromY
+cmdNEW2: NOTIMPL "cmdNEW2"
  // cmdNEW2
  // 		CALL	deleteProgSetTOP
 resetVarsImmedPrompt:
@@ -1435,10 +1452,12 @@ immedPrompt:	addi	t0, wp, BAS_InBuf
 		jal	ReadKeysTo_InBuf		//  Read input to buffer at BAS_InBuf
 
 runFromZP_TXTPTR:					// L8F97
+
 		RESET_MACH_STACK		
 		jal	ONERROROFF			//  Clear machine stack, ON ERROR OFF
 		jal	tokenizeAndStore
-		bnez	a0, resetVarsImmedPrompt	//  Tokenise, enter into program, loop back if program line
+		bge	a0, zero, resetVarsImmedPrompt	//  Tokenise, enter into program, loop back if program line
+
 		j	execImmediateLine		//  Jump to execute immediate line
  // 
  // doOSCLIAtY					      // L8FA4
@@ -1448,6 +1467,7 @@ runFromZP_TXTPTR:					// L8F97
  // 		PULS	U
  // //			//  DATA, DEF,	//
  // //			//  ==============
+cmdREM: NOTIMPL "cmdREM"
  // cmdREM
  // 		LDA	#0x0D
  // 1							// L8FB3:
@@ -1505,24 +1525,24 @@ runFromZP_TXTPTR:					// L8F97
  // 		BEQ	skipSpacesAtYexecImmed		//  Skip spaces and ':'
  // 		CMPA	#tknPTRc
  // 		BLO	execTryVarAssign		//  Not command token, try variable assignment
- // //		
- // //			//  Dispatch function/command
- // //			//  -------------------------
- // exeTokenInA						//L9019:		TODO: move command table and make relative jump
- // 		SUBA	#tknOPENIN			// first token
- // 		TFR	A,B
- // 		ASLB					// mul by two
- // 		LDX	#tblCmdDispatch
- // 		ABX
- // 		JUMP	[,X]		//  Index into dispatch table and jump to routine
- // //		
- // //			//  Command entered at immediate prompt
- // //			//  -----------------------------------
+//		
+//			//  Dispatch function/command
+//			//  -------------------------
+exeTokenInA:						//L9019:		TODO: move command table and make relative jump
+		addi	t0, cu, -tknOPENIN		// first token
+		slli	t0, t0, 2			// mul by 4
+		la	t1, tblCmdDispatch
+		add	t1, t1, t0
+		jr	t1				//  Index into dispatch table and jump to routine
+//		
+//			//  Command entered at immediate prompt
+//			//  -----------------------------------
 execImmediateLine:			//L901E:
-		ebreak
- // 		CALL	skipSpacesPTRA			//  Skip spaces at PtrA
- // 		CMPA	#tknAUTO
- // 		BHS	exeTokenInA			//  If command token, jump to execute command
+ 		jal	skipSpacesPTRA			//  Skip spaces at PtrA
+ 		li	t0, tknAUTO
+  		bgeu	cu, t0,	exeTokenInA			//  If command token, jump to execute command
+
+  		ebreak
  // 			
  // //			//  Not command token, try variable assignment
  // execTryVarAssign					// L9025
@@ -1545,6 +1565,7 @@ execImmediateLine:			//L901E:
  // 		LDU	ZP_TXTPTR2
  // //			//  LET <var> = <expression>
  // //			//  ========================
+cmdLET: NOTIMPL "cmdLET"
  // cmdLET
  // 
  // 		CALL	findVarOrAllocEmpty
@@ -1560,6 +1581,7 @@ execImmediateLine:			//L901E:
  // //		
  // //		//  =<expression> - return from function
  // //		//  ====================================
+cmdEquals: NOTIMPL "cmdEquals"
  // cmdEquals
  // 		CMPS	#MACH_STACK_TOP - 5
  // 		BHS	brkNoFN			//  Stack empty, not in a function
@@ -1572,6 +1594,7 @@ execImmediateLine:			//L901E:
  // 
  // //			//  <numvar>=<numeric>
  // //			//  ------------------
+cmdSetVarNumeric: NOTIMPL "cmdSetVarNumeric"
  // cmdSetVarNumeric
  // 		LDX	ZP_INT_WA + 2
  // 		LDA	ZP_INT_WA + 0
@@ -1581,6 +1604,7 @@ execImmediateLine:			//L901E:
  // 		JUMP	continue			//  Copy numeric value to variable, return to execution loop
  // 
  // 
+cmdSTOP: NOTIMPL "cmdSTOP"
  // cmdSTOP
  // 
  // 		CALL	scanNextStmtFromY		//  Check end of statement
@@ -1660,6 +1684,7 @@ execImmediateLine:			//L901E:
  // 		BRA	copystr600
  // 
  // 
+cmdPRINT_HASH: NOTIMPL "cmdPRINT_HASH"
  // cmdPRINT_HASH						// L9141
  // 	IF FLEX
  // 		JUMP	brkFlexNotImpl
@@ -1669,6 +1694,7 @@ execImmediateLine:			//L901E:
  // 
  // 		CALL	decYSaveAndEvalHashChannelAPI
  // 		PSHS	Y				// save Channel #
+cmdPRINTHAS_lp: NOTIMPL "cmdPRINTHAS_lp"
  // cmdPRINTHAS_lp		
  // 		LDU	ZP_TXTPTR
  // 		CALL	skipSpacesCheckCommaAtY
@@ -1688,6 +1714,7 @@ execImmediateLine:			//L901E:
  // 		DECB
  // 		BPL	1B
  // 		BRA	cmdPRINTHAS_lp
+cmdPRINTHASH_FP: NOTIMPL "cmdPRINTHASH_FP"
  // cmdPRINTHASH_FP
  // 		CALL	fpCopyFPA_FPTEMP1		// put eval'd FP at FPTEMP1 in 5 byte form 
  // 		LDB	#0x04
@@ -1697,6 +1724,7 @@ execImmediateLine:			//L901E:
  // 		DECB
  // 		BPL 	1B
  // 		BRA	cmdPRINTHAS_lp
+cmdPRINTHASH_STR: NOTIMPL "cmdPRINTHASH_STR"
  // cmdPRINTHASH_STR
  // 		LDA	ZP_STRBUFLEN
  // 		JSR	OSBPUT
@@ -1710,6 +1738,7 @@ execImmediateLine:			//L901E:
  // 
  // 	ENDIF	//FLEX
  // 
+cmdPRINTHASH_exit: NOTIMPL "cmdPRINTHASH_exit"
  // cmdPRINTHASH_exit
  // 		LEAS	2,S				// discard stacked channel
  // 		LEAU	-1,U
@@ -1718,6 +1747,7 @@ execImmediateLine:			//L901E:
  // 
  // //			//  PRINT (<print items>)
  // //			//  =====================
+cmdPRINT: NOTIMPL "cmdPRINT"
  // cmdPRINT
  // 		CALL	skipSpacesCheckHashAtYStepBack
  // 		BEQ	cmdPRINT_HASH			// Get next non-space char, if '#' jump to do PRINT#
@@ -1924,6 +1954,7 @@ execImmediateLine:			//L901E:
  // 		LEAU	1,U
  // 1		CALL	list_printANoEDIT
  // 		BRA	2B
+cmdCALL: NOTIMPL "cmdCALL"
  // cmdCALL			// L92BE!
  // 		CALL	evalExpressionMAIN
  // 		CALL	checkTypeInZP_VARTYPEConvert2INT
@@ -1962,6 +1993,7 @@ execImmediateLine:			//L901E:
  // 		LDU	0x0464+2
  // 		JSR	[ZP_INT_WA + 2]
  // 		PULS	U,PC
+cmdDELETE: NOTIMPL "cmdDELETE"
  // cmdDELETE
  // 
  // 		CALL	skipSpacesDecodeLineNumberNewAPIbrkSyntax
@@ -2009,6 +2041,7 @@ execImmediateLine:			//L901E:
  // 		CLRB
  // 		TFR	D,U
  // 		RTS
+cmdRENUMBER: NOTIMPL "cmdRENUMBER"
  // cmdRENUMBER		// L9384!
  // 			//  RENUMBER
  // 		CALL	AUTO_RENUM_STARTSTEP_DEF1010
@@ -2120,6 +2153,7 @@ execImmediateLine:			//L901E:
  // 		RTS
  // //			//  AUTO [num[,num]]
  // //			//  ================
+cmdAUTO: NOTIMPL "cmdAUTO"
  // cmdAUTO			
  // 		CALL	AUTO_RENUM_STARTSTEP_DEF1010
  // 		LDA	ZP_INT_WA + 3
@@ -2242,6 +2276,7 @@ execImmediateLine:			//L901E:
  // 
  // //			//  DIM
  // //			//  ===
+cmdDIM: NOTIMPL "cmdDIM"
  // cmdDIM
  // 		CALL skipSpacesY
  // L9541
@@ -2343,6 +2378,7 @@ execImmediateLine:			//L901E:
  // //			//  ============================
  // //			//  HIMEM=address - Set top of BASIC memory, clearing stack
  // //			//  -------------------------------------------------------
+varSetHIMEM: NOTIMPL "varSetHIMEM"
  // varSetHIMEM			// L960F!
  // 
  // 			
@@ -2354,6 +2390,7 @@ execImmediateLine:			//L901E:
  // 		BRA	L963B_continue			//  Return to execution loop
  // //			//  LOMEM=address
  // //			//  -------------
+varSetLOMEM: NOTIMPL "varSetLOMEM"
  // varSetLOMEM			// L9620!
  // 		CALL	evalAssignEqInteger		//  Check for '=', evaluate integer
  // 		LDX	ZP_INT_WA + 2
@@ -2363,6 +2400,7 @@ execImmediateLine:			//L901E:
  // 		BRA	L963B_continue//			//  Return to execution loop
  // //			//  PAGE=address - Set program start
  // //			//  --------------------------------
+varSetPAGE: NOTIMPL "varSetPAGE"
  // varSetPAGE			// L9634!
  // 		CALL	evalAssignEqInteger		//  Check for '=', evaluate integer
  // 		LDA	ZP_INT_WA + 2
@@ -2372,6 +2410,7 @@ execImmediateLine:			//L901E:
  // 
  // //			//  CLEAR
  // //			//  -----
+cmdCLEAR: NOTIMPL "cmdCLEAR"
  // cmdCLEAR						// L963E
  // 
  // 		CALL	scanNextStmtFromY	
@@ -2380,6 +2419,7 @@ execImmediateLine:			//L901E:
  // 
  // //			//  TRACE [ON|OFFOFF|<linenum>]
  // //			//  ---------------------------
+cmdTRACE: NOTIMPL "cmdTRACE"
  // cmdTRACE
  // 
  // 		CALL	skipSpacesDecodeLineNumberNewAPI
@@ -2416,6 +2456,7 @@ execImmediateLine:			//L901E:
  // 			//  Jump to set TRACE OFF
  // 			//  TIME=val, TIME0x=s0x - set TIME or TIME0x
  // 			//  ======================================
+varSetTIME: NOTIMPL "varSetTIME"
  // varSetTIME			// L9679!
  // 
  // 	IF FLEX = 1
@@ -2434,6 +2475,7 @@ execImmediateLine:			//L901E:
  // 	ENDIF
  // //			//  TIME0x=string
  // //			//  ------------
+varSetTime_Dollar: NOTIMPL "varSetTime_Dollar"
  // varSetTime_Dollar					// L968E
  // 	IF FLEX = 1
  // 		JUMP	brkFlexNotImpl
@@ -2505,6 +2547,7 @@ execImmediateLine:			//L901E:
  // 		JUMP	 IntToReal
  // //		
  // //		
+cmdPROC: NOTIMPL "cmdPROC"
  // cmdPROC
  // 
  // //////			//  PROC
@@ -2521,6 +2564,7 @@ execImmediateLine:			//L901E:
  // 		LDX	ZP_INT_WA + 2		// get var pointer
  // 		CLR	2,X			// store 0 in top byte of next var pointer
  // 		BRA	L971F
+cmdLOCAL: NOTIMPL "cmdLOCAL"
  // cmdLOCAL
  // 		CMPS	#MACH_STACK_TOP - 5		// Check if stack is "empty"
  // 		BHS	brkNotLOCAL
@@ -2530,7 +2574,7 @@ execImmediateLine:			//L901E:
  // 		TST	ZP_INT_WA
  // 		BMI	L96FB
  // 		CALL	pushVarPtrAndType
- // 		CALL	varFALSE
+ // 		CALL	fnFALSE
  // 		STA	ZP_VARTYPE
  // 		CALL	storeEvaledExpressioninStackedVarPTr
  // L971F		INC	4, S			// DB inc SP + 6
@@ -2548,6 +2592,7 @@ execImmediateLine:			//L901E:
  // 		FCB	"Bad ", tknMODE, 0
  // 
  // 
+cmdGCOL: NOTIMPL "cmdGCOL"
  // cmdGCOL							// L9741
  // 		CALL	evalForceINT
  // 		LDA	ZP_INT_WA + 3
@@ -2558,12 +2603,14 @@ execImmediateLine:			//L901E:
  // 		JSR	OSWRCH
  // 		PULS	A
  // 		BRA	L979B
+cmdCOLOUR: NOTIMPL "cmdCOLOUR"
  // cmdCOLOUR
  // //			//  COLOUR
  // 		CALL	evalForceINT
  // 		CALL	scanNextStmtFromY
  // 		LDA	#0x11
  // 		BRA	L979B
+cmdMode: NOTIMPL "cmdMode"
  // cmdMode			// L975F!
  // 
  // 		CALL	evalForceINT
@@ -2591,10 +2638,12 @@ execImmediateLine:			//L901E:
  // 		LDA	ZP_INT_WA + 3		// not - got least sig byte
  // 		BRA	OSWRCH_then_continue
  // 
+cmdMOVE: NOTIMPL "cmdMOVE"
  // cmdMOVE			// L97A2!
  // 		LDA	#0x04
  // 		BRA	doMOVE_DRAW
  // 
+cmdDRAW: NOTIMPL "cmdDRAW"
  // cmdDRAW			// L97A6!
  // 		LDA	#0x05
  // doMOVE_DRAW						// fpFPAeq_sqr_FPA
@@ -2603,6 +2652,7 @@ execImmediateLine:			//L901E:
  // 		CALL	checkTypeInZP_VARTYPEConvert2INT
  // 		BRA	doPLOT2
  // 
+cmdPLOT: NOTIMPL "cmdPLOT"
  // cmdPLOT
  // 		CALL	evalForceINT
  // 		LDA	ZP_INT_WA + 3
@@ -2627,6 +2677,7 @@ execImmediateLine:			//L901E:
  // 
  // //			//  CLG - Clear graphics window
  // //			//  ---------------------------
+cmdCLG: NOTIMPL "cmdCLG"
  // cmdCLG							// L97E0!
  // 		CALL	scanNextStmtFromY		//  Check end of statement
  // 		LDA	#0x10
@@ -2634,6 +2685,7 @@ execImmediateLine:			//L901E:
  // 
  // //			//  CLS - Clear text window
  // //			//  -----------------------
+cmdCLS: NOTIMPL "cmdCLS"
  // cmdCLS			// L97E7!
  // 		CALL	scanNextStmtFromY		//  Check end of statement
  // 		CLR	ZP_PRLINCOUNT
@@ -2641,12 +2693,14 @@ execImmediateLine:			//L901E:
  // OSWRCH_then_continue					// L97EE
  // 		JSR OSWRCH				//Send to VDU
  // L97F1		JUMP continue				//Return to execution loop
+cmdREPORT: NOTIMPL "cmdREPORT"
  // cmdREPORT
  // 		CALL	scanNextStmtFromY
  // 		CALL	PrintCRclearPRLINCOUNT
  // 		LDX	ZP_MOS_ERROR_PTR_QRY
  // 		LEAX	1,X				// skip error number
  // 
+cmdREPORTlp: NOTIMPL "cmdREPORTlp"
  // cmdREPORTlp						//L97FC:
  // 		LDA	,X+
  // 		LBEQ	continue
@@ -2655,6 +2709,7 @@ execImmediateLine:			//L901E:
  // doVDUChar_fromWA32				//L9808:
  // 		LDA ZP_INT_WA + 2
  // 		JSR OSWRCH
+cmdVDU: NOTIMPL "cmdVDU"
  // cmdVDU					       // L980D!	      //	 VDU
  // 		CALL	skipSpacesY
  // 1						//L9810:
@@ -3068,6 +3123,7 @@ execImmediateLine:			//L901E:
  // 		DO_BRK_B
  // 		FCB	0x0F, "Subscript", 0
  // 
+fnProcScanYplus1varname: NOTIMPL "fnProcScanYplus1varname"
  // fnProcScanYplus1varname
  // 		LDB	#0x01
  // 		* API:
@@ -3079,6 +3135,7 @@ execImmediateLine:			//L901E:
  // 		*		A contains unmatched char (may be "%","0x","(")
  // 		*		X points at char after last matching
  // 		// scans chars that are allowed in variable names
+fnProcScanYplusBvarname: NOTIMPL "fnProcScanYplusBvarname"
  // fnProcScanYplusBvarname
  // 		CLRA
  // 		LEAX	D,U
@@ -3131,7 +3188,7 @@ skipSpacesDecodeLineNumberNewAPI:
 		beq	cu, t0, decodeLineNumber_int
 		addi	tp, tp, -1
 		sw	tp, ZP_TXTPTR(wp)		//  Not line number, return CC
-		li	a0, 0
+		li	a0, -1
 
 		lw	ra, 0(sp)
 		addi	sp, sp, 4
@@ -3217,6 +3274,7 @@ errEscape:
  // 
  // //		//  ENDPROC
  // //		//  =======
+cmdENDPROC: NOTIMPL "cmdENDPROC"
  // cmdENDPROC
  // 		CMPS	#MACH_STACK_TOP - 5
  // 		BHS	brkNoPROC			// Stack too empty, not in a PROC
@@ -3225,21 +3283,26 @@ errEscape:
  // 		BNE	brkNoPROC			// No PROC on the stack
  // 							// drop through to an RTS
  // //scanNextStmt	LDU ZP_TXTPTR	 -- obsolete?
- // scanNextStmtFromY
- // 		CALL	skipSpacesYStepBack
- // scanNextExpectColonElseCR
- // 		CMPA	#':'
- // 		BEQ	1F					//  colon, end of statement
- // 		CMPA	#0x0D
- // 		BEQ	1F					//  <cr>, end of statement
- // 		CMPA	#tknELSE
- // 		BNE	brkSyntax				//  Not correctly terminated, error
- // 1
- // storeYasTXTPTR	STU	ZP_TXTPTR
- // checkForESC	
- // 		TST	[ZP_ESCPTR]
- // 		BMI	errEscape				//  Escape set, give Escape error
- // anRTS9		RTS
+scanNextStmtFromY:
+		addi	sp, sp, -4
+		sw	ra, 0(sp)
+		jal	skipSpacesY
+		lw	ra, 0(sp)
+		addi	sp, sp, 4
+		addi	tp, tp, -1
+scanNextExpectColonElseCR:
+		li	t0, ':'
+		beq	t0, cu, snex				//  colon, end of statement
+		li	t0, 0x0D
+		beq	t0, cu, snex				//  <cr>, end of statement
+		li	t0, tknELSE
+		bne	t0, cu,	brkSyntax				//  Not correctly terminated, error
+snex:
+storeYasTXTPTR:	sw	tp, ZP_TXTPTR(wp)
+checkForESC:	lw	t0, ZP_ESCPTR(wp)
+		lb	t0, 0(tp)
+		blt	t0, zero, errEscape				//  Escape set, give Escape error
+		ret
  // 
  // //
  // //
@@ -3264,6 +3327,7 @@ errEscape:
  // 								//L9BFD: -- check API
  // L9C01rts
  // 		RTS
+cmdIF: NOTIMPL "cmdIF"
  // cmdIF			// L9C08
  // 		CALL	evalExpressionMAIN
  // 		LBEQ	brkTypeMismatch
@@ -4890,6 +4954,7 @@ errEscape:
  // //////		LDA #0x04
  // //////		STA ZP_FP_TMP_PTR1 + 1
  // //////		RTS
+fnTAN: NOTIMPL "fnTAN"
  // fnTAN			// LA59B!
  // 		CALL	trigNormaltheta
  // 		LDX	#BASWKSP_FPTEMP4
@@ -5196,8 +5261,10 @@ errEscape:
  // 		TSTA					// top byte of mant still in A
  // 		LBPL	NormaliseRealA_3		// if top bit of FPA's mantissa not set then normalize it
  // 		RTS
+fnLN: NOTIMPL "fnLN"
  // fnLN							//  =LN
  // 		CALL evalLevel1ConvertReal
+fnLN_FPA: NOTIMPL "fnLN_FPA"
  // fnLN_FPA						// LA749
  // 		PSHS	U
  // 		CALL	fpCheckMant0SetSignExp0
@@ -5256,6 +5323,7 @@ errEscape:
  // 		RTS
  // //		
  // //		
+fnSQR: NOTIMPL "fnSQR"
  // fnSQR
  // 
  // 			//  =cmd
@@ -5401,12 +5469,14 @@ errEscape:
  // fpUtoPTR1toFPA						// LA896
  // 		STU	ZP_FP_TMP_PTR1
  // 		JUMP	fpCopyPTR1toFPA
+fnACS: NOTIMPL "fnACS"
  // fnACS
  // 
  // 			
  // 			//  =ACS
  // 		CALL	fnASN
  // 		BRA	fpFPAEqPiDiv2SubFPA
+fnASN: NOTIMPL "fnASN"
  // fnASN
  // 		CALL	evalLevel1ConvertReal
  // 		LDA	ZP_FPA
@@ -5424,6 +5494,7 @@ errEscape:
  // fpSetFPAeqPIdiv2					// LA8BE
  // 		LDX	#fpConstPiDiv2
  // 		JUMP	fpCopyXtoFPA
+fnATN: NOTIMPL "fnATN"
  // fnATN
  // 		CALL	evalLevel1ConvertReal
  // LA8C6
@@ -5467,22 +5538,27 @@ errEscape:
  // 
  // 
  // 
+fnSIN: NOTIMPL "fnSIN"
  // fnSIN			// LA90D!
  // 
  // //			//  =SIN
  // 		CLC
  // 		BRA	fnSINenter
  // 
+fnCOS: NOTIMPL "fnCOS"
  // fnCOS
  // 		SEC
  // //			//  =COS
+fnSINenter: NOTIMPL "fnSINenter"
  // fnSINenter
  // 		PSHS	CC			// Save CC to see whether its sin or cos
  // 		CALL	trigNormaltheta
  // 		PULS	CC
  // 		BCC	fnSIN_internal1
+fnCOS_internal1: NOTIMPL "fnCOS_internal1"
  // fnCOS_internal1					// LA915
  // 		INC	ZP_FP_TMP + 6
+fnSIN_internal1: NOTIMPL "fnSIN_internal1"
  // fnSIN_internal1					// LA917
  // 		LDA	ZP_FP_TMP + 6
  // 		BITA	#0x02
@@ -5571,26 +5647,31 @@ errEscape:
  // 		DO_BRK_B
  // 		FCB	0x18, "Exp range", 0
  // 
+fnRAD: NOTIMPL "fnRAD"
  // fnRAD			// LA9C8!
  // 
  // 			//  =RAD
  // 		CALL	evalLevel1ConvertReal
  // 		LDX_FPC fpConstDeg2Rad
  // 		BRA	fpFPAeqXmulFPA
+fnLOG: NOTIMPL "fnLOG"
  // fnLOG
  // 
  // 			//  =LOG
  // 		CALL	fnLN
  // 		LDX_FPC	fpConst0_43429
  // 		BRA	fpFPAeqXmulFPA
+fnDEG: NOTIMPL "fnDEG"
  // fnDEG
  // 
  // 			//  =DEG
  // 		CALL	evalLevel1ConvertReal
  // 		LDX_FPC	fpConstRad2Deg
  // 		BRA 	fpFPAeqXmulFPA
+fnEXP: NOTIMPL "fnEXP"
  // fnEXP			//  =EXP
  // 		CALL	evalLevel1ConvertReal
+fnEXP_int: NOTIMPL "fnEXP_int"
  // fnEXP_int
  // 		PSHS	U
  // 		LDA	ZP_FPA + 2
@@ -5634,8 +5715,10 @@ errEscape:
  // 		// this makes integer ops easier but adds slight complexity to loading into FPA 
  // 	ENDIF
  // 
+fnRND_1: NOTIMPL "fnRND_1"
  // fnRND_1							// LAA1E
  // 		CALL	rndNext
+fnRND_0: NOTIMPL "fnRND_0"
  // fnRND_0							// LAA21
  // 		CLR	ZP_FPA
  // 		CLR	ZP_FPA + 1
@@ -5654,6 +5737,7 @@ errEscape:
  // 
  // 
  // 		JUMP	fpNormalizeAndReturnFPA
+fnRND_int: NOTIMPL "fnRND_int"
  // fnRND_int						// RND(X)
  // 		LEAU	1,U
  // 		CALL	evalL1BracketAlreadyOpenConvert2INT
@@ -5676,12 +5760,14 @@ errEscape:
  // 		CALL	fpReal2Int
  // 		CALL	inc_INT_WA
  // 		BRA	LAA90_rtsA40
+fnRND_randomize: NOTIMPL "fnRND_randomize"
  // fnRND_randomize						// LAA69
  // 		LDX	#ZP_RND_WA
  // 		CALL	CopyIntWA2X
  // 		LDA	#0x40
  // 		STA	ZP_RND_WA + 4
  // 		RTS
+fnRND: NOTIMPL "fnRND"
  // fnRND			// LAA73!
  // 		LDA	,U
  // 		CMPA	#'('
@@ -5697,6 +5783,7 @@ errEscape:
  // 		LDA	#0x40
  // 		RTS
  // //			//  =NOT
+fnNOT: NOTIMPL "fnNOT"
  // fnNOT
  // 
  // 		CALL	evalLevel1checkTypeStoreAsINT
@@ -5706,10 +5793,12 @@ errEscape:
  // 		DECB
  // 		BPL	LAA98
  // 		BRA	LAA90_rtsA40
+fnPOS: NOTIMPL "fnPOS"
  // fnPOS			// LAAA3!
  // 		CALL	fnVPOS
  // 		STX	ZP_INT_WA+2
  // 		RTS
+fnUSR: NOTIMPL "fnUSR"
  // fnUSR			// LAAA9!
  // 
  // 			
@@ -5725,6 +5814,7 @@ errEscape:
  // 		STA	ZP_INT_WA + 0
  // 		PULS	U
  // 		BRA	LAA90_rtsA40
+fnVPOS: NOTIMPL "fnVPOS"
  // fnVPOS			// LAABC!
  // 	IF FLEX
  // 		JUMP	brkFlexNotImpl
@@ -5739,6 +5829,7 @@ errEscape:
  // 
  // 			//  =EXT#channel - read open file extent
  // 			// -------------------------------------
+fnEXT: NOTIMPL "fnEXT"
  // fnEXT
  // 	IF FLEX = 1
  // 		JUMP	brkFlexNotImpl
@@ -5750,6 +5841,7 @@ errEscape:
  // 	ENDIF
  // 			//  =PTR#channel - read open file pointer
  // 			// --------------------------------------
+varGetPTR: NOTIMPL "varGetPTR"
  // varGetPTR
  // 	IF FLEX = 1
  // 		JUMP	brkFlexNotImpl
@@ -5757,6 +5849,7 @@ errEscape:
  // 		JUMP	brkSBC09NotImpl
  // 	ELSE
  // 		CLRA				// 00=Read PTR
+varGetFInfo: NOTIMPL "varGetFInfo"
  // varGetFInfo
  // 		PSHS	A
  // 		CALL	evalHashChannel		// Evaluate #channel, save TXTPTR, Y=channel
@@ -5770,6 +5863,7 @@ errEscape:
  // 	ENDIF
  // 			//  =BGET#channel - get byte from open file
  // 			// ----------------------------------------
+fnBGET: NOTIMPL "fnBGET"
  // fnBGET
  // 	IF FLEX = 1
  // 		JUMP	brkFlexNotImpl
@@ -5783,6 +5877,7 @@ errEscape:
  // 	ENDIF
  // 			//  =OPENIN f0x - open file for input
  // 			//  ================================
+fnOPENIN: NOTIMPL "fnOPENIN"
  // fnOPENIN
  // 	IF FLEX = 1
  // 		JUMP	brkFlexNotImpl
@@ -5794,6 +5889,7 @@ errEscape:
  // 	ENDIF
  // 			//  =OPENOUT f0x - open file for output
  // 			//  ==================================
+fnOPENOUT: NOTIMPL "fnOPENOUT"
  // fnOPENOUT
  // 	IF FLEX = 1
  // 		JUMP	brkFlexNotImpl
@@ -5805,6 +5901,7 @@ errEscape:
  // 	ENDIF
  // //			//  =OPENUP f0x - open file for update
  // //			//  =================================
+fnOPENUP: NOTIMPL "fnOPENUP"
  // fnOPENUP
  // 	IF FLEX = 1
  // 		JUMP	brkFlexNotImpl
@@ -5828,6 +5925,7 @@ errEscape:
  // 		JUMP	retA8asUINT
  // 	ENDIF
  // //
+fnPI: NOTIMPL "fnPI"
  // fnPI							// LAAFF!
  // 		CALL	fpSetFPAeqPIdiv2			// load PI/2 into FPA and increment exponent for PI
  // 		INC	ZP_FPA + 2
@@ -5835,6 +5933,7 @@ errEscape:
  // 
  // //			//  =EVAL string0x - Tokenise and evaluate expression
  // //			//  ================================================
+fnEVAL: NOTIMPL "fnEVAL"
  // fnEVAL			
  // 		CALL	evalLevel1
  // 		LBNE	brkTypeMismatch			//  Evaluate value, error if not string
@@ -5863,6 +5962,7 @@ errEscape:
  // 		RTS					//  And return
  // //
  // //
+fnVAL: NOTIMPL "fnVAL"
  // fnVAL
  // 
  // 			//  =VAL
@@ -5890,6 +5990,7 @@ errEscape:
  // 		PULS	U,PC
  // //		
  // //		
+fnINT: NOTIMPL "fnINT"
  // fnINT
  // 
  // 		CALL	evalLevel1
@@ -5915,6 +6016,7 @@ errEscape:
  // 
  // 
  // 
+fnASC: NOTIMPL "fnASC"
  // fnASC
  // 		CALL	evalLevel1
  // 		LBNE	brkTypeMismatch
@@ -5923,6 +6025,7 @@ errEscape:
  // 		LDB	BAS_StrA
  // 		JUMP	retB8asUINT
  // 
+fnINKEY: NOTIMPL "fnINKEY"
  // fnINKEY		//  =INKEY
  // 	IF FLEX = 1
  // 		JUMP	brkFlexNotImpl
@@ -5935,6 +6038,7 @@ errEscape:
  // 
  // 			//  =EOF#channel - return EndOfFile status - here to be near fnTRUE and fnFALSE
  // 			//  ===========================================================================
+fnEOF: NOTIMPL "fnEOF"
  // fnEOF
  // 	IF FLEX = 1
  // 		JUMP	brkFlexNotImpl
@@ -5946,12 +6050,15 @@ errEscape:
  // 		LDA	#0x7F
  // 		JSR	OSBYTE			// OSBYTE 0x7F to read EOF
  // 		LEAX	0,X			// Test X
- // 		BEQ	varFALSE		// If &00, return FALSE
+ // 		BEQ	fnFALSE		// If &00, return FALSE
  // 						// Otherwise, return TRUE
  // 						//  Otherwise, return TRUE
  // 	ENDIF
  // 			//  =TRUE
  // 			//  =====
+ 
+fnTRUE: NOTIMPL "fnTRUE"
+ // fnTRUE
  // returnINTminus1					// TODO - possibly use D?
  // 		LDB #0xFF			//  Return -1
  // returnB8asINT_S	SEX
@@ -5962,16 +6069,19 @@ errEscape:
  // 		RTS				//  Return Integer
  // 			//  =FALSE
  // 			//  ======
- // varFALSE			
+fnFALSE: NOTIMPL "fnFALSE"
+ // fnFALSE			
  // 		CLRB
  // 		BRA returnB8asINT_S			//  Jump to return 0
  // 
  // 
+fnSGN_real: NOTIMPL "fnSGN_real"
  // fnSGN_real						// LABEC
  // 		CALL	fpCheckMant0SetSignExp0
- // 		BEQ	varFALSE
+ // 		BEQ	fnFALSE
  // 		BPL	fnSGN_pos
  // 		BRA	returnINTminus1
+fnSGN: NOTIMPL "fnSGN"
  // fnSGN							// LABF5!
  // 		CALL	evalLevel1
  // 		LBEQ	brkTypeMismatch
@@ -5982,10 +6092,12 @@ errEscape:
  // 		BMI	returnINTminus1
  // 
  // 		BEQ	returnINT
+fnSGN_pos: NOTIMPL "fnSGN_pos"
  // fnSGN_pos	LDB	#1
  // 		BRA	returnB8asINT_S
  // 
  // 
+fnPOINT: NOTIMPL "fnPOINT"
  // fnPOINT			// LAC0E!
  // 	IF FLEX
  // 		JUMP	brkFlexNotImpl
@@ -6015,6 +6127,7 @@ errEscape:
  // 		BRA	returnB8asINT_S
  // 	ENDIF
  // 
+fnINSTR: NOTIMPL "fnINSTR"
  // fnINSTR
  // 
  // 		CALL	evalAtY
@@ -6039,6 +6152,7 @@ errEscape:
  // 		LBNE	brkMissingComma
  // 		CALL	evalL1BracketAlreadyOpenConvert2INT
  // 
+fnINSTR_sk_nop3: NOTIMPL "fnINSTR_sk_nop3"
  // fnINSTR_sk_nop3	TST	ZP_INT_WA + 3
  // 		BNE	1F
  // 		INC	ZP_INT_WA + 3			// if 0 make 1
@@ -6059,6 +6173,7 @@ errEscape:
  // 		LDB	ZP_INT_WA + 3
  // 		LEAY	D,Y				// skip to param 3 offset
  // 
+fnINSTR_lp1: NOTIMPL "fnINSTR_lp1"
  // fnINSTR_lp1	
  // 		LDA	ZP_INT_WA + 3
  // 		ADDA	ZP_INT_WA
@@ -6077,11 +6192,13 @@ errEscape:
  // 		LDA	ZP_INT_WA + 3
  // 		INCA					// make back to 1 based
  // 		JUMP	retA8asUINT
+fnINSTR_sknom: NOTIMPL "fnINSTR_sknom"
  // fnINSTR_sknom	PULS	X,Y
  // 		LEAY	1,Y
  // 		INC	ZP_INT_WA + 3
  // 		BRA	fnINSTR_lp1
  // 
+fnINSTR_notfound: NOTIMPL "fnINSTR_notfound"
  // fnINSTR_notfound
  // 		PULS	U
  // 		CLRA
@@ -6144,6 +6261,7 @@ errEscape:
  // //JUMPBrkTypeMismatch:
  // //		JUMP brkTypeMismatch
  // //		
+fnABS: NOTIMPL "fnABS"
  // fnABS			//  =ABS
  // 		CALL	evalLevel1
  // 		LBEQ	brkTypeMismatch
@@ -6319,7 +6437,7 @@ errEscape:
  // 
  // 
  // evalL1ImmedHex			      //LADB7
- // 		CALL	varFALSE			// 0 intA
+ // 		CALL	fnFALSE			// 0 intA
  // 		CLRB
  // evalL1ImmedHex_lp					// LADBB
  // 		LDA	,U+				// get digit
@@ -6355,6 +6473,7 @@ errEscape:
  // 		LDA	#0x40
  // 		RTS
  // 
+fnADVAL: NOTIMPL "fnADVAL"
  // fnADVAL
  // 	IF FLEX  = 1
  // 		JUMP	brkFlexNotImpl
@@ -6369,6 +6488,7 @@ errEscape:
  // 		PULS	U
  // 		BRA	retX16asUINT
  // 	ENDIF
+fnTO: NOTIMPL "fnTO"
  // fnTO			// LADF9!
  // 
  // 		LDA	,U+
@@ -6376,6 +6496,7 @@ errEscape:
  // 		LBNE	brkNoSuchVar
  // 		LDD	ZP_TOP
  // 		BRA retD16asUINT
+varGetPAGE: NOTIMPL "varGetPAGE"
  // varGetPAGE
  // 
  // //			//  =PAGE
@@ -6384,6 +6505,7 @@ errEscape:
  // 		BRA	retD16asUINT
  // //JUMPBrkTypeMismatch4:
  // //		JUMP brkTypeMismatch
+fnLEN: NOTIMPL "fnLEN"
  // fnLEN
  // //			//  =LEN
  // 		CALL	evalLevel1
@@ -6409,31 +6531,39 @@ errEscape:
  // retX16asUINT	STX	ZP_INT_WA + 2
  // 		BRA	retWA16asUINT
  // 
+fnCOUNT: NOTIMPL "fnCOUNT"
  // fnCOUNT
  // 
  // 		LDB ZP_PRLINCOUNT
  // 		BRA retB8asUINT
  // 
+varGetLOMEM: NOTIMPL "varGetLOMEM"
  // varGetLOMEM
  // 
  // 		LDD ZP_LOMEM
  // 		BRA retD16asUINT
+varGetHIMEM: NOTIMPL "varGetHIMEM"
  // varGetHIMEM
  // 
  // 		LDD ZP_HIMEM
  // 		BRA retD16asUINT
+ 
+varERL: NOTIMPL "varERL"
  // varERL
  // 			//  =ERL
  // 		LDD	ZP_ERL
  // 		BRA	retD16asUINT
+varERR: NOTIMPL "varERR"
  // varERR
  // 			//  =ERR
  // 		LDB	[ZP_MOS_ERROR_PTR_QRY]
  // 		BRA	retB8asUINT
+fnGET: NOTIMPL "fnGET"
  // fnGET
  // 			//  =GET
  // 		JSR	OSRDCH
  // 		BRA	retA8asUINT
+varGetTIME: NOTIMPL "varGetTIME"
  // varGetTIME
  // 	IF FLEX = 1
  // 		JUMP	brkFlexNotImpl
@@ -6474,6 +6604,7 @@ errEscape:
  // 		RTS
  // 	ENDIF
  // 
+varGetTIME_DOLLAR: NOTIMPL "varGetTIME_DOLLAR"
  // varGetTIME_DOLLAR
  // 	IF FLEX = 1
  // 		JUMP	brkFlexNotImpl
@@ -6490,6 +6621,7 @@ errEscape:
  // 		PULS	U
  // 		BRA	staZpStrBufLen
  // 	ENDIF
+fnGETDOLLAR: NOTIMPL "fnGETDOLLAR"
  // fnGETDOLLAR		// LAE69!
  // 
  // 			
@@ -6503,9 +6635,11 @@ errEscape:
  // returnBAsString	STB	BASWKSP_STRING
  // 		BRA	returnString1
  // 
+fnLEFT: NOTIMPL "fnLEFT"
  // fnLEFT			// LAE73!
  // 		CLC
  // 		BRA	1F
+fnRIGHT: NOTIMPL "fnRIGHT"
  // fnRIGHT			// LAE74!
  // 
  // 		SEC
@@ -6528,6 +6662,7 @@ errEscape:
  // rts_AE93	RTS
  // 
  // 
+fnRIGHT_do_RIGHT: NOTIMPL "fnRIGHT_do_RIGHT"
  // fnRIGHT_do_RIGHT					// LAE94
  // 		LDB	ZP_STRBUFLEN			// length of string
  // 		SUBB	ZP_INT_WA + 3			// minus length of amount to copy == length to skip
@@ -6549,6 +6684,7 @@ errEscape:
  // 		BRA retAeq0
  // 
  // 
+fnINKEYDOLLAR: NOTIMPL "fnINKEYDOLLAR"
  // fnINKEYDOLLAR		// LAEB3!
  // 	IF FLEX = 1
  // 		JUMP	brkFlexNotImpl
@@ -6563,6 +6699,7 @@ errEscape:
  // 		BRA	staZpStrBufLen
  // 	
  // 		// YUSWAP - use Y and no push?
+fnMIDstr: NOTIMPL "fnMIDstr"
  // fnMIDstr
  // 		CALL	evalAtY
  // 		TSTA
@@ -6623,6 +6760,7 @@ errEscape:
  // 		rts
  // 
  // 
+fnSTR: NOTIMPL "fnSTR"
  // fnSTR			// LAF1C!
  // 
  // 		CALL	skipSpacesY
@@ -6647,6 +6785,7 @@ errEscape:
  // LAF3F
  // 		CALL	cmdPRINT_num2str
  // 		BRA	LAF7AclrArts
+fnSTRING: NOTIMPL "fnSTRING"
  // fnSTRING			// LAF47!
  // 			
  // //			//  =STRING0x
@@ -6666,8 +6805,10 @@ errEscape:
  // 		LDX	#BASWKSP_STRING
  // 		LDB	ZP_STRBUFLEN
  // 		ABX
+fnStringCopyOuterLoop: NOTIMPL "fnStringCopyOuterLoop"
  // fnStringCopyOuterLoop					// copy string at end of buffer
  // 		LDU	#BASWKSP_STRING
+fnStringCopyInnerLoop: NOTIMPL "fnStringCopyInnerLoop"
  // fnStringCopyInnerLoop					// LAF66
  // 		LDA	,U+
  // 		STA	,X+
@@ -6683,6 +6824,7 @@ errEscape:
  // LAF7AclrArts
  // 		CLRA
  // 		PULS	U,PC
+fnStringRetBlank: NOTIMPL "fnStringRetBlank"
  // fnStringRetBlank					// LAF7D
  // 		STA ZP_STRBUFLEN
  // 		PULS	U,PC
@@ -6799,6 +6941,7 @@ errEscape:
  // 
  // //		//  =FN / PROC
  // //		// ====
+fnFN: NOTIMPL "fnFN"
  // fnFN
  // //			
  // 		LDA	#tknFN
@@ -7101,6 +7244,7 @@ errEscape:
  // 		PULS	U,PC
  // 
  // 
+fnCHR: NOTIMPL "fnCHR"
  // fnCHR			// LB22F!
  // //			//  =CHR0x
  // 		CALL	evalLevel1checkTypeStoreAsINT
@@ -7186,6 +7330,7 @@ defErrBas:
 
 		.section .text
  // 
+cmdSOUND: NOTIMPL "cmdSOUND"
  // cmdSOUND						// LB2C8
  // 	IF FLEX = 1
  // 		JUMP	brkFlexNotImpl
@@ -7208,6 +7353,7 @@ defErrBas:
  // 		LDB	#0x07				// # bytes to restore minus 1
  // 		BRA	sndPullBthenAtoZP_SAVE_BUF_OSWORD_A
  // 	ENDIF
+cmdENVELOPE: NOTIMPL "cmdENVELOPE"
  // cmdENVELOPE			// LB2EC!
  // 	IF FLEX = 1
  // 		JUMP	brkFlexNotImpl
@@ -7245,6 +7391,7 @@ defErrBas:
  // 	ENDIF
  // 
  // 
+cmdWIDTH: NOTIMPL "cmdWIDTH"
  // cmdWIDTH
  // 
  // 		CALL	evalForceINT
@@ -7333,6 +7480,7 @@ defErrBas:
  // 		STA	,X+
  // 		RTS
  // 
+cmdEDIT: NOTIMPL "cmdEDIT"
  // cmdEDIT
  // 		DO_BRK_B
  // 		FCB	0x1E,"Not Implemented",0
@@ -7344,7 +7492,7 @@ defErrBas:
  // doLIST
  // 		CLR	ZP_FPB
  // 		CLR	ZP_FPB + 1
- // 		CALL	varFALSE			// set start line no to 0
+ // 		CALL	fnFALSE			// set start line no to 0
  // 		CALL	skipSpacesDecodeLineNumberNewAPI
  // 		PSHS	CC
  // 		CALL	stackINT_WAasINT		// stack start line no
@@ -7372,6 +7520,7 @@ defErrBas:
  // 		BNE	doListSkStart2
  // 		CALL	inySkipSpacesYStepBack
  // 		BRA	doListSkStart3
+cmdLIST: NOTIMPL "cmdLIST"
  // cmdLIST
  // 
  // 			
@@ -7543,6 +7692,7 @@ defErrBas:
  // 
  // 			// cmdNEXT
  // 			// =======
+cmdNEXT: NOTIMPL "cmdNEXT"
  // cmdNEXT
  // 		CALL	findVarAtYSkipSpaces
  // 		BNE	cmdNextSkSpecdLoopVar
@@ -7723,6 +7873,7 @@ defErrBas:
  // 			//============================
  // 			// FOR
  // 			//============================
+cmdFOR: NOTIMPL "cmdFOR"
  // cmdFOR
  // 		// TODO some recalcs of X could be done by LEAX?
  // 			//  FOR
@@ -7798,6 +7949,7 @@ defErrBas:
  // 			//============================
  // 			// GOSUB		
  // 			//============================
+cmdGOSUB: NOTIMPL "cmdGOSUB"
  // cmdGOSUB
  // 		CALL	decodeLineNumberFindProgLine
  // intGOSUB_FPB_2	CALL	scanNextStmtFromY		// LB6DC
@@ -7819,6 +7971,7 @@ defErrBas:
  // 			//============================
  // 			// RETURN
  // 			//============================
+cmdRETURN: NOTIMPL "cmdRETURN"
  // cmdRETURN
  // 		CALL	scanNextStmtFromY
  // 		LDB	ZP_GOSUB_LVL
@@ -7832,6 +7985,7 @@ defErrBas:
  // 			//============================
  // 			// GOTO
  // 			//============================
+cmdGOTO: NOTIMPL "cmdGOTO"
  // cmdGOTO							// LB71D!
  // 
  // 		CALL	decodeLineNumberFindProgLine
@@ -7848,10 +8002,12 @@ defErrBas:
  // 		STU	ZP_TXTPTR
  // 		JUMP	skipSpacesAtYexecImmed
  // 
+cmdONERROROFF: NOTIMPL "cmdONERROROFF"
  // cmdONERROROFF						// LB739
  // 		CALL	scanNextStmtFromY
  // 		CALL	ONERROROFF
  // 		JUMP	continue
+cmdONERROR: NOTIMPL "cmdONERROR"
  // cmdONERROR						// LB741
  // 		CALL	skipSpacesY
  // 		CMPA	#tknOFF
@@ -7861,6 +8017,7 @@ defErrBas:
  // 		JUMP	cmdREM				// skip rest
  // //			//  ON [ERROR][GOTO][GOSUB]
  // //			//  =======================
+cmdON: NOTIMPL "cmdON"
  // cmdON							// LB75B!
  // 
  // 		CALL	skipSpacesY
@@ -7995,13 +8152,6 @@ defErrBas:
  // //////LB844:
  // ////		JUMP scanNextContinue
  // 
- // 	IF FLEX
- // cmdINPUT_HASH						// LB847
- // 		JUMP	brkFlexNotImpl
- // 	ELSIF SBC09 = 1
- // cmdINPUT_HASH						// LB847
- // 		JUMP	brkSBC09NotImpl
- // 	ELSE
  // 
  // 
  // cmdINPUTBGETtoX
@@ -8011,6 +8161,7 @@ defErrBas:
  // 		BNE	1B
  // 		RTS
  // 
+cmdINPUT_HASH: NOTIMPL "cmdINPUT_HASH"
  // cmdINPUT_HASH						// LB847
  // 		CALL	decYSaveAndEvalHashChannelAPI
  // 		PSHS	Y				// save channel #
@@ -8062,11 +8213,11 @@ defErrBas:
  // 		CALL	storeEvaledExpressioninVarAtZP_GEN_PTR
  // 		BRA	cmdINPUT_HASH_lp
  // 
- // 	ENDIF	//FLEX
  // //LB8B2:
  // //		PLA
  // //		PLA
  // //		BRA LB844
+cmdINPUT: NOTIMPL "cmdINPUT"
  // cmdINPUT			// LB8B6!
  // 		CALL	skipSpacesCheckHashAtY
  // 		BEQ	cmdINPUT_HASH
@@ -8136,6 +8287,7 @@ defErrBas:
  // 		LDU	#0xFFFF
  // LB935		TFR	U,D
  // 1		STB	ZP_FP_TMP + 10
+cmdINPUT_LINE_INPUT: NOTIMPL "cmdINPUT_LINE_INPUT"
  // cmdINPUT_LINE_INPUT					// LB938
  // 		PULS	CC
  // 		BCS	cmdINPUT_LINE_INPUT_STR
@@ -8144,6 +8296,7 @@ defErrBas:
  // 		CALL	storeEvaledExpressioninStackedVarPTr
  // 1		PULS	U
  // 		JUMP	cmdINPUT_LINE_lp
+cmdINPUT_LINE_INPUT_STR: NOTIMPL "cmdINPUT_LINE_INPUT_STR"
  // cmdINPUT_LINE_INPUT_STR					//LB946:
  // 		CLR	ZP_VARTYPE
  // 		CALL	copyStringToVar2
@@ -8151,6 +8304,7 @@ defErrBas:
  // 
  // 
  // 
+cmdRESTORE: NOTIMPL "cmdRESTORE"
  // cmdRESTORE
  // 		CLR	ZP_FPB + 3
  // 		LDA	ZP_PAGE_H
@@ -8173,6 +8327,7 @@ defErrBas:
  // 		CALL	skipSpacesCheckCommaAtYStepBack		// look for comma
  // 		LBNE	scanNextContinue		// if not found continue
  // 							// or fall through for next READ var
+cmdREAD: NOTIMPL "cmdREAD"
  // cmdREAD
  // 		CALL	findVarOrAllocEmpty
  // 		BEQ	cmdREAD_next			// bad var name, skip
@@ -8251,6 +8406,7 @@ defErrBas:
  // 1		PULS	A,PC
  // 
  // 
+cmdUNTIL: NOTIMPL "cmdUNTIL"
  // cmdUNTIL
  // 			
  // //			//  UNTIL
@@ -8281,6 +8437,7 @@ defErrBas:
  // 		RTS
  // 
  // 
+cmdREPEAT: NOTIMPL "cmdREPEAT"
  // cmdREPEAT
  // 			//  REPEAT
  // 		LDB	ZP_REPEAT_LVL
@@ -8370,9 +8527,10 @@ tokenizeAndStore:
 		jal	tokenizeATY
 		lw	tp, ZP_TXTPTR(wp)
 		jal	skipSpacesDecodeLineNumberNewAPI
-		bleu	zero, a0, tokenizeAndStoreAlreadyLineNoDecoded_int	// has a program line, store in program space...
+		bge	a0, zero, tokenizeAndStoreAlreadyLineNoDecoded_int	// has a program line, store in program space...
 		
-tokret:		lw	ra, 8(sp)
+tokret:		li	a0, -1						// indicate line tokenized
+		lw	ra, 8(sp)
 		addi	sp, sp, 12
 		ret
 
@@ -8459,8 +8617,6 @@ tokas_lp5:	lbu	cu, 0(tp)
 		addi	t0, t0, 1
 		addi	t1, t1, -1
 		bnez	t1, tokas_lp5
-
-		ebreak;
 
 		j	tokret
 
@@ -8952,6 +9108,7 @@ skASCII:
  // 		PULS	X,PC
  // 	ENDIF
  // 
+cmdSAVE: NOTIMPL "cmdSAVE"
  // cmdSAVE							// LBE55
  // 	IF FLEX = 1
  // 		JUMP	brkFlexNotImpl
@@ -8988,6 +9145,7 @@ skASCII:
  // 		PULS	U
  // 		JUMP	continue
  // 	ENDIF
+cmdOSCLI: NOTIMPL "cmdOSCLI"
  // cmdOSCLI
  // 		CALL	evalYExpectString
  // 		LDX	#BASWKSP_STRING
@@ -8998,6 +9156,7 @@ skASCII:
  // 
  // 			// EXT#channel=number
  // 			// ------------------
+cmdEXTEq: NOTIMPL "cmdEXTEq"
  // cmdEXTEq					// LBE93
  // 	IF FLEX = 1
  // 		JUMP	brkFlexNotImpl
@@ -9010,6 +9169,7 @@ skASCII:
  // 
  // 			// PTR#channel=number
  // 			// ------------------
+varSetPTR: NOTIMPL "varSetPTR"
  // varSetPTR					// LBE97
  // 	IF FLEX = 1
  // 		JUMP	brkFlexNotImpl
@@ -9017,6 +9177,7 @@ skASCII:
  // 		JUMP	brkSBC09NotImpl
  // 	ELSE
  // 		LDA	#0x01			// 01=Set pointer
+varSetFInfo: NOTIMPL "varSetFInfo"
  // varSetFInfo					// LBE99
  // 		PSHS	A
  // 		CALL	evalHashChannel		// Evaluate #channel, save TXTPTR, Y=channel
@@ -9034,6 +9195,7 @@ skASCII:
  // 	ENDIF
  // 			// CLOSE#channel
  // 			// -------------
+cmdCLOSE: NOTIMPL "cmdCLOSE"
  // cmdCLOSE					// LBEAE
  // 	IF FLEX = 1
  // 		JUMP	brkFlexNotImpl
@@ -9047,6 +9209,7 @@ skASCII:
  // 	ENDIF
  // 			// BPUT#channel,number
  // 			// -------------------
+cmdBPUT: NOTIMPL "cmdBPUT"
  // cmdBPUT						// LBEBD
  // 	IF FLEX = 1
  // 		JUMP	brkFlexNotImpl
