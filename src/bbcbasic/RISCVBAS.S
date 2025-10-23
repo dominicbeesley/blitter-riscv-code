@@ -8436,22 +8436,22 @@ tokas_lp4:
 		sb	cu, 0(t3)
 		addi	t0, t0, -1
 		addi	t3, t3, -1
-		blt	t4, t0,	tokas_lp4
+		bgeu	t0, t4,	tokas_lp4
 
 
-		// t0 now points at insertion point into program space, <CR> should already at t0
+		// t0 now points at insertion point-1 in program space, <CR> should already at t0
 		// 
 		lw	a0, 4(sp)					// get back decoded line number from stack
-		sb	a0, 2(t0)
+		sb	a0, 3(t0)
 		srli	a0, a0, 8
-		sb	a0, 1(t0)
+		sb	a0, 2(t0)
 
 		// store line length
-		sb	t1, 3(t0)
+		sb	t1, 4(t0)
 
 		// point to text of line
 		lw	tp, 0(sp)					// restore tp into input buffer
-		addi	t0, t0, 4
+		addi	t0, t0, 5
 		addi	t1, t1, -4
 tokas_lp5:	lbu	cu, 0(tp)
 		sb	cu, 0(t0)
