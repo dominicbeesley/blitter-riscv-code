@@ -9,6 +9,7 @@
 ////// COMMON REGS names - tokenizer, interpreter
 	// text pointer
 #define tp s0
+#define tp2 s2
 	// current char
 #define cu s1
 
@@ -19,7 +20,7 @@
 
 
 #define VERSION 	0x0433			// Version 4.33
-#define VERSIONSTR	"2025 Dossysoft"
+#define VERSIONSTR	"(c)2025 Dossysoft"
 #define DEBUG	1
 
 
@@ -58,9 +59,10 @@ msg\@:		.asciz	"\str"
 main:
 		j   ROM_LANGST
 
-		.section rodata
+		.section .rodata
 
 HeaderCopyright:
+		.byte	0
 		.asciz	VERSIONSTR
 
 		.section .text
@@ -1513,7 +1515,8 @@ cmdREM: NOTIMPL "cmdREM"
  // 		LEAU  -1,U
  // scanNextContinue					// L9002
  // 		CALL	scanNextStmtFromY		//  Return to execution loop
- // continue						// L9005
+continue:	NOTIMPL "continue"
+ // continue					// L9005
  // 		LDA   	,U
  // 		CMPA	#':'
  // 		BNE	skipToNextLineOrImmedPrompt
@@ -2693,19 +2696,16 @@ cmdCLS: NOTIMPL "cmdCLS"
  // OSWRCH_then_continue					// L97EE
  // 		JSR OSWRCH				//Send to VDU
  // L97F1		JUMP continue				//Return to execution loop
-cmdREPORT: NOTIMPL "cmdREPORT"
- // cmdREPORT
- // 		CALL	scanNextStmtFromY
- // 		CALL	PrintCRclearPRLINCOUNT
- // 		LDX	ZP_MOS_ERROR_PTR_QRY
- // 		LEAX	1,X				// skip error number
- // 
-cmdREPORTlp: NOTIMPL "cmdREPORTlp"
- // cmdREPORTlp						//L97FC:
- // 		LDA	,X+
- // 		LBEQ	continue
- // 		CALL	doListPrintTokenA
- // 		BRA	cmdREPORTlp
+cmdREPORT:
+		jal	scanNextStmtFromY
+		jal	PrintCRclearPRLINCOUNT
+		lw	tp2, ZP_MOS_ERROR_PTR_QRY(wp)
+cmdREPORTlp:						//L97FC:
+		addi	tp2, tp2, 1
+		lbu	cu, 0(tp2)
+		beqz	cu, continue
+		jal	doListPrintTokenA
+		j	cmdREPORTlp
  // doVDUChar_fromWA32				//L9808:
  // 		LDA ZP_INT_WA + 2
  // 		JSR OSWRCH
@@ -8834,31 +8834,43 @@ ResetStackProgStartRepeatGosubFor:
  // //
  // //
  // //
- // doListPrintTokenA					// LBD37
- // 		CMPA	#0x80
- // 		BLO	list_printA				// just a normal char print it and continue
- // 		STA	ZP_GEN_PTR
- // 		PSHS	X,U
- // 		LEAX	tblTOKENS,PCR
- // 
- // doListTryNextTok						// LBD46
- // 		LEAU	,X					// Y points to name of current token
- // doListSkipKey							//LBD48:
- // 		LDA	,X+					// TODO probably can skip first and 2nd char every time?
- // 		BPL	doListSkipKey				// not a token skip it
- // 		CMPA	ZP_GEN_PTR
- // 		BEQ	doListKeyLp				// it's the right token
- // 		LEAX	1,X					// skip flags
- // 		BRA	doListTryNextTok
- // doListKeyLp							//LBD60:
- // 		LDA	,U+
- // 		BMI	doListKeyFinished
- // 		CALL	list_printA
- // 		BRA	doListKeyLp
- // doListKeyFinished						//LBD6A:
- // 		PULS	X,U,PC
- // 
- // 
+
+		/*********************************************************
+		 * cu contains token
+		 * 
+		 * corrupts t0..3, a1, a0
+		 *********************************************************/		 
+doListPrintTokenA:					// LBD37
+		addi	sp, sp, -4
+		sw	ra, 0(sp)
+
+		andi	t0, cu, 0x80
+		beqz	t0, list_printA			// just a normal char print it and continue
+		la	t3, tblTOKENS
+
+doListTryNextTok:					// LBD46
+		mv	a1, t3				// t1 points to name of current token
+doListSkipKey:						//LBD48
+		lbu	t2, 0(t3)			// TODO probably can skip first and 2nd char every time?
+		addi	t3, t3, 1
+		andi	t0, t2, 0x80
+		beqz	t0, doListSkipKey		// not a token skip it
+		beq	t2, cu,	doListKeyLp		// it's the right token
+		addi	t3, t3, 1
+		j	doListTryNextTok
+doListKeyLp:						//LBD60:
+		lbu	a0, 0(a1)
+		addi	a1, a1, 1
+		andi	t0, a0, 0x80
+		bnez	t0, doListKeyFinished
+		jal	list_printA
+		j	doListKeyLp
+doListKeyFinished:					//LBD6A:
+		lw	ra, 0(sp)
+		addi	sp, sp, 4
+		ret
+
+
  // list_printHexByte					// LBD6C
  // 		PSHS	A
  // 		LSRA
@@ -8888,6 +8900,13 @@ ResetStackProgStartRepeatGosubFor:
  // 		CALL list_printHexByte
  // list_print1Space					// LBD92
  // 		LDA	#0x20
+
+//TODO: this is unfinished:
+list_printA:	mv	a0, cu
+		li	a7, OS_WRCH
+		ecall
+		ret		
+
  // list_printA						// LBD94
  // 		TST	ZP_LISTO
  // 		BMI	list_printToVARTOP
