@@ -31,10 +31,6 @@
 #include	"oslib.S"
 
 
-		.macro	TOKI r, tkn
-		li	\r, -((\tkn ^ 0xFF) + 1)
-		.endm
-
 		.macro DO_BRK_B
 		li	a7, OS_ERROR
 		la	a0, after\@
@@ -225,36 +221,25 @@ ROM_LANGST:
  // 		PULS	U,PC				//  not matched Z = 1
  // 
  // 
- // 		//  Search for program line
- // 		//  =======================
- // 		// NEW API
- // 		//  On entry,	ZP_INT_WA + 2 => line number
- // 		//  On Exit,	X,Y and ZP_FPB + 2 => program line start or next line (points at the 0D at start of this line)
- // 		//		Cy=1 indicates line found
- // 		//		Cy=0 not found
- // 	//  TODO: check all occurrences and remove store to ZP_FPB if not ever used
- // 		// OLD API
- // 		//  On entry,	ZP_INT_WA = line number
- // 		//  On exit,  ZP_FPB + 2 =>program line, or next line
- // 		//	     CS = line found
- // 		//	     CC = line not found
- // 		//	    U, ZP_FPB+2 point to found line, or line after
- // 		
- // findProgLineNewAPI	
- // 		LDA	ZP_PAGE_H		// X points at start of Program
- // 		CLRB
- // 		TFR	D,X
- // fpl_lp1		LDD	1,X			// get 16 bit line number at +1
- // 		CMPD	ZP_INT_WA + 2
- // 		BHS	fpl_ge
- // 		LDB	3,X
- // 		ABX
- // 		BRA	fpl_lp1
- // fpl_ge		BNE	flp_sk1
- // 		SEC
- // flp_sk1		STX	ZP_FPB + 2
- // 		LEAU	,X
- // 		RTS
+ 		//  Search for program line
+ 		//  =======================
+ 		// NEW API
+ 		//  On entry,	a0 => line number
+ 		//  On Exit,	a0 = 1 - not found
+		//	or	tp = pointer to start of line, or next higher line or end of program
+
+findProgLineNewAPI:
+		lw	tp, ZP_PAGE(wp)
+fpl_lp1:	lbu	t1, 1(tp)
+		lbu	t0, 2(tp)
+		slli	t1, t1, 8
+		or	t0, t0, t1
+		bgeu	t0, a0, fpl_ge
+		lbu	t0, 3(tp)
+		add	tp, tp, t0
+		j	fpl_lp1
+fpl_ge:		slt	a0, a0, t0
+		ret
  // //		
  // //			
  // //		//  Integer division
@@ -981,7 +966,7 @@ ROM_LANGST:
 
 		li	t1, 0x0D
 stclp:		addi	a0, a0, 1
-		lb	t0, 0(t2)
+		lbu	t0, 0(t2)
 		sb	t0, 0(t3)
 		addi	t2, t2, 1
 		addi	t3, t3, 1
@@ -997,7 +982,7 @@ tokenizeLineNo:
 		sw	ra, 0(sp)
 
 		andi	a3, cu, 0x0F			// this is the integer accumulator (16 bits)
-tokLinLp:	lb	cu, 0(tp)
+tokLinLp:	lbu	cu, 0(tp)
 		addi	tp, tp, 1
 		li	a1, 10
 		li	a2, 0xFFFF8000
@@ -1028,7 +1013,7 @@ tokLineNoSk1:
 		addi	a0, a0, 1			// rest of string length
 		add	a4, a4, a0			// point a4 at end of string (dest)
 		add	tp, tp, a0			// point tp at end of string (source)
-tokline3lp:	lb	t0, 0(tp)
+tokline3lp:	lbu	t0, 0(tp)
 		sb	t0, 0(a4)
 		addi	tp, tp, -1
 		addi	a4, a4, -1
@@ -1151,7 +1136,7 @@ tokenizeATY:
 toklp0:
  		mv	a4, tp				// tokenize in place
 toklp2:
- 		lb	cu, 0(tp)			//  Get current character
+ 		lbu	cu, 0(tp)			//  Get current character
  		addi	tp, tp, 1			
  		li	t2, 0x0D			// t2 == 0D for quick term check below...
  		beq	cu, t2, rtsL8DDF		//  Exit with <cr>
@@ -1159,7 +1144,7 @@ toklp2:
  		beq	cu, t1,	toklp0			//  Skip <spc>
  		li	t1, '&'
  		bne	cu, t1,	tokNotAmper		//  Jump if not '&'
-toklp1:		lb	cu, 0(tp)			//  Get next character, check if it looks like HEX
+toklp1:		lbu	cu, 0(tp)			//  Get next character, check if it looks like HEX
 		addi	tp, tp, 1
   		jal	checkIsNumeric			//  Is it a digit?
   		bnez	a0, toklp1			//  Loop back if a digit
@@ -1169,7 +1154,7 @@ toklp1:		lb	cu, 0(tp)			//  Get next character, check if it looks like HEX
  		bltu	cu, t1, toklp1			//  Step to next if 'A'..'F'
 tokNotAmper:	li	t1, '"'
 		bne	cu, t1,	tokNotQuot		//  Not quote,
-tokQuotLp:	lb	cu, 0(tp)			//  Get next character
+tokQuotLp:	lbu	cu, 0(tp)			//  Get next character
 		addi	tp, tp, 1
  		beq	cu, t1, toklp0			//  Jump back if closing quote
 		bne	cu, t2,	tokQuotLp		//  Loop until <cr> or quote
@@ -1194,7 +1179,7 @@ tokNotColon:
 		beq     cu, t1, toklp0			// if comma carry on
 		li	t1, '*'
 		bne	cu, t1,	tokNotStar
-		lb	t1, ZP_TOK_FLAGS_B(wp)
+		lbu	t1, ZP_TOK_FLAGS_B(wp)
 		beqz	t1, rtsL8DDF			// if a * and ZP_FPB==0 return (OSCLI at start of stmt?)
 
 tokNotKeyword:	li	t1, -1
@@ -1206,12 +1191,12 @@ tokNotStar:	li	t1, '.'
 		beq	cu, t1,	tokDot
 		jal	checkIsNumeric
 		beqz	a0, tokNotNum
-		lb	t1, ZP_TOK_FLAGS_C(wp)
+		lbu	t1, ZP_TOK_FLAGS_C(wp)
 		beqz	t1, tokDot
 		jal	tokenizeLineNo
 		beqz	a0, toklp0
 
-tokDot:		lb	cu, 0(tp)
+tokDot:		lbu	cu, 0(tp)
 		addi	tp, tp, 1
 		jal	checkIsDotOrNumeric
 		bnez	a0, tokDot
@@ -1227,7 +1212,7 @@ tokNotKey2:					 // is it a variable? if so skip over it...
 		beqz	a0, tokNotKeyword
 //L8E2A
 tokNotKey_SkipVarName:
-		lb	cu, 0(tp)
+		lbu	cu, 0(tp)
 		addi	tp, tp, 1
 		jal	checkIsValidVariableNameChar
 		beqz	a0, tokNextSetFlag0_FF
@@ -1241,36 +1226,36 @@ tokNotNum:
 		addi	tp, tp, -1
 		mv	a4, tp		
 tokKeyCmp:	mv	tp, a4				// reset buffer pointer L8E46:
-		lb	cu, 0(tp)
+		lbu	cu, 0(tp)
 		addi	tp, tp, 1
-		lb	t1, 0(a3)			// start again with first char in A
+		lbu	t1, 0(a3)			// start again with first char in A
 		addi	a3, a3, 1
 		bltu	cu, t1,	tokNotKey_SkipVarName	// < tok char lt treat as variable name TODO: we already skipped a lot of the variable but that get wasted here
 		bne	cu, t1,	tokSkipEndTryNext
 //L8E4E:
 tokKeyCmpLp:
-		lb	t1, 0(a3)			// start again with first char in A
+		lbu	t1, 0(a3)			// start again with first char in A
 		addi	a3, a3, 1
 		andi	t2, t1, 0x80
  		bnez	t2, tokKeyFound			// token found - at end
- 		lb	cu, 0(tp)
+ 		lbu	cu, 0(tp)
  		addi	tp, tp, 1
  		beq	cu, t1, tokKeyCmpLp
  		addi	tp, tp, -1
  		li	t1, '.'
  		beq	cu, t1, tokKeyAbbrev
 tokSkipEndTryNext:					//L8E5D:
- 		lb	t1, 0(a3)
+ 		lbu	t1, 0(a3)
  		addi	a3, a3,1
  		andi	t2, t1,	0x80
 		beqz	t2, tokSkipEndTryNext
- 		TOKI	t2, tknWIDTH
+ 		li	t2, tknWIDTH
  		bne	t1, t2,	tokMoveNextTkn		// not the last one, increment pointer and carry on
  		j	tokNotKey_SkipVarName		
 
 tokKeyAbbrev:						//L8E68:
 tokKeyAbbrevLp1:					//L8E69:
- 		lb	t1, 0(a3)
+ 		lbu	t1, 0(a3)
  		addi	a3, a3, 1
  		andi	t2, t1, 0x80
  		bnez	t2, tokKeyFound
@@ -1282,25 +1267,25 @@ tokMoveNextTkn:					//L8E75:
 tokKeyFound:						//L8E84:
 		mv	a1, t1
 		// a1 contains token
-		lb	a0, 0(a3)			// get flags in a0
-		sb	a0, ZP_TOP_FLAGS_D(wp)		// store flags
+		lbu	a0, 0(a3)			// get flags in a0
+		sb	a0, ZP_TOK_FLAGS_D(wp)		// store flags
 		andi	t1, a0, TOK_FLAG_CONDITIONAL					
 		beqz	t1, tokKeyFound2		// if flags[0]='0' we've got a full keyword
-		lb	cu, 0(tp)			// if not check if next is a valid variable char
+		lbu	cu, 0(tp)			// if not check if next is a valid variable char
 		jal	checkIsValidVariableNameChar	
 		bnez	a0, tokNotKey_SkipVarName	// and we have a variable name char treat it as such and skip to
  							// end of variable
 tokKeyFound2:						//L8E95
-		lb	a0, ZP_TOP_FLAGS_D(wp)		// get back flags
+		lbu	a0, ZP_TOK_FLAGS_D(wp)		// get back flags
 		andi	t1, a0, TOK_FLAG_PSEUDO_VAR
 		beqz	t1, tokNOTPSEUDO
-		lb	t1, ZP_TOK_FLAGS_B(wp)
+		lbu	t1, ZP_TOK_FLAGS_B(wp)
 		bnez	t1, tokNOTPSEUDO
 		addi	a1, t1, 0x40			// at start of line and a PSEUDO var then add 0x40 to token?!
 tokNOTPSEUDO:	//L8EA0
 		mv	a0, a1
 		jal	storeTokenAndCloseUpLine 	// attention check regs trashed
-		lb	t0, ZP_TOP_FLAGS_D(wp)
+		lbu	t0, ZP_TOK_FLAGS_D(wp)
 		andi	t1, t0, TOK_FLAG_NEXT_MID
 		beqz	t1, tokNOTNEXTMID
 		li	a0, -1
@@ -1316,7 +1301,7 @@ tokNOTNEXTSTART:					//L8EB7:
 		beqz	t1, tokSkipNotFNPROC
 		addi	tp, a4, 1
 tokSkipPROCNAMElp:					//L8EBD:					
-		lb	cu, 0(tp)
+		lbu	cu, 0(tp)
 		addi	tp, tp, 1
 		jal	checkIsValidVariableNameChar
 		bnez	a0, tokSkipPROCNAMElp
@@ -1325,7 +1310,7 @@ tokSkipPROCNAMElp:					//L8EBD:
 		mv	a4, tp				// now pointing at last char of name
 		
 tokSkipNotFNPROC:			//L8ECA:
-		lb	t0, ZP_TOP_FLAGS_D(wp)
+		lbu	t0, ZP_TOK_FLAGS_D(wp)
 		andi	t1, t0, TOK_FLAG_NEXTLINENO
 		beqz	t1, tokNotNEXTLINENO
 		li	t1, -1
@@ -1341,12 +1326,13 @@ tokNotNEXTLINENO:	//L8ECF:
  // 		//  leaves PTR unchanged returns next non white pointer + 1 in Y, char in A
  // skipSpacesPTRB
  // 		LDU	ZP_TXTPTR2
-skipSpacesY:	lb	cu, 0(tp)
+skipSpacesY:	li	t0, ' '
+ssylp:		lbu	cu, 0(tp)
 		addi	tp, tp, 1
-		addi	t0, cu, -' '
-		beqz	t0, skipSpacesY
+		beq	t0, cu, ssylp
 		ret
  // 
+ ///////// DONT REINSTATE - DO MANUALLY AND NOTE!
  // inySkipSpacesYStepBack
  // 		LEAU	1,U
  // skipSpacesYStepBack
@@ -3141,7 +3127,7 @@ skipSpacesDecodeLineNumberNewAPI:
 		addi	sp, sp, -4
 		sw	ra, 0(sp)
 		jal	skipSpacesY
-		TOKI	t0, tknLineNo
+		li	t0, tknLineNo
 		beq	cu, t0, decodeLineNumber_int
 		addi	tp, tp, -1
 		sw	tp, ZP_TXTPTR(wp)		//  Not line number, return CC
@@ -3158,18 +3144,19 @@ decodeLineNumber:
 		sw	ra, 0(sp)
 
 decodeLineNumber_int:
-		lb	t0, 0(tp)
+		lbu	t0, 0(tp)
 		slli	t0, t0, 2
 		andi	t1, t0, 0xC0
-		lb	t2, 1(tp)
+		lbu	t2, 1(tp)
 		xor	t1, t1, t2		// low byte decoded
 		slli	t0, t0, 2
 		andi	t0, t0, 0xC0
-		lb	t2, 2(tp)
+		lbu	t2, 2(tp)
 		xor	t0, t0, t2
 		slli	t0, t0, 8
 		or	a0, t1, t0
 		sh	a0, ZP_INT_WA(wp)
+		addi	tp, tp, 3
 	
  		lw	ra, 0(sp)
  		addi	sp, sp, 4
@@ -8334,129 +8321,151 @@ clearPRLINCOUNT:					// LBA95
 		sb	zero, ZP_PRLINCOUNT(wp)
 		ret
  
- // findLineAndDelete					//LBA98
- // 		CALL	findProgLineNewAPI
- // 		BCC	rtsLBAEA
- // 		STU	ZP_TOP				// we found the line - replace it
- // 		LEAX	,U
- // 		LDB	3,U				// get length of existing line
- // 		CLRA
- // ////		ADDD	ZP_TOP		
- // ////		TFR	D,Y
- // 		LEAU	D,U
- // floCopyLp						// LBAB8
- // 		CALL	floCopy1bytes
- // 		CMPA	#0x0D
- // 		BNE	floCopyLp
- // 							//LBAC7:
- // 		CALL	floCopy1bytes			// copy first (line number byte - big endian)
- // 		BMI	floCopySk1			// end of program detected
- // 		CALL	floCopy1bytes			// copy line numbers bytes 
- // 		CALL	floCopy1bytes			// copy length byte
- // 		BRA	floCopyLp
- // floCopySk1						//LBAD3:
- // //LBADC:
- // 		STX	ZP_TOP
- // 		RTS
- // floCopy1bytes
- // 		LDA	,U+
- // 		STA	,X+
- // rtsLBAEA	RTS
- // 			
+findLineAndDelete:					//LBA98
+		addi	sp, sp, -4
+		sw	ra, 0(sp)
+
+		jal	findProgLineNewAPI
+		bnez	a0, rtsLBAEA
+		lbu	t0, 3(tp)			// line length
+		add	t0, tp, t0			// point at start of next line
+		li	t1, 0x0D
+floCopyLp:						// LBAB8
+		jal	floCopy1bytes
+		bne	cu, t1,	floCopyLp		// copy to start of next line 0x0D
+							//LBAC7:
+		jal	floCopy1bytes			// copy first (line number byte - big endian)
+		blt	cu, zero, floCopySk1		// end of program detected
+		jal	floCopy1bytes			// copy line numbers bytes 
+		jal	floCopy1bytes			// copy length byte
+		j	floCopyLp
+floCopySk1:						//LBAD3:
+//LBADC:
+		sw	tp, ZP_TOP(wp)
+
+rtsLBAEA:
+		lw	ra, 0(sp)
+
+		addi	sp, sp, 4
+		ret
+
+floCopy1bytes:	lbu	cu, 0(tp)
+		sb	cu, 0(t0)
+		addi	tp, tp, 1
+		addi	t0, t0, 1
+		ret
+
+			
  		//  Tokenise line, enter into program if program line
  		//  returns A0=1 if this is a program line
- tokenizeAndStore:
-		addi 	sp, sp, -4
-		sw	ra, 0(sp)					// shared with following routines...
+tokenizeAndStore:
+		addi 	sp, sp, -12
+		sw	ra, 8(sp)					// shared with following routines...
+		li	t0, -1
+		sb	t0, ZP_TOK_FLAGS_A(wp)
+		sb	t0, ZP_TOK_FLAGS_C(wp)
+		jal	ResetStackProgStartRepeatGosubFor		//  do various CLEARs
+		lw	tp, ZP_TXTPTR(wp)
+		sb	zero, ZP_TOK_FLAGS_B(wp)
+		jal	tokenizeATY
+		lw	tp, ZP_TXTPTR(wp)
+		jal	skipSpacesDecodeLineNumberNewAPI
+		bleu	zero, a0, tokenizeAndStoreAlreadyLineNoDecoded_int	// has a program line, store in program space...
+		
+tokret:		lw	ra, 8(sp)
+		addi	sp, sp, 12
+		ret
 
- 		li	t0, -1
- 		sb	t0, ZP_TOK_FLAGS_A(wp)
- 		sb	t0, ZP_TOK_FLAGS_C(wp)
- 		jal	ResetStackProgStartRepeatGosubFor		//  do various CLEARs
- 		lw	tp, ZP_TXTPTR(wp)
- 		sb	zero, ZP_TOK_FLAGS_B(wp)
- 		jal	tokenizeATY
- 		lw	tp, ZP_TXTPTR(wp)
- 		jal	skipSpacesDecodeLineNumberNewAPI
- 		bleu	zero, a0, tokenizeAndStoreAlreadyLineNoDecoded_int	// has a program line, store in program space...
- 		
- tokret:	lw	ra, 0(sp)
- 		addi	sp, sp, 4
- 		ret
+		// on entry line number in a0
+tokenizeAndStoreAlreadyLineNoDecoded:					// LBB08
+		addi 	sp, sp, -12
+		sw	ra, 8(sp)					// shared with following routines...
+
+tokenizeAndStoreAlreadyLineNoDecoded_int:
+		sw	a0, 4(sp)					// save decoded line number
+		lbu	t0, ZP_LISTO(wp)
+		beqz	t0, tokAndStoreListo0
+		jal	skipSpacesY					// WAS skipSpacesYStepBack
+		addi	tp, tp, -1
+tokAndStoreListo0:							//LBB15:
+		sw	tp, 0(sp)					// save tp into input buffer
+		jal	findLineAndDelete  
+		mv	t4, tp		
+		lw	tp, 0(sp)					// restore tp into input buffer
+
+		// tp now points at byte after line number
 
 
- tokenizeAndStoreAlreadyLineNoDecoded:					// LBB08
-		addi 	sp, sp, -4
-		sw	ra, 0(sp)					// shared with following routines...
- tokenizeAndStoreAlreadyLineNoDecoded_int:
+		li	t0, 0x0D
+		li	t1, 0						// count line length
+tokas_lp2:	addi	t1, t1, 1					//LBB26:
+		lbu	t2, 0(tp)
+		addi	tp, tp, 1
+		bne	t2, t0,	tokas_lp2				// move to EOL marker 0xD
+		//strip EOL spaces
+		li	t0, ' '
+		addi	tp, tp, -1					//point back at <CR>
+tokas_lp3:	addi	t1, t1, -1					//LBB2D:
+		addi	tp, tp, -1
+		lbu	t2, 0(tp)
+		beq	t2, t0, tokas_lp3				// skip back over spaces
+tokas_sk1:	addi	tp, tp, 1					//LBB34:
+		li	t0, 0x0D
+		sb	t0, 0(tp)					// another EOL marker remove trailing whitespace
+
+		beqz	t1, tokret					// empty line - return
+
+		addi	t1, t1, 4					// add room for line number, length, marker
+
+		lw	t0, ZP_TOP(wp)
+		add	t3, t0, t1
+		sw	t3, ZP_TOP(wp)
+		lw	t2, ZP_HIMEM(wp)
+		bleu	t3, t2, tokas_sk2_spaceok
+		jal	findTOP
+		jal	ResetVars
+		DO_BRK_B
+		.byte  0, tknLINE
+		.asciz " space"
+		.align 2
 
 
-		ebreak
+tokas_sk2_spaceok:							//LBB6B:
+tokas_lp4:
+		lbu	cu, 0(t0)
+		sb	cu, 0(t3)
+		addi	t0, t0, -1
+		addi	t3, t3, -1
+		blt	t4, t0,	tokas_lp4
 
- // 		CLRB
- // 		TST	ZP_LISTO
- // 		BEQ	tokAndStoreListo0
- // 		JSR	skipSpacesYStepBack		
- // tokAndStoreListo0							//LBB15:
- // 		STU	ZP_FPB
- // 		CALL	findLineAndDelete  
- // 		LDU	ZP_FPB
- // 		LDA	#0x0D
- // 		LDB	#1						// count line length
- // 		CMPA	,U+		
- // 		BEQ	rtsLBAEA					// line was nowt but white space, return
- // tokas_lp2	INCB							//LBB26:
- // 		CMPA	,U+
- // 		BNE	tokas_lp2					// move to EOL marker 0xD
- // 		LDA	#' '
- // 		LEAU	-1,U
- // tokas_lp3	DECB							//LBB2D:
- // 		CMPA	,-U
- // 		BEQ tokas_lp3						// skip back over spaces
- // tokas_sk1	LEAU	1,U						//LBB34:
- // 		LDA	#0x0D
- // 		STA	,U						// another EOL marker remove trailing whitespace
- // 		ADDB	#4
- // 		STB	ZP_FPB + 4
- // 		LDX	ZP_TOP
- // 		CLRA
- // 		ADDD	ZP_TOP
- // 		STD	ZP_TOP		
- // 		CMPD	ZP_HIMEM
- // 		BLS	tokas_sk2_spaceok
- // 		CALL	findTOP
- // 		CALL	ResetVars
- // 		DO_BRK_B
- // 		FCB  0, tknLINE, " space", 0
- // 
- // 
- // tokas_sk2_spaceok							//LBB6B:
- // 		TFR	D,U
- // 		LEAU	1,U
- // 		LEAX	1,X
- // tokas_lp4
- // 		LDA	,-X
- // 		STA	,-U
- // 		CMPX	ZP_FPB + 2
- // 		BNE	tokas_lp4
- // 
- // 
- // 		LEAX	1,X						// move past 0d marker
- // 		LDD	ZP_INT_WA + 2					// get decoded big endian line number
- // 		STD	,X++
- // 		LDB	ZP_FPB + 4					// line length
- // 		STB	,X+	
- // 
- // 		SUBB	#4						// reduce line length counter by 4
- // 		LDU	ZP_FPB
- // tokas_lp5	LDA	,U+						// copy from 0x700 to program memory
- // 		STA	,X+
- // 		DECB
- // 		BNE	tokas_lp5
- // 		SEC
- // 		RTS
- // //		
- ResetVars:	addi	sp, sp, -4
+
+		// t0 now points at insertion point into program space, <CR> should already at t0
+		// 
+		lw	a0, 4(sp)					// get back decoded line number from stack
+		sb	a0, 2(t0)
+		srli	a0, a0, 8
+		sb	a0, 1(t0)
+
+		// store line length
+		sb	t1, 3(t0)
+
+		// point to text of line
+		lw	tp, 0(sp)					// restore tp into input buffer
+		addi	t0, t0, 4
+		addi	t1, t1, -4
+tokas_lp5:	lbu	cu, 0(tp)
+		sb	cu, 0(t0)
+		addi	tp, tp, 1
+		addi	t0, t0, 1
+		addi	t1, t1, -1
+		bnez	t1, tokas_lp5
+
+		ebreak;
+
+		j	tokret
+
+		
+ResetVars:	addi	sp, sp, -4
  		sw	ra, 0(sp)
  		lw	t0, ZP_TOP(wp)
  		sw	t0, ZP_LOMEM(wp)
@@ -8493,7 +8502,7 @@ ResetStackProgStartRepeatGosubFor:
 		sw	t0, ZP_READ_PTR(wp)			//  DATA pointer = PAGE
 		lw	t0, ZP_HIMEM(wp)
 		sw	t0, ZP_BAS_SP(wp)			//  STACKBOT=HIMEM
-		lb	t0, ZP_LISTO(wp)
+		lbu	t0, ZP_LISTO(wp)
 		andi	t0, t0, 0x7F
 		sb	t0, ZP_LISTO(wp)
 		sb	zero, ZP_REPEAT_LVL(wp)
@@ -8847,13 +8856,13 @@ ResetStackProgStartRepeatGosubFor:
  // 	ENDIF
  findTOP:	lw	t0, ZP_PAGE(wp)
 		sw	t0, ZP_TOP(wp)
- ftop_lp1:	lb	t1, 0(t0)
+ ftop_lp1:	lbu	t1, 0(t0)
  		addi	t2, t1, -0x0D
  		bnez	t2, printBadProgram		// check for CR
- 		lb	t1, 1(t0)			// check for -ve line number (end of program)
+ 		lbu	t1, 1(t0)			// check for -ve line number (end of program)
  		andi	t2, t1, 0x80
  		bnez	t2, ftop_sk1
- 		lb	t1, 3(t0)			// check line length and add for next line
+ 		lbu	t1, 3(t0)			// check line length and add for next line
  		beqz	t1, printBadProgram
  		add	t0, t0, t1
  		sw	t0, ZP_TOP(wp)
@@ -8875,7 +8884,7 @@ ResetStackProgStartRepeatGosubFor:
 PRSTRING:	addi 	sp, sp, -4
 		sw	ra, 0(sp)
 		mv	a1, a0
-.L_lp:		lb	a0, 0(a1)
+.L_lp:		lbu	a0, 0(a1)
 		beqz	a0, .L_sk
 		addi	a1, a1, 1		
 		jal	ASCII
