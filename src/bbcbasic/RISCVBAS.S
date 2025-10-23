@@ -146,8 +146,8 @@ ROM_LANGST:
 
   		li	t0, 0x90A
   		sw	t0, BASWKSP_INTVAR(wp)			//  Set @% to 0x90A
- 		sw	x0, ZP_LISTO(wp)			//  Set LISTO to 0
- 		li	t0, -1
+		sw	x0, ZP_LISTO(wp)			//  Set LISTO to 0
+		li	t0, -1
   		sb	t0, ZP_WIDTH(wp)			//  Set WIDTH to 0xff
 								// enable IRQ
 		j	reset_prog_enter_immedprompt		//  Enable IRQs, jump to immediate loop - DB - I've kept this similar as I may want to add command line params later...
@@ -221,11 +221,11 @@ ROM_LANGST:
  // 		PULS	U,PC				//  not matched Z = 1
  // 
  // 
- 		//  Search for program line
- 		//  =======================
- 		// NEW API
- 		//  On entry,	a0 => line number
- 		//  On Exit,	a0 = 1 - not found
+		//  Search for program line
+		//  =======================
+		// NEW API
+		//  On entry,	a0 => line number
+		//  On Exit,	a0 = 1 - not found
 		//	or	tp = pointer to start of line, or next higher line or end of program
 
 findProgLineNewAPI:
@@ -955,7 +955,7 @@ fpl_ge:		slt	a0, a0, t0
 		 ********************************************************/
 
 
- storeTokenAndCloseUpLine:
+storeTokenAndCloseUpLine:
 
 		sb	a0, (a4)
 		mv	t3, a4
@@ -986,8 +986,8 @@ tokLinLp:	lbu	cu, 0(tp)
 		addi	tp, tp, 1
 		li	a1, 10
 		li	a2, 0xFFFF8000
- 		jal	checkIsNumeric
- 		beqz	a0, tokLineNoSk1
+		jal	checkIsNumeric
+		beqz	a0, tokLineNoSk1
 		andi	cu, cu, 0x0F
 		// mul existing number by 10
 		mul	a3, a3, a1
@@ -1088,21 +1088,21 @@ checkIsValidVariableNameChar:
 	******************************************************************/
 
 checkIsNumeric:
- 		li	t0, '9' + 1
- 		sltu	t2, cu, t0
- 		li	t0, '0' - 1
- 		sltu	t1, t0, cu
- 		and	a0, t2, t1
- 		ret
+		li	t0, '9' + 1
+		sltu	t2, cu, t0
+		li	t0, '0' - 1
+		sltu	t1, t0, cu
+		and	a0, t2, t1
+		ret
  
 checkIsDotOrNumeric:
- 		li	t0, '.'
- 		bne	cu, t0, checkIsNumeric
+		li	t0, '.'
+		bne	cu, t0, checkIsNumeric
 checkSECRET:
- 		li	a0, 1
+		li	a0, 1
 		ret
 checkCLCRET:
- 		li	a0, 0
+		li	a0, 0
 		ret
  // 
  // //ZPPTR_GetCharIncPtr
@@ -1134,35 +1134,35 @@ tokenizeATY:
 		sw	ra, 0(sp)
 
 toklp0:
- 		mv	a4, tp				// tokenize in place
+		mv	a4, tp				// tokenize in place
 toklp2:
- 		lbu	cu, 0(tp)			//  Get current character
- 		addi	tp, tp, 1			
- 		li	t2, 0x0D			// t2 == 0D for quick term check below...
- 		beq	cu, t2, rtsL8DDF		//  Exit with <cr>
- 		li	t1, ' '
- 		beq	cu, t1,	toklp0			//  Skip <spc>
- 		li	t1, '&'
- 		bne	cu, t1,	tokNotAmper		//  Jump if not '&'
+		lbu	cu, 0(tp)			//  Get current character
+		addi	tp, tp, 1			
+		li	t2, 0x0D			// t2 == 0D for quick term check below...
+		beq	cu, t2, rtsL8DDF		//  Exit with <cr>
+		li	t1, ' '
+		beq	cu, t1,	toklp0			//  Skip <spc>
+		li	t1, '&'
+		bne	cu, t1,	tokNotAmper		//  Jump if not '&'
 toklp1:		lbu	cu, 0(tp)			//  Get next character, check if it looks like HEX
 		addi	tp, tp, 1
   		jal	checkIsNumeric			//  Is it a digit?
   		bnez	a0, toklp1			//  Loop back if a digit
   		li	t1, 'A'
- 		bltu	cu, t1,	toklp2			//  Loop back if <'A'
- 		li	t1, 'G'
- 		bltu	cu, t1, toklp1			//  Step to next if 'A'..'F'
+		bltu	cu, t1,	toklp2			//  Loop back if <'A'
+		li	t1, 'G'
+		bltu	cu, t1, toklp1			//  Step to next if 'A'..'F'
 tokNotAmper:	li	t1, '"'
 		bne	cu, t1,	tokNotQuot		//  Not quote,
 tokQuotLp:	lbu	cu, 0(tp)			//  Get next character
 		addi	tp, tp, 1
- 		beq	cu, t1, toklp0			//  Jump back if closing quote
+		beq	cu, t1, toklp0			//  Jump back if closing quote
 		bne	cu, t2,	tokQuotLp		//  Loop until <cr> or quote
 
 
 rtsL8DDF:	lw	ra, 0(sp)
- 		addi	sp, sp, 4
- 		ret
+		addi	sp, sp, 4
+		ret
 
 tokNotQuot:	li	t1, ':'
 		bne	cu, t1,	tokNotColon
@@ -1183,9 +1183,9 @@ tokNotColon:
 		beqz	t1, rtsL8DDF			// if a * and ZP_FPB==0 return (OSCLI at start of stmt?)
 
 tokNotKeyword:	li	t1, -1
- 		sb	t1, ZP_TOK_FLAGS_B(wp)
- 		sb	zero, ZP_TOK_FLAGS_C(wp)
- 		j	toklp0
+		sb	t1, ZP_TOK_FLAGS_B(wp)
+		sb	zero, ZP_TOK_FLAGS_C(wp)
+		j	toklp0
  
 tokNotStar:	li	t1, '.'
 		beq	cu, t1,	tokDot
@@ -1204,8 +1204,8 @@ tokNextSetFlag0_FF:
 		addi	tp, tp, -1
 L8E1F:
 		li	t1, -1
- 		sb	t1, ZP_TOK_FLAGS_B(wp)
- 		j	L8DE9
+		sb	t1, ZP_TOK_FLAGS_B(wp)
+		j	L8DE9
  
 tokNotKey2:					 // is it a variable? if so skip over it...
 		jal	checkIsValidVariableNameChar
@@ -1237,33 +1237,33 @@ tokKeyCmpLp:
 		lbu	t1, 0(a3)			// start again with first char in A
 		addi	a3, a3, 1
 		andi	t2, t1, 0x80
- 		bnez	t2, tokKeyFound			// token found - at end
- 		lbu	cu, 0(tp)
- 		addi	tp, tp, 1
- 		beq	cu, t1, tokKeyCmpLp
- 		addi	tp, tp, -1
- 		li	t1, '.'
- 		beq	cu, t1, tokKeyAbbrev
+		bnez	t2, tokKeyFound			// token found - at end
+		lbu	cu, 0(tp)
+		addi	tp, tp, 1
+		beq	cu, t1, tokKeyCmpLp
+		addi	tp, tp, -1
+		li	t1, '.'
+		beq	cu, t1, tokKeyAbbrev
 tokSkipEndTryNext:					//L8E5D:
- 		lbu	t1, 0(a3)
- 		addi	a3, a3,1
- 		andi	t2, t1,	0x80
+		lbu	t1, 0(a3)
+		addi	a3, a3,1
+		andi	t2, t1,	0x80
 		beqz	t2, tokSkipEndTryNext
- 		li	t2, tknWIDTH
- 		bne	t1, t2,	tokMoveNextTkn		// not the last one, increment pointer and carry on
- 		j	tokNotKey_SkipVarName		
+		li	t2, tknWIDTH
+		bne	t1, t2,	tokMoveNextTkn		// not the last one, increment pointer and carry on
+		j	tokNotKey_SkipVarName		
 
 tokKeyAbbrev:						//L8E68:
 tokKeyAbbrevLp1:					//L8E69:
- 		lbu	t1, 0(a3)
- 		addi	a3, a3, 1
- 		andi	t2, t1, 0x80
- 		bnez	t2, tokKeyFound
- 		j	tokKeyAbbrevLp1
+		lbu	t1, 0(a3)
+		addi	a3, a3, 1
+		andi	t2, t1, 0x80
+		bnez	t2, tokKeyFound
+		j	tokKeyAbbrevLp1
 tokMoveNextTkn:					//L8E75:
 		addi	a3, a3, 1			// move X past token and flags
- 							//L8E80: (not used was a skip for add hi byte)
- 		j	tokKeyCmp
+							//L8E80: (not used was a skip for add hi byte)
+		j	tokKeyCmp
 tokKeyFound:						//L8E84:
 		mv	a1, t1
 		// a1 contains token
@@ -1274,7 +1274,7 @@ tokKeyFound:						//L8E84:
 		lbu	cu, 0(tp)			// if not check if next is a valid variable char
 		jal	checkIsValidVariableNameChar	
 		bnez	a0, tokNotKey_SkipVarName	// and we have a variable name char treat it as such and skip to
- 							// end of variable
+							// end of variable
 tokKeyFound2:						//L8E95
 		lbu	a0, ZP_TOK_FLAGS_D(wp)		// get back flags
 		andi	t1, a0, TOK_FLAG_PSEUDO_VAR
@@ -1390,8 +1390,8 @@ ssylp:		lbu	cu, 0(tp)
  // 
  // 
  // 
- reset_prog_enter_immedprompt:
- 		jal	deleteProgSetTOP
+reset_prog_enter_immedprompt:
+		jal	deleteProgSetTOP
   
   		// dom bodge
   		sb	zero, ZP_TRACE(wp)
@@ -1401,7 +1401,7 @@ ssylp:		lbu	cu, 0(tp)
 		addi	t0, wp, BAS_InBuf
 		sw	t0, ZP_TXTPTR(wp)
 
- 		j resetVarsImmedPrompt
+		j resetVarsImmedPrompt
  // ////2		LDA [ZP_LOMEM]
  // ////		BEQ resetVarsImmedPrompt
  // ////		STA ,Y+
@@ -1420,19 +1420,19 @@ ssylp:		lbu	cu, 0(tp)
  // 		CALL	scanNextStmtFromY
  // cmdNEW2
  // 		CALL	deleteProgSetTOP
- resetVarsImmedPrompt:
- 		jal	ResetVars
+resetVarsImmedPrompt:
+		jal	ResetVars
   
   
- immedPrompt:	addi	t0, wp, BAS_InBuf
- 		sw	t0, ZP_TXTPTR(wp)		//  PtrA = BAS_InBuf - input buffer
- 		jal	ONERROROFF			//  ON ERROR OFF
- 		li	a0, '>'
- 		li	a7, OS_WRCH
- 		ecall					//  Print '>' prompt
+immedPrompt:	addi	t0, wp, BAS_InBuf
+		sw	t0, ZP_TXTPTR(wp)		//  PtrA = BAS_InBuf - input buffer
+		jal	ONERROROFF			//  ON ERROR OFF
+		li	a0, '>'
+		li	a7, OS_WRCH
+		ecall					//  Print '>' prompt
  
 
- 		jal	ReadKeysTo_InBuf		//  Read input to buffer at BAS_InBuf
+		jal	ReadKeysTo_InBuf		//  Read input to buffer at BAS_InBuf
 
 runFromZP_TXTPTR:					// L8F97
 		RESET_MACH_STACK		
@@ -3112,17 +3112,17 @@ skipSpacesDecodeLineNumberNewAPIbrkSyntax:
 		addi	sp, sp, -4
 		sw	ra, 0(sp)
 
- 		jal	skipSpacesDecodeLineNumberNewAPI
- 		blt	a1, zero, brkSyntax
- 		
- 		lw	ra, 0(sp)
- 		addi	sp, sp, 4
- 		ret
+		jal	skipSpacesDecodeLineNumberNewAPI
+		blt	a1, zero, brkSyntax
+		
+		lw	ra, 0(sp)
+		addi	sp, sp, 4
+		ret
  
  
   		// API changed used to scan from ZP_TXTPTR now scan from tp
- 		// return a0 = -1 for not line number (was cy = 0)
- 		// return a0, ZP_INT_WA = line number > 32768 only bottom half of ZP_INT_WA
+		// return a0 = -1 for not line number (was cy = 0)
+		// return a0, ZP_INT_WA = line number > 32768 only bottom half of ZP_INT_WA
 skipSpacesDecodeLineNumberNewAPI:
 		addi	sp, sp, -4
 		sw	ra, 0(sp)
@@ -3133,12 +3133,12 @@ skipSpacesDecodeLineNumberNewAPI:
 		sw	tp, ZP_TXTPTR(wp)		//  Not line number, return CC
 		li	a0, 0
 
- 		lw	ra, 0(sp)
- 		addi	sp, sp, 4
- 		ret
+		lw	ra, 0(sp)
+		addi	sp, sp, 4
+		ret
 
   		// API changed used to scan from ZP_TXTPTR now scan from tp
- 		// return a0, ZP_INT_WA = line number > 32768 only bottom half of ZP_INT_WA
+		// return a0, ZP_INT_WA = line number > 32768 only bottom half of ZP_INT_WA
 decodeLineNumber:
 		addi	sp, sp, -4
 		sw	ra, 0(sp)
@@ -3158,9 +3158,9 @@ decodeLineNumber_int:
 		sh	a0, ZP_INT_WA(wp)
 		addi	tp, tp, 3
 	
- 		lw	ra, 0(sp)
- 		addi	sp, sp, 4
- 		ret
+		lw	ra, 0(sp)
+		addi	sp, sp, 4
+		ret
 
  // //			//  Line number, return CS
  // //			//  Expression Evaluator
@@ -3196,9 +3196,9 @@ brkNoPROC:
 		.byte   tknPROC, 0
 		.align	2
 errEscape:
- 		DO_BRK_B
- 		.byte		0x11
- 		.asciz		"Escape"
+		DO_BRK_B
+		.byte		0x11
+		.asciz		"Escape"
 		.align	2
  // 		
  // //		
@@ -7137,7 +7137,7 @@ errEscape:
  // 		BLO	HandleBRKFindERL_lp
  // HandleBRKFindERL_sk1					//LB277:
  // 		RTS
- HandleBRK:
+HandleBRK:
 		ebreak
 
  // 	IF FLEX = 1
@@ -7169,10 +7169,10 @@ errEscape:
  // 		STU	ZP_TXTPTR
  // 		CALL	ResetStackProgStartRepeatGosubFor
  // 		JUMP	skipSpacesAtYexecImmed
- ONERROROFF:
- 		la	t0, defErrBas
- 		sw	t0, ZP_ERR_VECT(wp)
- 		ret
+ONERROROFF:
+		la	t0, defErrBas
+		sw	t0, ZP_ERR_VECT(wp)
+		ret
 
 		.section .rodata
 //			//  Default error handler
@@ -8356,8 +8356,8 @@ floCopy1bytes:	lbu	cu, 0(tp)
 		ret
 
 			
- 		//  Tokenise line, enter into program if program line
- 		//  returns A0=1 if this is a program line
+		//  Tokenise line, enter into program if program line
+		//  returns A0=1 if this is a program line
 tokenizeAndStore:
 		addi 	sp, sp, -12
 		sw	ra, 8(sp)					// shared with following routines...
@@ -8466,34 +8466,34 @@ tokas_lp5:	lbu	cu, 0(tp)
 
 		
 ResetVars:	addi	sp, sp, -4
- 		sw	ra, 0(sp)
- 		lw	t0, ZP_TOP(wp)
- 		sw	t0, ZP_LOMEM(wp)
- 		sw	t0, ZP_VARTOP(wp)
+		sw	ra, 0(sp)
+		lw	t0, ZP_TOP(wp)
+		sw	t0, ZP_LOMEM(wp)
+		sw	t0, ZP_VARTOP(wp)
 		jal	ResetStackProgStartRepeatGosubFor
 		jal	InittblFPRtnAddr
 		lw	ra, 0(sp)
 		addi	sp, sp, 4
 		ret
 
- 	//  Reset DATA, REPEAT, FOR, GOSUB
- 	//  Clear dynamic variables
- 	//  -----------------------
- InittblFPRtnAddr:
- 		// TODO: this copies FP routine pointers into a table at 0x7F0 - why?, document, backport/remove from BAS6809
+	//  Reset DATA, REPEAT, FOR, GOSUB
+	//  Clear dynamic variables
+	//  -----------------------
+InittblFPRtnAddr:
+		// TODO: this copies FP routine pointers into a table at 0x7F0 - why?, document, backport/remove from BAS6809
  // 		LDX 	#0x10
  // 1		LDD 	tblFPRtnAddr_const-2,X
  // 		STD 	0x07F0-2,X				//  Copy entry addresses to 0x07F0-0x07FF
  // 		LEAX	 -2, X
  // 		BNE 	1B
 
- 		// clear dynamic variables [B2:BD2F]
- 		
- 		addi	t1, wp, BASWKSP_DYNVAR_HEADS
- 		addi	t0, t1, 0x40 * 4
+		// clear dynamic variables [B2:BD2F]
+		
+		addi	t1, wp, BASWKSP_DYNVAR_HEADS
+		addi	t0, t1, 0x40 * 4
  .L_lp1:	sw	zero, 0(t1)
- 		addi	t1, t1, 4
- 		bne	t1, t0, .L_lp1
+		addi	t1, t1, 4
+		bne	t1, t0, .L_lp1
 
 		ret
 
@@ -8854,31 +8854,31 @@ ResetStackProgStartRepeatGosubFor:
  // 		LDX	#ZP_GEN_PTR			//  Point to OSFILE block
  // 		JSR	OSFILE				//  Continue into FindTOP
  // 	ENDIF
- findTOP:	lw	t0, ZP_PAGE(wp)
+findTOP:	lw	t0, ZP_PAGE(wp)
 		sw	t0, ZP_TOP(wp)
- ftop_lp1:	lbu	t1, 0(t0)
- 		addi	t2, t1, -0x0D
- 		bnez	t2, printBadProgram		// check for CR
- 		lbu	t1, 1(t0)			// check for -ve line number (end of program)
- 		andi	t2, t1, 0x80
- 		bnez	t2, ftop_sk1
- 		lbu	t1, 3(t0)			// check line length and add for next line
- 		beqz	t1, printBadProgram
- 		add	t0, t0, t1
- 		sw	t0, ZP_TOP(wp)
- 		j	ftop_lp1
- ftop_sk1:	addi	t0, t0, 2
- 		sw	t0, ZP_TOP(wp)
- 		ret
+ftop_lp1:	lbu	t1, 0(t0)
+		addi	t2, t1, -0x0D
+		bnez	t2, printBadProgram		// check for CR
+		lbu	t1, 1(t0)			// check for -ve line number (end of program)
+		andi	t2, t1, 0x80
+		bnez	t2, ftop_sk1
+		lbu	t1, 3(t0)			// check line length and add for next line
+		beqz	t1, printBadProgram
+		add	t0, t0, t1
+		sw	t0, ZP_TOP(wp)
+		j	ftop_lp1
+ftop_sk1:	addi	t0, t0, 2
+		sw	t0, ZP_TOP(wp)
+		ret
 
- printBadProgram:
- 		la	a0, str_bad_prog
- 		jal	PRSTRING
- 		j	immedPrompt
+printBadProgram:
+		la	a0, str_bad_prog
+		jal	PRSTRING
+		j	immedPrompt
  
- 		.section .data
- str_bad_prog:	.asciz 	"\rBad program\r"
- 		.section .text
+		.section .data
+str_bad_prog:	.asciz 	"\rBad program\r"
+		.section .text
  
 		//TODO: OS ROUTINE?
 PRSTRING:	addi 	sp, sp, -4
@@ -9082,14 +9082,14 @@ skASCII:
  // 1		RTS
  // 
  // 
- deleteProgSetTOP:
- 		sb	x0, ZP_TRACE(wp)
- 		lw	t0, ZP_PAGE(wp)
- 		li	t1, 0xFF0D		// 0 length program
- 		sw	t1, 0(t0)		// store at page
- 		addi	t0, t0, 2
- 		sw	t0, ZP_TOP(wp)
- 		ret
+deleteProgSetTOP:
+		sb	x0, ZP_TRACE(wp)
+		lw	t0, ZP_PAGE(wp)
+		li	t1, 0xFF0D		// 0 length program
+		sw	t1, 0(t0)		// store at page
+		addi	t0, t0, 2
+		sw	t0, ZP_TOP(wp)
+		ret
 
  // 
  // //			//  Floating-Point Routine Entries
