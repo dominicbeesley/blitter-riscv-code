@@ -3,14 +3,14 @@
 
 		.struct 0
 			
-ZP_LOMEM:		.space 4
-ZP_VARTOP:		.space 4
-ZP_BAS_SP:		.space 4
-ZP_HIMEM:		.space 4
-ZP_TXTPTR:		.space 4
-ZP_TOP:			.space 4
-ZP_PAGE:		.space 4	// change - actually a 32 bit pointer not just the page 
-ZP_ERR_VECT:		.space 4
+ZP_LOMEM:		.space 4		
+ZP_VARTOP:		.space 4	
+ZP_BAS_SP:		.space 4	
+ZP_HIMEM:		.space 4	
+ZP_TXTPTR:		.space 4	
+ZP_TOP:			.space 4	
+ZP_PAGE:		.space 4		// change - actually a 32 bit pointer not just the page 
+ZP_ERR_VECT:		.space 4	
 
 ZP_GEN_PTR:		.space 4
 ZP_MOS_ERROR_PTR_QRY:	.space 4
@@ -66,6 +66,12 @@ ZP_TOK_FLAGS_A:		.space 1
 ZP_TOK_FLAGS_B:		.space 1
 ZP_TOK_FLAGS_C:		.space 1
 ZP_TOK_FLAGS_D:		.space 1
+
+//TODO: extras
+ZP_LIST_FOR_LVL:	.space 1
+ZP_LIST_REP_LVL:	.space 1
+ZP_LIST_F_QUO:		.space 1
+ZP_LIST_F_SHO:		.space 1
 
 //	ZP_OPT:			.space 1
 //	ZP_ASS_OPBUF:		.space 1	;; overlaps ZP_DUNNO, ZP_INT_WA stores opcode/postbytes being assembled

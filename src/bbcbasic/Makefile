@@ -43,7 +43,8 @@ $(BUILD)/%.elf: $(OBJS_O) %.lds
 	-Wl,--build-id=none,-Bstatic,-T,$(filter %.lds, $^),-Map,$(basename $@).map,--strip-debug \
 		$(filter %.o,$^) -lgcc 
 	$(RISCV_NM) --format=posix $@ >$(basename $@).sy1
-	sed -n -E 's/^(\w+)\s+\w\s+([0-9a-f]+)/DEF \1 \2/ip' <$(basename $@).sy1 >$(basename $@).noi
+	perl addabsoffs.pl 0x20000 "WKSP" <$(basename $@).sy1 >$(basename $@).sy2
+	sed -n -E 's/^(\w+)\s+\w\s+([0-9a-f]+)/DEF \1 \2/ip' <$(basename $@).sy2 >$(basename $@).noi
 
 $(BUILD)/%.S:	%.v
 	./vgm2bin.pl $< >$@
@@ -80,6 +81,7 @@ clean:
 	-rm $(patsubst %.mos, %.map, $(TARGETS_O))
 	-rm $(patsubst %.mos, %.elf, $(TARGETS_O))
 	-rm $(patsubst %.mos, %.sy1, $(TARGETS_O))
+	-rm $(patsubst %.mos, %.sy2, $(TARGETS_O))
 	-rm $(patsubst %.mos, %.noi, $(TARGETS_O))
 	-rm $(OBJS_O)
 	-rm $(patsubst %.o, %.lst, $(OBJS_O))

@@ -65,6 +65,15 @@ HeaderCopyright:
 		.byte	0
 		.asciz	VERSIONSTR
 
+
+		.align  2
+tblTENS:	.short	1
+		.short	10
+		.short	100
+		.short	1000
+		.short	10000
+
+
 		.section .text
 
 //		//  LANGUAGE STARTUP
@@ -239,6 +248,8 @@ ROM_LANGST:
 		//	or	tp = pointer to start of line, or next higher line or end of program
 
 findProgLineNewAPI:
+		li	t0, 0x7FFF
+		and	a0, a0, t0		// limit to 15 bits
 		lw	tp, ZP_PAGE(wp)
 fpl_lp1:	lbu	t1, 1(tp)
 		lbu	t0, 2(tp)
@@ -273,7 +284,7 @@ fpl_ge:		slt	a0, a0, t0
  // 		STA	ZP_GEN_PTR			// EOR with sign of RHS to get sign of result
  // 		CALL	intWA_ABS			// Ensure RHS is positive
  // 		LDX	#ZP_INT_WA_B			
- // 		CALL	popIntAtXNew			// Pop LHS from stack to IntB at 0x39-0x3C
+ // 		CALL	popIntAta0New			// Pop LHS from stack to IntB at 0x39-0x3C
  // 
  // 	IF CPU_6309
  // 		CLRD
@@ -932,29 +943,69 @@ tblCmdDispatch:
  // 		include "./assembler6x09.asm"
  // 	ENDIF
  // 
- // skipSpacesCheckHashAtY
+skipSpacesCheckHashAtY:
+		mv	t1, ra
+		jal	skipSpacesY
+		li	t0, '#'
+		jr	t1
+skipSpacesCheckCommaAtY:
+		mv	t1, ra
+		jal	skipSpacesY
+		li	t0, ','
+		jr	t1
+
+skipSpacesCheckCommaAtYStepBack:
+		mv	t2, ra
+		jal	skipSpacesCheckCommaAtY
+ssccaysb2:	beq	cu, t0, ssccaysb
+		addi	tp, tp, -1
+ssccaysb:	jr	t2
+skipSpacesCheckHashAtYStepBack:
+		mv	t2, ra
+		jal	skipSpacesCheckHashAtY
+		j	ssccaysb2
+
+ // //		
+ // //		//  Skip spaces at PTRB
+ // //		//  ===================
+ // 		//  leaves PTR unchanged returns next non white pointer + 1 in Y, char in A
+ // skipSpacesPTRB
+ // 		LDU	ZP_TXTPTR2
+skipSpacesY:	li	t0, ' '
+ssylp:		lbu	cu, 0(tp)
+		addi	tp, tp, 1
+		beq	t0, cu, ssylp
+		ret
+ // 
+ ///////// DONT REINSTATE - DO MANUALLY AND NOTE!
+ // inySkipSpacesYStepBack
+ // 		LEAU	1,U
+ // skipSpacesYStepBack
  // 		CALL	skipSpacesY
- // 		CMPA	#'#'
- // 		RTS		
- // skipSpacesCheckCommaAtY
- // 		CALL	skipSpacesY
- // 		CMPA	#','
+ // 		LEAU	-1,U
  // 		RTS
  // 
- // skipSpacesCheckCommaAtYStepBack
- // 		CALL	skipSpacesCheckCommaAtY
- // 2		BEQ	1F
- // 		LEAU	-1,U
- // 1		RTS		
- // skipSpacesCheckHashAtYStepBack
- // 		CALL	skipSpacesCheckHashAtY
- // 		BRA	2B
+ //		
+ //		//  Skip spaces at PTRA
+ //		//  ===================
+ 		//  leaves PTR unchanged returns next non white pointer + 1 in Y, char in A
+ skipSpacesPTRA:
+ 		lw	tp, ZP_TXTPTR(wp)
+ 		j	skipSpacesY
  // 
- // 		// [ZP_GEN_PTR+2] <= A
- // 		// ZP_NAMELENORVT <= Y (last character CONSUMED i.e. before what is to be kept)
- // 		// Copy rest of line to ZP_GEN_PTR
- // 		// return with count of chars after token including 0x0d in B
- // 		// trashes A, X, Y
+ // //		
+ // //			//  Expect comma
+ // //			//  ============
+ // skipSpacesCheckCommaAtYOrBRK
+ // 		CALL	skipSpacesCheckCommaAtY
+ // 		BEQ	anRTS7			//  Comma found, return
+
+
+		// [ZP_GEN_PTR+2] <= A
+		// ZP_NAMELENORVT <= Y (last character CONSUMED i.e. before what is to be kept)
+		// Copy rest of line to ZP_GEN_PTR
+		// return with count of chars after token including 0x0d in B
+		// trashes A, X, Y
 
 
 		/*********************************************************
@@ -1336,40 +1387,6 @@ tokNotNEXTLINENO:	//L8ECF:
 		bnez	t1, rtsL8DDF
 		j	toklp0
 
- // //		
- // //		//  Skip spaces at PTRB
- // //		//  ===================
- // 		//  leaves PTR unchanged returns next non white pointer + 1 in Y, char in A
- // skipSpacesPTRB
- // 		LDU	ZP_TXTPTR2
-skipSpacesY:	li	t0, ' '
-ssylp:		lbu	cu, 0(tp)
-		addi	tp, tp, 1
-		beq	t0, cu, ssylp
-		ret
- // 
- ///////// DONT REINSTATE - DO MANUALLY AND NOTE!
- // inySkipSpacesYStepBack
- // 		LEAU	1,U
- // skipSpacesYStepBack
- // 		CALL	skipSpacesY
- // 		LEAU	-1,U
- // 		RTS
- // 
- //		
- //		//  Skip spaces at PTRA
- //		//  ===================
- 		//  leaves PTR unchanged returns next non white pointer + 1 in Y, char in A
- skipSpacesPTRA:
- 		lw	tp, ZP_TXTPTR(wp)
- 		j	skipSpacesY
- // 
- // //		
- // //			//  Expect comma
- // //			//  ============
- // skipSpacesCheckCommaAtYOrBRK
- // 		CALL	skipSpacesCheckCommaAtY
- // 		BEQ	anRTS7			//  Comma found, return
  // brkMissingComma
  // 		DO_BRK_B
  // 		FCB	0x05, tknMissing, ',', 0
@@ -1607,21 +1624,31 @@ cmdSetVarNumeric: NOTIMPL "cmdSetVarNumeric"
  // 		JUMP	continue			//  Copy numeric value to variable, return to execution loop
  // 
  // 
-cmdSTOP: NOTIMPL "cmdSTOP"
- // cmdSTOP
- // 
- // 		CALL	scanNextStmtFromY		//  Check end of statement
- // 		DO_BRK_B
- // 		FCB	0x00, tknSTOP, 0
- // brkNoFN
- // 		DO_BRK_B
- // 		FCB  0x07, "No ", tknFN, 0
- // brkTypeMismatch
- // 		DO_BRK_B
- // 		FCB  0x06, "Type mismatch", 0
- // brkNoRoom
- // 		DO_BRK_B
- // 		FCB  0x00, "No room", 0
+cmdSTOP:
+		jal	scanNextStmtFromY		//  Check end of statement
+		DO_BRK_B
+		.byte	0x00, tknSTOP, 0
+		.align	2
+brkNoFN:
+		DO_BRK_B
+		.byte  	0x07
+		.ascii	"No "
+		.byte	tknFN, 0
+		.align	2
+brkTypeMismatch:
+		DO_BRK_B
+		.byte	0x06
+		.asciz	"Type mismatch"
+		.align 	2
+
+ResetVarsBrkNoRoom:
+		jal	ResetVars
+brkNoRoom:
+		DO_BRK_B
+		.byte	0x00
+		.asciz	"No room"
+		.align 	2
+
  // //		
  // //		//  Copy string value to string variable
  // //		//  ------------------------------------
@@ -1893,7 +1920,7 @@ cmdPRINT: NOTIMPL "cmdPRINT"
  // 		LDB	ZP_INT_WA + 3			// Get returned value
  // 		BEQ	rtsCLC_L926A			// If zero, clear carry, update and return
  // cmdPRINT_B_SPACESCLCRTS					// L9262
- // 		CALL	list_printBSpaces		// Output X number of Spaces
+ // 		CALL	list_printt2Spaces		// Output X number of Spaces
  // 		BRA	rtsCLC_L926A			// Clear carry, update and return
  // 
  // //			//  PRINT '
@@ -2049,7 +2076,7 @@ cmdRENUMBER: NOTIMPL "cmdRENUMBER"
  // 			//  RENUMBER
  // 		CALL	AUTO_RENUM_STARTSTEP_DEF1010
  // 		LDX	#ZP_NAMELENORVT
- // 		CALL	popIntAtXNew
+ // 		CALL	popIntAta0New
  // 		CALL	findTOP
  // 		CALL	renResetPileAndProg
  // L9392
@@ -3180,6 +3207,7 @@ skipSpacesDecodeLineNumberNewAPIbrkSyntax:
   		// API changed used to scan from ZP_TXTPTR now scan from tp
 		// return a0 = -1 for not line number (was cy = 0)
 		// return a0, ZP_INT_WA = line number > 32768 only bottom half of ZP_INT_WA
+		// ZP_INT_WA only set if valid line number (see cmdLIST)
 skipSpacesDecodeLineNumberNewAPI:
 		addi	sp, sp, -4
 		sw	ra, 0(sp)
@@ -4087,98 +4115,93 @@ cmdIF: NOTIMPL "cmdIF"
  // 		BRA	LA05C
  // 
  // 
- // 		// formats a 16 bit integer at ZP_INT_WA + 2 to a string
- // 		// NEW API
- // 		//	A contains preferred length or 0 for any
- // 		//	Y preserved
- // 		//	X preserved					TODO, needed?
- // 		//	ZP_INT_WA + 2 = 0				TODO, needed?
- // 		//	returns with B = 0xFF
- // 
- // 		// OLD API
- // 		//	A contains preferred length or 0 for any
- // 		//	Y preserved
- // 		//	ZP_INT_WA + 2 = 0
- // 		//	returns with X = 0xFF
- // 
- // int16print_AnyLen				// LA081
- // 		LDA	#0x00
- // 		BRA	int16print_fmtA
- // int16print_fmt5					// LA085
- // 		LDA	#0x05
- // int16print_fmtA					// LA087
- // 		STA	ZP_PRINTBYTES
- // 		LEAX	tblTENS_BE, PCR		// point at tens table
- // 		PSHS	U
- // 		LDU	#ZP_FPB + 4
- // 		LDD	ZP_INT_WA + 2
- // 		CLR	4,U
- // 		CLR	3,U
- // 		CLR	2,U
- // 		CLR	1,U
- // 		CLR	0,U
- // 
- // int16dig4_lp	SUBD	8,X			// try and subtract ten
- // 		BCS	int16dig4_sk
- // 		INC	4,U			// it it doesn't overflow increment digit
- // 		BRA	int16dig4_lp		
- // int16dig4_sk	ADDD	8,X			// add number back
- // 		BEQ	int16dig_skiprest
- // 
- // int16dig3_lp	SUBD	6,X			// try and subtract ten
- // 		BCS	int16dig3_sk
- // 		INC	3,U			// it it doesn't overflow increment digit
- // 		BRA	int16dig3_lp		
- // int16dig3_sk	ADDD	6,X			// add number back
- // 		BEQ	int16dig_skiprest
- // 
- // int16dig2_lp	SUBD	4,X			// try and subtract ten
- // 		BCS	int16dig2_sk
- // 		INC	2,U			// it it doesn't overflow increment digit
- // 		BRA	int16dig2_lp		
- // int16dig2_sk	ADDD	4,X			// add number back
- // 		BEQ	int16dig_skiprest
- // 
- // int16dig1_lp	SUBD	2,X			// try and subtract ten
- // 		BCS	int16dig1_sk
- // 		INC	1,U			// it it doesn't overflow increment digit
- // 		BRA	int16dig1_lp		
- // int16dig1_sk	ADDD	2,X			// add number back
- // 		BEQ	int16dig_skiprest
- // 
- // int16dig0_lp	SUBD	0,X			// try and subtract ten
- // 		BCS	int16dig_skiprest
- // 		INC	0,U			// it it doesn't overflow increment digit
- // 		BRA	int16dig0_lp		
- // 
- // int16dig_skiprest
- // 
- // 		// number now decoded (reversed at ZP_FPB + 4)
- // 
- // 
- // 		LDB	#0x05
- // int16_scan0_lp					//LA0A8
- // 		DECB				// scan for first non zero element
- // 		BEQ	int16_scan0_sk
- // 		LDA	B,U
- // 		BEQ	int16_scan0_lp
- // int16_scan0_sk					//LA0AF:
- // 		STB	ZP_GEN_PTR
- // 		LDA	ZP_PRINTBYTES
- // 		BEQ	int16_printDigits
- // 		SUBA	ZP_GEN_PTR
- // 		BEQ	int16_printDigits
- // 		TFR	A,B
- // 		CALL	list_printBSpaces
- // 		LDB	ZP_GEN_PTR
- // int16_printDigits				//LA0BF:
- // 		LDA	B,U
- // 		ORA	#0x30
- // 		CALL	list_printA
- // 		DECB
- // 		BPL	int16_printDigits
- // 		PULS	U,PC			// RTS restore Y
- // 
+
+
+		/*********************************************************
+		 * Format a 15 bit unsigned integer at ZP_INT_WA to a 
+		 * string and print to screen
+		 * 
+		 * AnyLen entry point sets a0 = 0 and left justifies
+		 * fmt5 right justifies to a0 = 5 places
+		 * fmtA right justifies to a0 places
+		 * 
+		 * Uses a buffer of up to 5 bytes at ZP_FP_TMP
+		 * 
+		 * returns with ZP_INT_WA unchanged (new risc-v)
+		 * 
+		 * corrupts a0, a1, t0..3
+		 *********************************************************/
+
+	//TODO: add DIV/REM version for rvi-m
+
+int16print_AnyLen:				// LA081
+		li	a0, 0
+		j	int16print_fmtA
+int16print_fmt5:				// LA085
+		li	a0, 5
+int16print_fmtA:				// LA087
+		addi	sp, sp, -4
+		sw	ra, 0(sp)
+
+		sb	a0, ZP_PRINTBYTES(wp)
+
+
+		la	a0, tblTENS+4*2		// point at 10,000's in table
+		addi	a1, wp, ZP_FP_TMP+4	// point at string buffer
+		lhu	t0, ZP_INT_WA(wp)	// the number to do
+		li	t1, 5			// loop counter
+
+		sb	zero, 0(a1)
+		sb	zero, -1(a1)
+		sb	zero, -2(a1)
+		sb	zero, -3(a1)
+		sb	zero, -4(a1)
+
+i16p_lp0:	lhu	t2, 0(a0)
+		li	t3, -1
+i16p_lp1:	addi	t3, t3, 1
+		sub	t0, t0, t2
+		bge	t0, zero, i16p_lp1
+		add	t0, t0, t2
+
+		sb	t3, 0(a1)
+
+		addi	a0, a0, -2
+		addi	a1, a1, -1
+		addi	t1, t1, -1
+		bnez	t1, i16p_lp0
+
+		li	t1, 5
+		addi	a1, a1, 6
+i16_lp2:	addi	a1, a1, -1
+		lbu	t0, 0(a1)
+		bnez	t0, i16_sk1
+		addi	t1, t1, -1
+		bnez	t1, i16_lp2
+
+i16_sk1:
+		// a1 points at first non-zero digit
+		// t1 contains no of digits to print
+
+		
+ 		lbu	t0, ZP_PRINTBYTES(wp)	// places to print
+ 		beqz	t0, int16_printDigits
+ 		sub	t2, t0, t1
+		ble	t2, zero, int16_printDigits
+		jal	list_printt2Spaces
+int16_printDigits:				//LA0BF:
+		lbu	a0, 0(a1)
+		addi	a1, a1, -1
+		ori	a0, a0, 0x30
+		jal	list_print_a0
+		addi	t1, t1, -1
+		bnez	t1, int16_printDigits
+
+		lw	ra, 0(sp)
+		addi	sp, sp, 4
+
+		ret
+
  // 
  // //			//  Convert number to hex string
  // //			//  ----------------------------
@@ -6057,22 +6080,17 @@ fnEOF: NOTIMPL "fnEOF"
  // 			//  =TRUE
  // 			//  =====
  
-fnTRUE: NOTIMPL "fnTRUE"
- // fnTRUE
- // returnINTminus1					// TODO - possibly use D?
- // 		LDB #0xFF			//  Return -1
- // returnB8asINT_S	SEX
- // 		STA ZP_INT_WA
- // 		STA ZP_INT_WA + 1
- // 		STD ZP_INT_WA + 2
- // returnINT	LDA #0x40
- // 		RTS				//  Return Integer
- // 			//  =FALSE
- // 			//  ======
-fnFALSE: NOTIMPL "fnFALSE"
- // fnFALSE			
- // 		CLRB
- // 		BRA returnB8asINT_S			//  Jump to return 0
+fnTRUE:
+returnINTminus1:				// TODO - possibly use D?
+		li	a1, -1			//  Return -1
+returnBasINT:
+		sw	a1, ZP_INT_WA(wp)
+returnINT:	li	a0, 0x40
+		ret				//  Return Integer
+			//  =FALSE
+			//  ======
+fnFALSE:	li	a1, 0
+		j	returnBasINT		//  Jump to return 0
  // 
  // 
 fnSGN_real: NOTIMPL "fnSGN_real"
@@ -6950,7 +6968,7 @@ fnFN: NOTIMPL "fnFN"
  // 		SUBD	#MACH_STACK_TOP+2		// by subtracting size of used machine stack + 2 (to store original stack pointer)
  // 		LDX	ZP_BAS_SP
  // 		LEAX	D,X				
- // 		CALL	UpdStackFromXCheckFull		//  Store new BASIC stack pointer, checking for free space
+ // 		CALL	UpdStackFroma0CheckFull		//  Store new BASIC stack pointer, checking for free space
  // 		STS	,X++				// Store current machine stack pointer
  // 1		CMPS	#MACH_STACK_TOP			// Copy machine stack contents to BASIC stack
  // 		BHS	2F				// TODO: use 16bit copy? Require test on first/last loop for single byte tfr
@@ -7489,44 +7507,52 @@ cmdEDIT: NOTIMPL "cmdEDIT"
  // //		LDA	#0x80
  // //		STA	ZP_LISTO
  // 
- // doLIST
- // 		CLR	ZP_FPB
- // 		CLR	ZP_FPB + 1
- // 		CALL	fnFALSE			// set start line no to 0
- // 		CALL	skipSpacesDecodeLineNumberNewAPI
- // 		PSHS	CC
- // 		CALL	stackINT_WAasINT		// stack start line no
- // 		CALL	returnINTminus1			// set end line no to FFFF
- // 		LSR	ZP_INT_WA + 2			// note line number in +2,3, clear top bit end 
- // 							// line no. max is 32767
- // 							// LB3AD:
- // 		PULS	CC
- // 		BCC	doListSkNoLineSpec
- // 		CALL	skipSpacesCheckCommaAtYStepBack		// look for a comma, 
- // 		BEQ	doListSkLineSpec2
- // 		// no second spec, pop first speccd line and use as 2nd param
- // 		CALL	popIntANew		      	// unstack then stack - TODO: check if can load using off,U
- // 		CALL	stackINT_WAasINT
- // 		BRA	doListSkStart
- // doListSkNoLineSpec				      	//LB3BF:
- // 		CALL	skipSpacesCheckCommaAtYStepBack	// if there's a comma skip it 
- // doListSkLineSpec2				      	//LB3C6:
- // 		CALL	skipSpacesDecodeLineNumberNewAPI// this will return 0xFFFF if no match (i.e. go to the end!)
- // doListSkStart					      	//LB3C9:
- // 		LDX	#ZP_FPA + 3
- // 		CALL	CopyIntWA2X
- // 		CALL	skipSpacesYStepBack
- // 		CMPA	#tknIF
- // 		BNE	doListSkStart2
- // 		CALL	inySkipSpacesYStepBack
- // 		BRA	doListSkStart3
-cmdLIST: NOTIMPL "cmdLIST"
- // cmdLIST
- // 
- // 			
- // //			//  LIST
- // 		LDA	,U
- // 
+
+#define	LIST_FLAGS_A ZP_TOK_FLAGS_A
+#define	LIST_FLAGS_B ZP_TOK_FLAGS_A
+
+
+doLIST:
+		jal	fnFALSE			// set start line no to 0
+		jal	skipSpacesDecodeLineNumberNewAPI
+		sw	a0, LIST_FLAGS_A(wp)		// save for now
+		jal	stackINT_WAasINT		// stack start line no
+		jal	fnTRUE				// set end line no to FFFF
+		//TODO: check if this is necessary and implement if it is!
+////		LSR	ZP_INT_WA + 2			// note line number in +2,3, clear top bit end 
+////							// line no. max is 32767
+////							// LB3AD:
+		lw	t0, LIST_FLAGS_A(wp)		// save for now
+		blt	t0, zero, doListSkNoLineSpec
+		jal	skipSpacesCheckCommaAtYStepBack	// look for a comma, 
+		beq	cu, t0,	doListSkLineSpec2
+		// no second spec, pop first speccd line and use as 2nd param
+		jal	popIntANew		      	// unstack then stack - TODO: check if can load using off,U
+		jal	stackINT_WAasINT
+		j	doListSkStart
+doListSkNoLineSpec:				      	//LB3BF
+		jal	skipSpacesCheckCommaAtYStepBack	// if there's a comma skip it 
+doListSkLineSpec2:				      	//LB3C6
+		jal	skipSpacesDecodeLineNumberNewAPI// this will return 0xFFFF if no match (i.e. go to the end!)
+doListSkStart:					      	//LB3C9
+		sb	zero, LIST_FLAGS_A(wp)
+		sb	zero, LIST_FLAGS_B(wp)		
+
+		lw	t0, ZP_INT_WA(wp)
+		sw	t0, ZP_INT_WA_B(wp)		// ending line number into WA_B
+ 		jal	skipSpacesY			// skipSpacesYStepBack
+ 		addi	tp, tp, -1
+ 		li	t0, tknIF
+ 		bne	t0, cu, doListSkStart2
+ 		addi	tp, tp, 1
+		jal	skipSpacesY			// inySkipSpacesYStepBack
+		addi	tp, tp, -1
+		j	doListSkStart3
+cmdLIST:
+		lbu	cu, 0(tp)
+		li	t1, 'O'
+		bne	cu, t1, doLIST
+		NOTIMPL "LISTO"
  // 		CMPA	#'O'
  // 		BNE	doLIST
  // 		LEAU	1,U
@@ -7535,33 +7561,38 @@ cmdLIST: NOTIMPL "cmdLIST"
  // 		LDA	ZP_INT_WA + 3
  // 		STA	ZP_LISTO
  // 		JUMP	immedPrompt
- // doListSkStart2						// LB3F3:
- // 		CALL	scanNextExpectColonElseCR
- // doListSkStart3						// LB3F6:
- // 		STU	ZP_TXTPTR2			// point at first non-space after IF token or <CR> if not LIST IF
- // 		CALL	findTOP
- // 		CALL	popIntANew			// intWA now contains ending line no
- // 		CALL	findProgLineNewAPI
- // 		BCS	doListSkGotCorrectLine
- // 		BRA	doListSkGotNearestLine
- // doListPrintLFThenLoop					// LB410
- // 		CALL	list_printA
- // 		TST	ZP_LISTO
- // 		BMI	doListLoop
- // 		LDA	#0x0A
- // 		JSR	OSWRCH
- // doListLoop						//LB41C
- // ////		CALL storeYasTXTPTR
- // 		CALL	checkForESC
- // doListSkGotNearestLine					//LB41F:
- // 		LDX	1,U				 // get the actual line number found
- // 		STX	ZP_INT_WA + 2
- // doListSkGotCorrectLine					//LB428:
- // 		LDX	ZP_INT_WA + 2
- // 		CMPX	ZP_FPA + 5	
- // 		BLS	doListStartLine
- // 		TST	ZP_LISTO
- // 		LBPL	immedPrompt
+doListSkStart2:						// LB3F3:
+		jal	scanNextExpectColonElseCR
+doListSkStart3:						// LB3F6:
+		sw	tp, ZP_TXTPTR2(wp)		// point at first non-space after IF token or <CR> if not LIST IF
+ 		jal	findTOP
+ 		jal	popIntANew			// intWA now contains starting line no
+ 		lw	a0, ZP_INT_WA(wp)		// TODO: make popIntANew return a0 as well as WA, or make findprogline always do ZP_INT_WA?
+ 		jal	findProgLineNewAPI
+ 		beqz	a0, doListSkGotCorrectLine
+		j	doListSkGotNearestLine
+doListPrintLFThenLoop:					// LB410
+		jal	list_print_cu
+		lb	t0, ZP_LISTO(wp)
+		blt	t0, zero, doListLoop
+		li	a0, 0x0A
+		li	a7, OS_WRCH
+		ecall
+doListLoop:						//LB41C
+		jal	checkForESC
+doListSkGotNearestLine:					//LB41F:
+		lbu	a0, 1(tp)
+		slli	a0, a0, 8
+		lbu	t0, 2(tp)
+		or	a0, a0, t0
+		sw	a0, ZP_INT_WA(wp)
+doListSkGotCorrectLine:					//LB428:
+		lw	t0, ZP_INT_WA(wp)
+		lw	t1, ZP_INT_WA_B(wp)
+		bleu	t0, t1, doListStartLine
+		lb	t0, ZP_LISTO(wp)
+		bge	t0, zero, immedPrompt
+		NOTIMPL "EDIT"
  // 		LEAX	strEdit12_2,PCR
  // 		JMP	OSCLI
  // 
@@ -7571,82 +7602,87 @@ cmdLIST: NOTIMPL "cmdLIST"
  // 		FCB	"EDIT 12,2", 0x0d
  // 
  // 
- // doListStartLine						// LB43E:
- // 		CLR	ZP_FP_TMP + 9			// flag Quote/REM open
- // 		CLR	ZP_FP_TMP + 10			// flag whether to display line
- // 		LEAU	4,U				// point at first char/token of actual line 
- // 		STU	ZP_TXTPTR			// store pointer for later after scan
- // 
- // 		// scan the line for UNTIL/NEXT for indents
- // 		// scan the line for matches if doing LIST IF
- // 
- // 		// reset indent levels if -ve
- // 		TST	ZP_FPB
- // 		BPL	doListSk0
- // 		CLR	ZP_FPB
- // doListSk0						//LB44E:
- // 		TST	ZP_FPB + 1
- // 		BPL	doListSk1
- // 		CLR	ZP_FPB + 1
- // doListSk1						//LB454:
- // doListScanLoop
- // 		LDA	,U				//  Get character
- // 		CMPA	#0x0D
- // 		BEQ	doListScanDone			//  End of line
- // 		CMPA	#tknREM
- // 		BEQ	doListSkREM			// ignore quotes in REMs
- // 		CMPA	#'"'
- // 		BNE	doListSkREMQuot
- // 		EORA	ZP_FP_TMP + 9			//  Toggle quote flag (no effect after REM!)
- // doListSkREM						//LB464:
- // 		STA	ZP_FP_TMP + 9			// if a REM store tknREM, if a Quote toggle
- // doListSkREMQuot						// LB466
- // 		TST	ZP_FP_TMP + 9
- // 		BNE	doListSkUntil			//  Within quotes / REM
- // 		CMPA	#tknNEXT
- // 		BNE	doListSkNext
- // 		DEC	ZP_FPB				// decrement NEXT indent level
- // doListSkNext						// LB470
- // 		CMPA	#tknUNTIL
- // 		BNE	doListSkUntil
- // 		DEC	ZP_FPB + 1			// decrement UNTIL indent level
- // doListSkUntil						// LB476
- // 
- // 		// LIST IF
- // 
- // 		LDX	ZP_TXTPTR2			// LIST IF 
- // 		PSHS	U				
- // doListLp_Uk1						// LB478
- // 		LDA	,X				// scan line after LIST IF and try and match within the current line
- // 		CMPA	#0x0D
- // 		BEQ	doListSk_Uk1
- // 		CMPA	,U
- // 		BNE	doListSk_Uk2
- // 		LEAU	1,U
- // 		LEAX	1,X
- // 		BRA	doListLp_Uk1
- // 
- // doListSk_Uk1						// LB489:
- // 		STA	ZP_FP_TMP + 10			// matched LIST IF (or there wasn't one) do print this line
- // doListSk_Uk2						// LB48B:
- // 		PULS	U
- // 		LEAU	1,U
- // 		BRA	doListScanLoop
- // doListScanDone						//LB491:
- // 		LDA	ZP_FP_TMP + 10
- // 		BEQ	doListLoop
- // 		CALL	int16print_fmt5			// print line number
+doListStartLine:					// LB43E:
+		sb	zero, ZP_LIST_F_QUO(wp)		// flag Quote/REM open
+		sb	zero, ZP_LIST_F_SHO(wp)		// flag whether to display line
+		addi	tp, tp, 4			// point at first char/token of actual line 
+		sw	tp, ZP_TXTPTR(wp)		// store pointer for later after scan
+
+		// scan the line for UNTIL/NEXT for indents
+		// scan the line for matches if doing LIST IF
+
+		// reset indent levels if -ve
+		lb	t0, ZP_LIST_FOR_LVL(wp)
+		bge	t0, zero, doListSk0
+		sb	zero, ZP_LIST_FOR_LVL(wp)
+doListSk0:						//LB44E:
+		lb	t0, ZP_LIST_REP_LVL(wp)
+		bge	t0, zero, doListSk1
+		sb	zero, ZP_LIST_REP_LVL(wp)
+doListSk1:
+
+doListScanLoop:						//LB454
+		lbu	cu, 0(tp)			//  Get character
+		li	t0, 0x0D
+		beq	cu, t0, doListScanDone		//  End of line
+		li	t0, tknREM
+		beq	cu, t0,	doListSkREM		// ignore quotes in REMs
+		li	t0, '"'
+		bne	cu, t0,	doListSkREMQuot
+		lbu	t0, ZP_LIST_F_QUO(wp)		//  Toggle quote flag (no effect after REM!)
+		xor	cu, cu, t0
+doListSkREM:						//LB464:
+		sb	cu, ZP_LIST_F_QUO(wp)		// if a REM store tknREM, if a Quote toggle
+doListSkREMQuot:					// LB466
+		lb	t0, ZP_LIST_F_QUO(wp)
+ 		bnez	t0, doListSkUntil		//  Within quotes / REM		
+		li	t0, tknNEXT
+		bne	cu, t0,	doListSkNext
+		lb	t0, ZP_LIST_FOR_LVL(wp)		// decrement NEXT indent level
+		addi	t0, t0, -1
+		sb	t0, ZP_LIST_FOR_LVL(wp)
+doListSkNext:						// LB470
+		li	t0, tknUNTIL
+		bne	cu, t0,	doListSkUntil
+		lb	t0, ZP_LIST_REP_LVL(wp)		// decrement NEXT indent level
+		addi	t0, t0, -1
+		sb	t0, ZP_LIST_REP_LVL(wp)
+doListSkUntil:						// LB476
+
+		// LIST IF
+
+		lw	t1, ZP_TXTPTR2(wp)		// LIST IF string start
+		mv	t2, tp				// save tp
+doListLp_Uk1:						// LB478
+		lbu	cu, 0(t1)			// scan line after LIST IF and try and match within the current line
+		li	t0, 0x0D
+		beq	cu, t0,	doListSk_Uk1
+		lbu	t0, 0(tp)
+		bne	cu, t0,	doListSk_Uk2
+		addi	t1, t1, 1
+		addi	tp, tp, 1
+		j	doListLp_Uk1
+
+doListSk_Uk1:						// LB489:
+		sb	cu, ZP_LIST_F_SHO(wp)		// matched LIST IF (or there wasn't one) do print this line
+doListSk_Uk2:						// LB48B:
+		addi	tp, t2, 1			// restore and increment outer tp
+		j	doListScanLoop
+doListScanDone:						//LB491:
+		lb	t0, ZP_LIST_F_SHO(wp)
+		beqz	t0, doListLoop
+		jal	int16print_fmt5			// print line number
  // 		LDA	#0x01
  // 		INCB					// set to 0
  // 		SEC
  // 		CALL	doLISTOSpaces			// LISTO1 - space after Line no
- // 		LDB	ZP_FPB
+ // 		LDB	ZP_LIST_FOR_LVL
  // 		LDA	#0x02
  // 		CALL	doLISTOSpacesCLC		// LISTO2 - NEXT indents
- // 		LDB	ZP_FPB + 1
+ // 		LDB	ZP_LIST_REP_LVL
  // 		LDA	#0x04				// LISTO4 - REPEAT/UNTIL indents
  // 		CALL	doLISTOSpacesCLC
- // 		CLR	ZP_FP_TMP + 9
+ // 		CLR	ZP_LIST_F_QUO
  // doListNextTok2						//LB4AF:
  // 		LDU	ZP_TXTPTR			// TODO reset Y pointer here?
  // doListNextTok						// LB4B1:
@@ -7655,15 +7691,15 @@ cmdLIST: NOTIMPL "cmdLIST"
  // 		LBEQ	doListPrintLFThenLoop
  // 		CMPA	#'"'
  // 		BNE	doListSkNotQuot2
- // 		EORA	ZP_FP_TMP + 9
- // 		STA	ZP_FP_TMP + 9			// Toggle quote flag
+ // 		EORA	ZP_LIST_F_QUO
+ // 		STA	ZP_LIST_F_QUO			// Toggle quote flag
  // 		LDA	#'"'
  // doListQuoteLp2						// LB4C1
  // 		CALL	list_printA
  // 		LEAU	1,U
  // 		BRA	doListNextTok
  // doListSkNotQuot2					// LB4C7:
- // 		TST	ZP_FP_TMP + 9
+ // 		TST	ZP_LIST_F_QUO
  // 		BNE	doListQuoteLp2
  // 		CMPA	#tknLineNo
  // 		BNE	doList_sknotLineNo
@@ -7675,15 +7711,15 @@ cmdLIST: NOTIMPL "cmdLIST"
  // doList_sknotLineNo					// LB4D9:
  // 		CMPA	#tknFOR
  // 		BNE	doList_sknotFOR
- // 		INC	ZP_FPB
+ // 		INC	ZP_LIST_FOR_LVL
  // doList_sknotFOR						// LB4DF:
  // 		CMPA	#tknREPEAT
  // 		BNE	doList_sknotREPEAT
- // 		INC	ZP_FPB + 1
+ // 		INC	ZP_LIST_REP_LVL
  // doList_sknotREPEAT					// LB4E5:
  // 		CMPA	#tknREM
  // 		BNE	doList_sknotREM
- // 		STA	ZP_FP_TMP + 9
+ // 		STA	ZP_LIST_F_QUO
  // doList_sknotREM						//LB4EB:
  // 		CALL	doListPrintTokenA
  // 		LEAU	1,U
@@ -8514,7 +8550,7 @@ floCopy1bytes:	lbu	cu, 0(tp)
 
 			
 		//  Tokenise line, enter into program if program line
-		//  returns A0=1 if this is a program line
+		//  returns A0<0 if this is a not a program line entered into store
 tokenizeAndStore:
 		addi 	sp, sp, -12
 		sw	ra, 8(sp)					// shared with following routines...
@@ -8528,11 +8564,13 @@ tokenizeAndStore:
 		lw	tp, ZP_TXTPTR(wp)
 		jal	skipSpacesDecodeLineNumberNewAPI
 		bge	a0, zero, tokenizeAndStoreAlreadyLineNoDecoded_int	// has a program line, store in program space...
-		
-tokret:		li	a0, -1						// indicate line tokenized
+		sw	a0, 4(sp)
+tokret:		lw	a0, 4(sp)					// TODO check if needed, could just flag 0
 		lw	ra, 8(sp)
 		addi	sp, sp, 12
 		ret
+
+
 
 		// on entry line number in a0
 tokenizeAndStoreAlreadyLineNoDecoded:					// LBB08
@@ -8694,14 +8732,21 @@ ResetStackProgStartRepeatGosubFor:
  // stackVarTypeInFlags
  // 		BEQ	StackString
  // 		BMI	fpStackWAtoStackReal
- // stackINT_WAasINT				// LBC26
- // 		LDB	#-4
- // 		CALL	UpdStackByBCheckFull
- // 		LDD	ZP_INT_WA
- // 		STD	,X
- // 		LDD	ZP_INT_WA + 2
- // 		STD	2,X
- // 		RTS
+stackINT_WAasINT:				// LBC26
+		mv	t1, ra
+		li	a0, -4
+		jal	UpdStackByBCheckFull
+		// unaligned save - a0 contains new stack base
+		lw	t0, ZP_INT_WA(wp)
+		sb	t0, 0(a0)
+		srli	t0, t0, 8
+		sb	t0, 1(a0)
+		srli	t0, t0, 8
+		sb	t0, 2(a0)
+		srli	t0, t0, 8
+		sb	t0, 3(a0)
+		jr	t1			// ret
+
  // pushVarPtrAndType				// was pullRETpushIntAtoIntAplus2pushRET
  // 		PULS	X
  // 		LDD	ZP_INT_WA + 2
@@ -8720,7 +8765,7 @@ ResetStackProgStartRepeatGosubFor:
  // 		COMB					// D now contains -(ZP_STRBUFLEN + 1)
  // 		LDX	ZP_BAS_SP
  // 		LEAX	D,X
- // 		CALL	UpdStackFromXCheckFull
+ // 		CALL	UpdStackFroma0CheckFull
  // 		LDB	ZP_STRBUFLEN			// store len as first byte of stacked data
  // 		STB	,X+
  // 		BEQ	stackstrsk0
@@ -8752,27 +8797,31 @@ ResetStackProgStartRepeatGosubFor:
  // 
  // 
  // delocCopyB
- // 		CALL	copyBatUtoX
+ // 		CALL	copya1ata2toa0
  // 
  // 2							// LBC8D:
  // delocExit
  // 		STU	ZP_BAS_SP
  // 		PULS	U,PC
  // 
- // copyBatUtoX
- // 1		LDA	,U+
- // 		STA	,X+
- // 		DECB
- // 		BNE	1B
- // 		RTS
- // 
- // 
+
+ 	// corrupts t0 TODO: optimize/inline end addr first?
+copya1ata2toa0:
+		lbu	t0, 0(a2)
+		sb	t0, 0(a0)
+		addi	a2, a2, 1
+		addi	a0, a0, 1
+		addi	a1, a1, -1
+		bnez	a1, copya1ata2toa0
+		ret
+
+
  // delocalizeStaticString					// LBC95
  // 		LDX	ZP_GEN_PTR + 2			// get address to restore string to 
  // 		LDB	,U+				// get stacked string length
  // strCpFin
  // 		BEQ	2F
- // 		CALL	copyBatUtoX
+ // 		CALL	copya1ata2toa0
  // 2		LDA	#0x0D
  // 		STA	,X+
  // 		BRA	delocExit
@@ -8798,42 +8847,61 @@ ResetStackProgStartRepeatGosubFor:
  // 		LDB	,U+				// first byte contains length
  // 		STB	ZP_STRBUFLEN
  // 		BEQ	delocExit
- // 		CALL	copyBatUtoX
+ // 		CALL	copya1ata2toa0
  // 		CLRA					// indicate string
  // 		BRA	delocExit		
  // 
  // 
- // 		// New API - after call all regs preserved
- // popIntANew
- // 		PSHS	D,U,X
- // 		LDX	#ZP_INT_WA
- // 		BRA	1F
- // popIntAtZP_GEN_PTRNew				// LBD06
- // 		LDX #ZP_GEN_PTR			// TODO - WORK THIS LOT OUT!
- // 		// NOTE: trashes A,B
- // popIntAtXNew					// LBD08
- // 		PSHS	D,U,X
- // 1		LDU	ZP_BAS_SP
- // 		LDB	#4
- // 		CALL	copyBatUtoX
- // 		STU	ZP_BAS_SP
- // 		PULS	D,U,X,PC
- // UpdStackByBCheckFull
- // 		LDX	ZP_BAS_SP
- // 		SEX
- // 		LEAX	D,X
- // UpdStackFromXCheckFull
- // 		CMPX	ZP_TOP
- // 		BLO	brabrkNoRoom
- // 		STX	ZP_BAS_SP
- // 		RTS
- // //
- // ResetVarsBrkNoRoom
- // 		CALL ResetVars
- // brabrkNoRoom	JUMP brkNoRoom
- // //
- // //
- // //
+		// New API - after call all regs preserved except t0
+		// check if all these always pop to an aligned dest then simplifiy to a SW T0, 0(A0)
+popIntANew:
+		addi	sp, sp, -16
+		sw	ra, 12(sp)
+		sw	a0, 0(sp)
+		sw	a1, 4(sp)
+		sw	a2, 8(sp)
+
+		addi	a0, gp, ZP_INT_WA
+		j	popIntA_int
+popIntAtZP_GEN_PTRNew:				// LBD06
+		addi	sp, sp, -12
+		sw	ra, 12(sp)
+		sw	a0, 0(sp)
+		sw	a1, 4(sp)
+		sw	a2, 8(sp)
+		addi	a0, gp,	ZP_GEN_PTR
+		j	popIntA_int
+popIntAta0New:					// LBD08
+		addi	sp, sp, -12
+		sw	ra, 12(sp)
+		sw	a0, 0(sp)
+		sw	a1, 4(sp)
+		sw	a2, 8(sp)
+popIntA_int:	li	a1, 4
+		lw	a2, ZP_BAS_SP(wp)
+		jal	copya1ata2toa0
+		sw	a2, ZP_BAS_SP(wp)
+
+		lw	ra, 12(sp)
+		lw	a0, 0(sp)
+		lw	a1, 4(sp)
+		lw	a2, 8(sp)
+		addi	sp, sp, -16
+		ret
+		
+
+	/*****************************************************************
+	 * a0 = ammount to adjust stack by 
+	 ****************************************************************/
+
+UpdStackByBCheckFull:
+		lw	t0, ZP_BAS_SP(wp)
+		add	a0, a0, t0
+UpdStackFroma0CheckFull:
+		lw	t0, ZP_TOP(wp)
+		bltu	a0, t0, brkNoRoom
+		sw	a0, ZP_BAS_SP(wp)
+		ret
 
 		/*********************************************************
 		 * cu contains token
@@ -8845,7 +8913,7 @@ doListPrintTokenA:					// LBD37
 		sw	ra, 0(sp)
 
 		andi	t0, cu, 0x80
-		beqz	t0, list_printA			// just a normal char print it and continue
+		beqz	t0, list_print_cu		// just a normal char print it and continue
 		la	t3, tblTOKENS
 
 doListTryNextTok:					// LBD46
@@ -8863,7 +8931,7 @@ doListKeyLp:						//LBD60:
 		addi	a1, a1, 1
 		andi	t0, a0, 0x80
 		bnez	t0, doListKeyFinished
-		jal	list_printA
+		jal	list_print_a0
 		j	doListKeyLp
 doListKeyFinished:					//LBD6A:
 		lw	ra, 0(sp)
@@ -8898,12 +8966,13 @@ doListKeyFinished:					//LBD6A:
  // 		JMP	OSWRCH
  // list_printHexByteAndSpace				// LBD8F
  // 		CALL list_printHexByte
- // list_print1Space					// LBD92
- // 		LDA	#0x20
+list_print1Space:					// LBD92
+ 		li	a0, ' '
+		j	list_print_a0
+list_print_cu:	mv	a0, cu
 
 //TODO: this is unfinished:
-list_printA:	mv	a0, cu
-		li	a7, OS_WRCH
+list_print_a0:	li	a7, OS_WRCH
 		ecall
 		ret		
 
@@ -8934,12 +9003,19 @@ list_printA:	mv	a0, cu
  // 		ROLB
  // 		BCS	rtsLBDC5	
  // 		BEQ	rtsLBDC5
- // list_printBSpaces			//LBDBF:
- // 		CALL	list_print1Space
- // 		DECB
- // 		BNE	list_printBSpaces
- // rtsLBDC5
- // 		RTS
+list_printt2Spaces:			//LBDBF:
+		addi	sp, sp, -4
+		sw	ra, 0(sp)
+
+list_printt2Spaces_lp:
+		jal	list_print1Space
+		addi	t2, t2, -1
+		bnez	t2, list_printt2Spaces_lp
+
+		lw	ra, 0(sp)
+		addi	sp, sp, 4
+		ret
+
  // //		
  // //		
  // CopyIntWA2X				   // DB: Changed this to use 16 bit reg and X can point anywhere!
