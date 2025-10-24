@@ -7517,11 +7517,8 @@ doLIST:
 		jal	skipSpacesDecodeLineNumberNewAPI
 		sw	a0, LIST_FLAGS_A(wp)		// save for now
 		jal	stackINT_WAasINT		// stack start line no
-		jal	fnTRUE				// set end line no to FFFF
-		//TODO: check if this is necessary and implement if it is!
-////		LSR	ZP_INT_WA + 2			// note line number in +2,3, clear top bit end 
-////							// line no. max is 32767
-////							// LB3AD:
+		li	t0, 0x7FFF
+		sw	t0, ZP_INT_WA(wp)
 		lw	t0, LIST_FLAGS_A(wp)		// save for now
 		blt	t0, zero, doListSkNoLineSpec
 		jal	skipSpacesCheckCommaAtYStepBack	// look for a comma, 
@@ -7672,58 +7669,62 @@ doListScanDone:						//LB491:
 		lb	t0, ZP_LIST_F_SHO(wp)
 		beqz	t0, doListLoop
 		jal	int16print_fmt5			// print line number
- // 		LDA	#0x01
- // 		INCB					// set to 0
- // 		SEC
- // 		CALL	doLISTOSpaces			// LISTO1 - space after Line no
- // 		LDB	ZP_LIST_FOR_LVL
- // 		LDA	#0x02
- // 		CALL	doLISTOSpacesCLC		// LISTO2 - NEXT indents
- // 		LDB	ZP_LIST_REP_LVL
- // 		LDA	#0x04				// LISTO4 - REPEAT/UNTIL indents
- // 		CALL	doLISTOSpacesCLC
- // 		CLR	ZP_LIST_F_QUO
- // doListNextTok2						//LB4AF:
- // 		LDU	ZP_TXTPTR			// TODO reset Y pointer here?
- // doListNextTok						// LB4B1:
- // 		LDA	,U
- // 		CMPA	#0x0D
- // 		LBEQ	doListPrintLFThenLoop
- // 		CMPA	#'"'
- // 		BNE	doListSkNotQuot2
- // 		EORA	ZP_LIST_F_QUO
- // 		STA	ZP_LIST_F_QUO			// Toggle quote flag
- // 		LDA	#'"'
- // doListQuoteLp2						// LB4C1
- // 		CALL	list_printA
- // 		LEAU	1,U
- // 		BRA	doListNextTok
- // doListSkNotQuot2					// LB4C7:
- // 		TST	ZP_LIST_F_QUO
- // 		BNE	doListQuoteLp2
- // 		CMPA	#tknLineNo
- // 		BNE	doList_sknotLineNo
- // 		LEAU	1,U
- // 		CALL	decodeLineNumber
- // 							//		STU ZP_TXTOFF - don't think this is needed any longer
- // 		CALL	int16print_AnyLen
- // 		BRA	doListNextTok			//		DB: changes to not restore Y as int16print not longer trashes it
- // doList_sknotLineNo					// LB4D9:
- // 		CMPA	#tknFOR
- // 		BNE	doList_sknotFOR
- // 		INC	ZP_LIST_FOR_LVL
- // doList_sknotFOR						// LB4DF:
- // 		CMPA	#tknREPEAT
- // 		BNE	doList_sknotREPEAT
- // 		INC	ZP_LIST_REP_LVL
- // doList_sknotREPEAT					// LB4E5:
- // 		CMPA	#tknREM
- // 		BNE	doList_sknotREM
- // 		STA	ZP_LIST_F_QUO
- // doList_sknotREM						//LB4EB:
- // 		CALL	doListPrintTokenA
- // 		LEAU	1,U
- // 		BRA	doListNextTok
+		li	a2, 0x01
+ 		li	a1, 1				// set to 0
+ 		li	a0, 1
+ 		jal	doLISTOSpaces			// LISTO1 - space after Line no
+ 		lb	a1, ZP_LIST_FOR_LVL(wp)
+ 		li	a2, 0x02
+ 		jal	doLISTOSpacesa0_1		// LISTO2 - NEXT indents
+ 		lb	a1, ZP_LIST_REP_LVL(wp)
+ 		li	a2, 0x04			// LISTO4 - REPEAT/UNTIL indents
+ 		jal	doLISTOSpacesa0_1
+ 		sb	zero, ZP_LIST_F_QUO(wp) 		
+doListNextTok2:						//LB4AF:
+		lw	tp, ZP_TXTPTR(wp)		// TODO reset Y pointer here?
+doListNextTok:						// LB4B1:
+		lbu	cu, 0(tp)
+		li	t0, 0x0D
+		beq	cu, t0,	doListPrintLFThenLoop
+		li	t0, '"'
+		bne	cu, t0,	doListSkNotQuot2
+		lbu	t0, ZP_LIST_F_QUO(wp)
+		xor	t0, t0, cu
+		sb	t0, ZP_LIST_F_QUO(wp)		// Toggle quote flag		
+doListQuoteLp2:						// LB4C1
+		jal	list_print_cu
+		addi	tp, tp, 1
+		j	doListNextTok
+doListSkNotQuot2:					// LB4C7:
+		lb	t0, ZP_LIST_F_QUO(wp)
+		bnez	t0, doListQuoteLp2
+		li	t0, tknLineNo
+		bne	cu, t0,	doList_sknotLineNo
+		addi	tp, tp, 1
+		jal	decodeLineNumber
+							//		STU ZP_TXTOFF - don't think this is needed any longer
+		jal	int16print_AnyLen
+		j	doListNextTok			//		DB: changes to not restore Y as int16print not longer trashes it
+doList_sknotLineNo:					// LB4D9:
+		li	t0, tknFOR
+		bne	cu, t0,	doList_sknotFOR
+		lbu	t0, ZP_LIST_FOR_LVL(wp)
+		addi	t0, t0, 1
+		sb	t0, ZP_LIST_FOR_LVL(wp)
+doList_sknotFOR:					// LB4DF:
+		li	t0, tknREPEAT
+		bne	cu, t0,	doList_sknotREPEAT
+		lbu	t0, ZP_LIST_REP_LVL(wp)
+		addi	t0, t0, 1
+		sb	t0, ZP_LIST_REP_LVL(wp)
+doList_sknotREPEAT:					// LB4E5:
+		li	t0, tknREM
+		bne	cu, t0, doList_sknotREM
+		sb	cu, ZP_LIST_F_QUO(wp)
+doList_sknotREM:					//LB4EB:
+		jal	doListPrintTokenA
+		addi	tp, tp, 1
+		j	doListNextTok
  // 
  // 
  // 			// cmdNEXT
@@ -8976,33 +8977,37 @@ list_print_a0:	li	a7, OS_WRCH
 		ecall
 		ret		
 
- // list_printA						// LBD94
- // 		TST	ZP_LISTO
- // 		BMI	list_printToVARTOP
- // list_printANoEDIT					// LBD98
- // 		CMPA	#0x0D
- // 		BNE	list_printCheckPRLINCOUNT
- // 		JSR	OSWRCH
- // 		JUMP	clearPRLINCOUNT
- // list_printToVARTOP					// LBDA2
- // 		STA	[ZP_VARTOP]			// store at VARTOP for EDIT
- // 		INC	ZP_VARTOP
- // 		BNE	rtsLBDC5
- // 		INC	ZP_VARTOP + 1
- // 		PSHS	A
- // 		LDA	ZP_VARTOP + 1
- // 		EORA	ZP_HIMEM + 1
- // 		BEQ	ResetVarsBrkNoRoom		// out of space for listing
- // 		PULS	A
- // 		RTS
- // doLISTOSpacesCLC					// LBDB3
- // 		CLC
- // doLISTOSpaces						// LBDB4
- // 		ANDA	ZP_LISTO
- // 		BEQ	rtsLBDC5
- // 		ROLB
- // 		BCS	rtsLBDC5	
- // 		BEQ	rtsLBDC5
+		// print char in cu
+//list_print_cu:						// LBD94
+//		TST	ZP_LISTO
+//		BMI	list_printToVARTOP
+//list_printANoEDIT					// LBD98
+//		li	t0, 0x0D
+//		bne	cu, t0,	list_printCheckPRLINCOUNT
+//		JSR	OSWRCH
+//		JUMP	clearPRLINCOUNT
+//list_printToVARTOP					// LBDA2
+//		STA	[ZP_VARTOP]			// store at VARTOP for EDIT
+//		INC	ZP_VARTOP
+//		BNE	rtsLBDC5
+//		INC	ZP_VARTOP + 1
+//		PSHS	A
+//		LDA	ZP_VARTOP + 1
+//		EORA	ZP_HIMEM + 1
+//		BEQ	ResetVarsBrkNoRoom		// out of space for listing
+//		PULS	A
+//		RTS
+doLISTOSpacesa0_1:					// LBDB3
+		li	a0, 1
+doLISTOSpaces:	
+		lbu	t0, ZP_LISTO(wp)		// LBDB4
+		and	t0, t0, a2
+		beqz	t0, rtsLBDC5
+		slli	a1, a1, 1
+		or	a1, a1, a0
+		andi	t0, a1, 0x100
+		bnez	t0, rtsLBDC5	
+		beqz	a1, rtsLBDC5
 list_printt2Spaces:			//LBDBF:
 		addi	sp, sp, -4
 		sw	ra, 0(sp)
@@ -9014,7 +9019,7 @@ list_printt2Spaces_lp:
 
 		lw	ra, 0(sp)
 		addi	sp, sp, 4
-		ret
+rtsLBDC5:	ret
 
  // //		
  // //		
