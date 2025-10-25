@@ -73,7 +73,7 @@ ZP_LIST_REP_LVL:	.space 1
 ZP_LIST_F_QUO:		.space 1
 ZP_LIST_F_SHO:		.space 1
 
-//	ZP_OPT:			.space 1
+ZP_OPT:			.space 1
 //	ZP_ASS_OPBUF:		.space 1	;; overlaps ZP_DUNNO, ZP_INT_WA stores opcode/postbytes being assembled
 //	ZP_DUNNO:		EQU $29 assembler
 ZP_STRBUFLEN:		.space 1
