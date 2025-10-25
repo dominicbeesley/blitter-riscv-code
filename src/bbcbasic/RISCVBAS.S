@@ -1395,16 +1395,13 @@ cmdCHAIN: NOTIMPL "cmdCHAIN"
  // 
  // 		CALL	loadProg2Page
  // 		BRA	L8F15
-cmdOLD: NOTIMPL "cmdOLD"
- // cmdOLD			// L8F00
- // 			//  OLD
- // 		CALL	scanNextStmtFromY
- // 		LDA	ZP_PAGE_H
- // 		LDB	#1
- // 		TFR	D,X
- // 		CLR	,X
- // 		CALL	findTOP
- // 		BRA	resetVarsImmedPrompt
+
+cmdOLD:			// L8F00
+		jal	scanNextStmtFromY
+		lw	t0, ZP_PAGE(wp)
+		sb	zero, 1(t0)
+		jal	findTOP
+		j	resetVarsImmedPrompt
 cmdRUN:
 		jal	scanNextStmtFromY
 L8F15:
@@ -7519,7 +7516,7 @@ doLIST:
 		jal	stackINT_WAasINT		// stack start line no
 		li	t0, 0x7FFF
 		sw	t0, ZP_INT_WA(wp)
-		lw	t0, LIST_FLAGS_A(wp)		// save for now
+		lw	t0, LIST_FLAGS_A(wp)		// get back indicator for valid first line no spec
 		blt	t0, zero, doListSkNoLineSpec
 		jal	skipSpacesCheckCommaAtYStepBack	// look for a comma, 
 		beq	cu, t0,	doListSkLineSpec2
@@ -9349,7 +9346,7 @@ deleteProgSetTOP:
 		sb	x0, ZP_TRACE(wp)
 		lw	t0, ZP_PAGE(wp)
 		li	t1, 0xFF0D		// 0 length program
-		sw	t1, 0(t0)		// store at page
+		sh	t1, 0(t0)		// store at page
 		addi	t0, t0, 2
 		sw	t0, ZP_TOP(wp)
 		ret
