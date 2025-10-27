@@ -8,10 +8,10 @@
 
 ////// COMMON REGS names - tokenizer, interpreter
 	// text pointer
-#define tp s0
-#define tp2 s2
+#define tp s10
+#define tp2 s9
 	// current char
-#define cu s1
+#define cu s11
 
 
 ////// GLOBAL REGS
@@ -53,6 +53,22 @@ msg\@:		.asciz	"\str"
 		lw 	sp, NEW_WKSP_SP(wp)
 		.endm
 
+
+		.macro ENTER n
+		addi	sp, sp, -(\n + 4)
+		sw	ra, \n(sp)
+		.endm
+
+		.macro LEAVE n
+		lw	ra, \n(sp)
+		addi	sp, sp, (\n + 4)
+		ret
+		.endm
+
+		.macro UNSTACK n
+		lw	ra, \n(sp)
+		addi	sp, sp, (\n + 4)
+		.endm
 		
 		.section .text
 
@@ -1530,10 +1546,10 @@ cmdREM: NOTIMPL "cmdREM"
  // 		LBEQ	cmdEXTEq
  // 		CMPA	#'='
  // 		BEQ	cmdEquals
- // decYGoScanNextContinue					// L9000
- // 		LEAU  -1,U
- // scanNextContinue					// L9002
- // 		CALL	scanNextStmtFromY		//  Return to execution loop
+decYGoScanNextContinue:					// L9000
+		addi	tp, tp, -1
+scanNextContinue:					// L9002
+		jal	scanNextStmtFromY		//  Return to execution loop
 continue:	NOTIMPL "continue"
  // continue					// L9005
  // 		LDA   	,U
@@ -1780,164 +1796,169 @@ cmdPRINTHASH_exit: NOTIMPL "cmdPRINTHASH_exit"
  // 
  // //			//  PRINT (<print items>)
  // //			//  =====================
-cmdPRINT: NOTIMPL "cmdPRINT"
- // cmdPRINT
- // 		CALL	skipSpacesCheckHashAtYStepBack
- // 		BEQ	cmdPRINT_HASH			// Get next non-space char, if '#' jump to do PRINT#
- // 		BRA	cmdPRINT_skStart		//  Jump into PRINT loop
- // 
- // cmdPRINT_setHexFlagFromCarry2
- // 		SEC
- // 		BRA	cmdPRINT_setHexFlagFromCarry
- // 
- // //			//  Print a comma
- // //			//  -------------
- // cmdPRINT_padToNextField					// L9196
- // 		LDA	BASWKSP_INTVAR + 3		// get low byte of @%
- // 		BEQ	cmdPRINT_skStart		//  If field width zero, no padding needed, jump back into main loop
- // 		LDA	ZP_PRLINCOUNT			//  Get COUNT
- // cmdPRINT_padToNextField_lp				// L919D
- // 		BEQ	cmdPRINT_skStart		//  Zero, just started a new line, no padding, jump back into main loop
- // 		SUBA	BASWKSP_INTVAR + 3		//  Get COUNT-field width
- // 		BCC	cmdPRINT_padToNextField_lp	//  Loop to reduce until (COUNT MOD fieldwidth)<0
- // 		TFR	A,B				//  B=-number of spaces to get back to (COUNT MOD width)=zero
- // cmdPRINT_padToNextField_lp2				// L91A5
- // 		CALL	list_print1Space
- // 		INCB
- // 		BNE	cmdPRINT_padToNextField_lp2	// Loop to print required spaces
- // cmdPRINT_skStart					// L91AB
- // 		
- // 		LDA	BASWKSP_INTVAR + 3		// Get @%
- // 		STA	ZP_PRINTBYTES			// Set current field width from @%
- // 		CLC					// Prepare to print decimal
- // cmdPRINT_setHexFlagFromCarry				// L91B1
- // 		ROR	ZP_PRINTFLAG			// Set hex/dec flag from Carry
- // cmdPRINT_lp1						// L91B1
- // 		CALL	skipSpacesY			// Get next non-space character
- // 		CMPA	#':'
- // 		BEQ	cmdPRINT_endcmd			// End of statement if <colon> found
- // 		CMPA	#0x0D
- // 		BEQ	cmdPRINT_endcmd			// End if statement if <cr> found
- // 		CMPA	#tknELSE
- // 		BNE	cmdPRINT_sk0			// Not 'ELSE', jump to check this item
- // 
- // //			//  End of PRINT statement
- // //			//  ----------------------
- // cmdPRINT_endcmd						// L91C2
- // 		CALL 	PrintCRclearPRLINCOUNT		// Output new line and set COUNT to zero
- // cmdPRINT_endcmd_noCR					// L91C5
- // 		JUMP	decYGoScanNextContinue		// Check end of statement, return to execution loop
- // cmdPRINT_lp2_checkendcmd				// L91C8
- // 		CLR	ZP_PRINTBYTES			//TODO: work out if BEQ->LBRA's below are better / shorter/faster than straight LBEQ's
- // 		CLR	ZP_PRINTFLAG			//  Set current field to zero, hex/dec flag to decimal
- // 		CALL	skipSpacesY			//  Get next non-space character
- // 		CMPA	#':'
- // 		BEQ	cmdPRINT_endcmd_noCR		//  <colon> found, finish printing
- // 		CMPA	#0x0D
- // 		BEQ	cmdPRINT_endcmd_noCR		//  <cr> found, finish printing
- // 		CMPA	#tknELSE
- // 		BEQ	cmdPRINT_endcmd_noCR		//  'ELSE' found, finish printing
- // 
- // //			//  Otherwise, continue into main loop
- // cmdPRINT_sk0						// L91DB
- // 		CMPA 	#'~'
- // 		BEQ	cmdPRINT_setHexFlagFromCarry2	// Jump back to set hex/dec flag from Carry
- // 		CMPA	#','
- // 		BEQ 	cmdPRINT_padToNextField		// Jump to pad to next print field
- // 		CMPA	#'//'
- // 		BEQ 	cmdPRINT_lp2_checkendcmd	// Jump to check for end of print statement
- // 		CALL	cmdPRINT_checkaposTABSPC
- // 		BCC	cmdPRINT_lp1			// Check for ' TAB SPC, if print token found return to outer main loop
- // 
- // //			//  All print formatting have been checked, so it now must be an expression
- // //			//  -----------------------------------------------------------------------
- // 		LDD	ZP_PRINTBYTES			// TODO: assumes order ZP_PRINTBYTES precedes ZP_PRINTFLAG
- // //// removed//		LDB	ZP_PRINTFLAG
- // 		PSHS	D
- // //			//  Save field width and flags, as evaluator
- // //			//   may call PRINT (eg FN, STR0x, etc.)
- // 		LEAU	-1,U
- // 		CALL	evalAtY				// Evaluate expression
- // 		PULS	D				// Restore field width and flags
- // 		STD	ZP_PRINTBYTES
- // //// removed//		STB	ZP_PRINTFLAG
- // 		TST	ZP_VARTYPE			// DB - was from Y
- // 		BEQ	cmdPRINT_printString		// If type=0, jump to print string
- // 		CALL	cmdPRINT_num2str		// Convert Numeric value to string
- // 		LDA	ZP_PRINTBYTES			// Get current field width
- // 		SUBA	ZP_STRBUFLEN			// A=width-stringlength
- // 		BLS	cmdPRINT_printString		// length>=width - print it
- // 		TFR	A,B				// B=number of spaces needed
- // cmdPRINT_padlp1						// L9211
- // 		CALL	list_print1Space
- // 		DECB
- // 		BNE	cmdPRINT_padlp1			//  Loop to print required spaces
- // 
- // //			//  Print string in string buffer
- // //			//  -----------------------------
- // cmdPRINT_printString
- // 		LDB	ZP_STRBUFLEN
- // 		BEQ	cmdPRINT_lp1			// Null string, jump back to main loop
- // 		LDX	#BAS_StrA
- // cmdPRINT_printString_lp					// L921D
- // 		LDA 	,X+
- // 		CALL	list_printANoEDIT		// Print the character from string buffer
- // 		DECB
- // 		BNE	cmdPRINT_printString_lp		//  Increment pointer, loop for full string
- // 		BRA	cmdPRINT_lp1			//  Jump back to main loop
- // 
- // 
- // cmdPRINT_TAB_comma					// L922D
- // 		LDA	ZP_INT_WA + 3			//  Save current value
- // 		PSHS	A
- // 		CALL	evalL1BracketAlreadyOpenConvert2INT	//  Evaluate next integer, check for closing bracket
- // 		LDA	#0x1F
- // 		JSR	OSWRCH				//  VDU 31 - Set cursor position
- // 		PULS	A				//  Get first parameter back
- // 		JSR	OSWRCH				//  Send X parameter
- // 		CALL	doVDUChar_fromWA3		//  Send Y parameter from integer accumulator
- // 		BRA	rtsCLC_L926A
- // 
- // 			//  Clear carry flag, Set PTR A offset = PTR B offset and exit
- // 			//  PRINT TAB()
- // 			//  -----------
- // cmdPRINT_TAB						// L9241
- // 		CALL	evalAtYcheckTypeInAConvert2INT	// Get Integer result of expression
- // 		CALL	skipSpacesCheckCommaAtY		// Get next non-space character, compare with ','
- // 		BEQ	cmdPRINT_TAB_comma		// Comma, jump to TAB(x,y)
- // 		CMPA	#')'				// Check for closing bracket
- // 		LBNE	brkMissingComma			// Jump to give "Missing )" error
- // 		LDA	ZP_INT_WA + 3			// Get value
- // 		SUBA	ZP_PRLINCOUNT			// A=tab-COUNT
- // 		BEQ	rtsCLC_L926A			// No spaces needed, jump to clear carry, update and return
- // 		TFR	A,B				// B=number of spaces needed
- // 		BCS	cmdPRINT_B_SPACESCLCRTS		// Output X number of spaces, clear carry, update and return
- // 		CALL	PrintCRclearPRLINCOUNT		// Start new output line
- // 		BRA	cmdPRINT_SPACESatZP_INT_WA_3	// Output ?2A number of spaces, clear carry, update and return
- // 
- // //			//  PRINT SPC()
- // //			//  -----------
- // cmdPRINT_SPC						// L925B
- // 		CALL	evalLevel1checkTypeStoreAsINT	// Evaluate integer
- // cmdPRINT_SPACESatZP_INT_WA_3				// L925E
- // 		LDB	ZP_INT_WA + 3			// Get returned value
- // 		BEQ	rtsCLC_L926A			// If zero, clear carry, update and return
- // cmdPRINT_B_SPACESCLCRTS					// L9262
- // 		CALL	list_printt2Spaces		// Output X number of Spaces
- // 		BRA	rtsCLC_L926A			// Clear carry, update and return
- // 
- // //			//  PRINT '
- // //			//  -------
- // cmdPRINT_CR					// L9267
- // 			CALL PrintCRclearPRLINCOUNT			//  Output a new line
- // //			//  Clear carry, update and return
- // //			//  ------------------------------
- // rtsCLC_L926A		
- // 		CLC
- // //		//////// REMOVED	BRA copyTXTOFF2toTXTOFF			//  Update PTR A offset = PTR B offset and return
- // 		RTS
- // //		
- // //	
+cmdPRINT:
+		jal	skipSpacesCheckHashAtYStepBack
+		beq	cu, t0,	cmdPRINT_HASH		// Get next non-space char, if '#' jump to do PRINT#
+		j	cmdPRINT_skStart		//  Jump into PRINT loop
+
+cmdPRINT_setHexFlag:
+ 		li	t0, -1
+ 		j	cmdPRINT_setHexFlagFromt0
+
+//			//  Print a comma
+//			//  -------------
+cmdPRINT_padToNextField:				// L9196
+		lbu	t0, BASWKSP_INTVAR(wp)		// get low byte of @%
+		beqz	t0, cmdPRINT_skStart		//  If field width zero, no padding needed, jump back into main loop
+		lbu	s1, ZP_PRLINCOUNT(wp)		//  Get COUNT
+cmdPRINT_padToNextField_lp:				// L919D
+		beqz	s1, cmdPRINT_skStart		//  Zero, just started a new line, no padding, jump back into main loop
+		sub	s1, s1, t0			//  Get COUNT-field width
+		blt	zero, s1, cmdPRINT_padToNextField_lp	//  Loop to reduce until (COUNT MOD fieldwidth)<0
+cmdPRINT_padToNextField_lp2:				// L91A5
+		jal	list_print1Space
+		addi	s1, s1, 1
+		bnez	s1, cmdPRINT_padToNextField_lp2	// Loop to print required spaces
+cmdPRINT_skStart:					// L91AB
+		lbu	t0, BASWKSP_INTVAR(wp)		// Get @%
+		sb	t0, ZP_PRINTBYTES(wp)		// Set current field width from @%
+		li	t0, 0				// Prepare to print decimal
+cmdPRINT_setHexFlagFromt0:				// L91B1
+		sb	t0, ZP_PRINTFLAG(wp)		// Set hex/dec flag from Carry
+cmdPRINT_lp1:						// L91B1
+		jal	skipSpacesY			// Get next non-space character
+		li	t0, ':'
+ 		beq	cu, t0,	cmdPRINT_endcmd			// End of statement if <colon> found
+		li	t0, 0x0D
+		beq	cu, t0,	cmdPRINT_endcmd			// End if statement if <cr> found
+		li	t0, tknELSE
+		bne	cu, t0,	cmdPRINT_sk0			// Not 'ELSE', jump to check this item
+
+		//  End of PRINT statement
+		//  ----------------------
+cmdPRINT_endcmd:					// L91C2
+		jal 	PrintCRclearPRLINCOUNT		// Output new line and set COUNT to zero
+cmdPRINT_endcmd_noCR:					// L91C5
+		j	decYGoScanNextContinue		// Check end of statement, return to execution loop
+
+
+		// had a semi colon, check if end of print and dont do <CR>
+cmdPRINT_lp2_checkendcmd:				// L91C8
+		sb	zero, ZP_PRINTBYTES(wp)		
+		sb	zero, ZP_PRINTFLAG(wp)		//  Set current field to zero, hex/dec flag to decimal
+		jal	skipSpacesY			//  Get next non-space character
+		li	t0,  ':'
+		beq	cu, t0,	cmdPRINT_endcmd_noCR	//  <colon> found, finish printing
+		li	t0,  0x0D
+		beq	cu, t0,	cmdPRINT_endcmd_noCR	//  <cr> found, finish printing
+		li	t0,  tknELSE
+		beq	cu, t0,	cmdPRINT_endcmd_noCR	//  'ELSE' found, finish printing
+
+//			//  Otherwise, continue into main loop
+cmdPRINT_sk0:						// L91DB
+		li	t0, '~'
+		beq	cu, t0, cmdPRINT_setHexFlag	// Jump back to set hex/dec flag 
+		li	t0, ','
+		beq	cu, t0, cmdPRINT_padToNextField	// Jump to pad to next print field
+		li	t0, ';'
+		beq	cu, t0, cmdPRINT_lp2_checkendcmd// Jump to check for end of print statement
+		jal	cmdPRINT_checkaposTABSPC
+		beqz	a0, cmdPRINT_lp1		// Check for ' TAB SPC, if print token found return to outer main loop
+
+
+//			//  All print formatting have been checked, so it now must be an expression
+//			//  -----------------------------------------------------------------------
+
+		lbu	s0, ZP_PRINTBYTES(wp)
+		lbu	s1, ZP_PRINTFLAG(wp)
+
+		//  Save field width and flags, as evaluator
+		//   may call PRINT (eg FN, STR0x, etc.)
+		addi	tp, tp, -1
+		jal	evalAtY					// Evaluate expression
+		sb	s0, ZP_PRINTBYTES(wp)
+		sb	s1, ZP_PRINTFLAG(wp)
+
+		lb	t0, ZP_VARTYPE(wp)
+		beqz	t0, cmdPRINT_printString		// If type=0, jump to print string
+		jal	cmdPRINT_num2str			// Convert Numeric value to string
+		lbu	t0, ZP_PRINTBYTES(wp)			// Get current field width
+		lbu	s1, ZP_STRBUFLEN(wp)			// A=width-stringlength
+		sub	s1, t0, s1
+		bltu	s1, zero, cmdPRINT_printString		// length>=width - print it
+								// s1=number of spaces needed
+cmdPRINT_padlp1:						// L9211
+		jal	list_print1Space
+		addi	s1, s1, -1	
+		bnez	s1, cmdPRINT_padlp1			//  Loop to print required spaces
+
+		//  Print string in string buffer
+		//  -----------------------------
+cmdPRINT_printString:
+		lbu	a2, ZP_STRBUFLEN(wp)
+		beqz	a2, cmdPRINT_lp1			// Null string, jump back to main loop
+		addi	a1, wp, BAS_StrA
+cmdPRINT_printString_lp:					// L921D
+		lbu	a0, 0(a1)
+		addi	a1, a1, 1
+		jal	list_printA0NoEDIT			// Print the character from string buffer
+		addi	a2, a2, -1
+		bnez	a2, cmdPRINT_printString_lp		//  Increment pointer, loop for full string
+		j	cmdPRINT_lp1				//  Jump back to main loop
+
+
+cmdPRINT_TAB_comma:						// L922D
+		lbu	s0, ZP_INT_WA(wp)			//  Save current value
+		jal	evalL1BracketAlreadyOpenConvert2INT	//  Evaluate next integer, check for closing bracket
+		li	a0, 0x1F
+		jal	OSWRCH					//  VDU 31 - Set cursor position
+		mv	a0, s0					//  Get first parameter back
+		jal	OSWRCH					//  Send X parameter
+		jal	doVDUChar_fromWA			//  Send Y parameter from integer accumulator
+		j	rtsCLC_L926A
+
+			//  Clear carry flag, Set PTR A offset = PTR B offset and exit
+			//  PRINT TAB()
+			//  -----------
+cmdPRINT_TAB:	ENTER 0					// L9241
+
+		jal	evalAtYcheckTypeInAConvert2INT		// Get Integer result of expression
+		jal	skipSpacesCheckCommaAtY			// Get next non-space character, compare with ','
+		beq	cu, t0, cmdPRINT_TAB_comma		// Comma, jump to TAB(x,y)
+		li	t0, ')'					// Check for closing bracket
+		bne	cu, t0,	brkMissingEndBracket		// Jump to give "Missing )" error
+		lbu	t0, ZP_INT_WA(wp)			// Get value
+		lbu	t1, ZP_PRLINCOUNT(wp)			// A=tab-COUNT
+		sub	a2, t0, t1
+		beqz	a2, rtsCLC_L926A			// No spaces needed, jump to clear carry, update and return
+		bge	a2, zero, cmdPRINT_a2_SPACESCLCRTS	// Output X number of spaces, clear carry, update and return
+		jal	PrintCRclearPRLINCOUNT			// Start new output line
+		j	cmdPRINT_SPACESatWA			// Output INT_WA number of spaces, clear carry, update and return
+
+			//  PRINT SPC()
+			//  -----------
+cmdPRINT_SPC:		
+		ENTER	0				// L925B
+		jal	evalLevel1checkTypeStoreAsINT	// Evaluate integer
+cmdPRINT_SPACESatWA:					// L925E
+		lbu	a2, ZP_INT_WA(wp)		// Get returned value
+		beqz	a2, rtsCLC_L926A		// If zero, clear carry, update and return
+cmdPRINT_a2_SPACESCLCRTS:				// L9262
+		jal	list_printa2Spaces		// Output X number of Spaces
+		j	rtsCLC_L926A			// Clear carry, update and return
+
+		//  PRINT '
+		//  -------
+cmdPRINT_CR:						// L9267
+		ENTER	0
+		jal 	PrintCRclearPRLINCOUNT		//  Output a new line
+		//  Clear a0, update and return
+		//  ------------------------------
+rtsCLC_L926A:	
+		li	a0, 0	
+		LEAVE	0
+//		
+//	
  // 
  // decUEvalForceINT
  // 		LEAU	-1,U
@@ -1949,25 +1970,25 @@ cmdPRINT: NOTIMPL "cmdPRINT"
  // 		STU	ZP_TXTPTR2
  // 		RTS
  // 
- // //			//  Check special print formatting ' TAB( SPC
- // //			//  -----------------------------------------
- // cmdPRINT_checkaposTABSPC				// L927A
- // //// REMOVED	//		LDX ZP_TXTPTR
- // //// REMOVED	//		STX ZP_TXTPTR2
- // //// REMOVED	//		LDX ZP_TXTPTR + 1
- // //// REMOVED	//		STX ZP_TXTPTR2 + 1
- // //// REMOVED	//		LDX ZP_TXTOFF
- // //// REMOVED	//		STX ZP_TXTOFF2
- // 		CMPA	#'''
- // 		BEQ	cmdPRINT_CR			//  Current char is "'", jump to print newline
- // 		CMPA	#tknTAB
- // 		BEQ	cmdPRINT_TAB			//  Current char 'TAB(', jump to do TAB()
- // 		CMPA	#tknSPC
- // 		BEQ	cmdPRINT_SPC			//  Current char 'SPC', jump to do SPC()
- // rtsSEC_L9292
- // 		SEC					//  Flag 'not formatting token'
- // rtsL9293
- // 		RTS
+//			//  Check special print formatting ' TAB( SPC
+//			//  -----------------------------------------
+cmdPRINT_checkaposTABSPC:				// L927A
+//// REMOVED	//		LDX ZP_TXTPTR
+//// REMOVED	//		STX ZP_TXTPTR2
+//// REMOVED	//		LDX ZP_TXTPTR + 1
+//// REMOVED	//		STX ZP_TXTPTR2 + 1
+//// REMOVED	//		LDX ZP_TXTOFF
+//// REMOVED	//		STX ZP_TXTOFF2
+		li	t0, '\''
+		beq	cu, t0,	cmdPRINT_CR			//  Current char is "'", jump to print newline
+		li	t0, tknTAB
+		beq	cu, t0, cmdPRINT_TAB			//  Current char 'TAB(', jump to do TAB()
+		li	t0, tknSPC
+		beq	cu, t0, cmdPRINT_SPC			//  Current char 'SPC', jump to do SPC()
+rtsSEC_L9292:	
+		li	a0, -1					//  Flag 'not formatting token'
+rtsL9293:
+		ret
 brkMissingQuote:						// L9294
 		DO_BRK_B
 		.word	0x09
@@ -1987,7 +2008,7 @@ brkMissingQuote:						// L9294
  // 		CMPA	,U				// double " 
  // 		BNE	rtsCLC_L926A
  // 		LEAU	1,U
- // 1		CALL	list_printANoEDIT
+ // 1		CALL	list_printA0NoEDIT
  // 		BRA	2B
 cmdCALL: NOTIMPL "cmdCALL"
  // cmdCALL			// L92BE!
@@ -2533,17 +2554,20 @@ varSetTime_Dollar: NOTIMPL "varSetTime_Dollar"
  // 	ENDIF
  // evalstackStringExpectINTCloseBracket			// L96A4
  // 		CALL	StackString
- // evalL1BracketAlreadyOpenConvert2INT				// L96A7
+evalL1BracketAlreadyOpenConvert2INT:				// L96A7
+		NOTIMPL "evalL1BracketAlreadyOpenConvert2INT"
  // 		CALL	evalL1BracketAlreadyOpen
  // 		BRA	checkTypeInAConvert2INT
  // checkCommaThenEvalAtYcheckTypeInAConvert2INT		// L96AC
  // 		CALL	skipSpacesCheckCommaAtYOrBRK
  // 
- // evalAtYcheckTypeInAConvert2INT				// L96AF
+evalAtYcheckTypeInAConvert2INT:				// L96AF
+	NOTIMPL "evalAtYcheckTypeInAConvert2INT"
  // 		CALL	evalAtY
  // 		BRA	checkTypeInAConvert2INT
  // 
- // evalLevel1checkTypeStoreAsINT
+evalLevel1checkTypeStoreAsINT:
+	NOTIMPL "evalLevel1checkTypeStoreAsINT"
  // 		CALL	evalLevel1
  // 		BRA	checkTypeInAConvert2INT
  // //			//  Evaluate =<integer>
@@ -2715,7 +2739,7 @@ cmdPLOT: NOTIMPL "cmdPLOT"
  // 		JSR	OSWRCH
  // 		LDA	ZP_GEN_PTR + 2
  // 		JSR	OSWRCH
- // 		CALL	doVDUChar_fromWA3
+ // 		CALL	doVDUChar_fromWA
  // 		LDA	ZP_INT_WA + 2
  // 		BRA	OSWRCH_then_continue
  // 
@@ -2763,7 +2787,7 @@ cmdVDU: NOTIMPL "cmdVDU"
  // 		CMPA	#tknELSE
  // 		BEQ	skVDUend
  // 		CALL	decUEvalForceINT
- // 		CALL	doVDUChar_fromWA3
+ // 		CALL	doVDUChar_fromWA
  // 		CALL	skipSpacesCheckCommaAtY
  // 		BEQ	cmdVDU
  // 		CMPA	#'//'
@@ -2779,9 +2803,11 @@ cmdVDU: NOTIMPL "cmdVDU"
  // 		BRA	cmdVDU
  // skVDUend						//L983D
  // 		JUMP	decYGoScanNextContinue
- // doVDUChar_fromWA3					//L9840:
- // 		LDA	ZP_INT_WA + 3
- // 		JMP	OSWRCH
+doVDUChar_fromWA:					//L9840:
+		lbu	a0, ZP_INT_WA(wp)
+OSWRCH:		li	a7, OS_WRCH
+		ecall
+		ret
  // 
  // 
  // allocFNPROC	PSHS	U
@@ -3414,11 +3440,11 @@ cmdIF: NOTIMPL "cmdIF"
  // 		CMPD	ZP_MAXTRACLINE
  // 		BHS	L9C01rts
  // 		LDA	#'['
- // 		CALL	list_printANoEDIT
+ // 		CALL	list_printA0NoEDIT
  // 		CALL	int16print_AnyLen
  // 
  // 		LDA	#']'
- // 		CALL	list_printANoEDIT
+ // 		CALL	list_printA0NoEDIT
  // 		JUMP	list_print1Space
  // 
  // evalDoComparePopIntFromMachineStackConvertToRealAndCompare
@@ -3546,46 +3572,61 @@ cmdIF: NOTIMPL "cmdIF"
  // 		PSHS	CC
  // 		CALL	unstackString
  // 		PULS	CC,B,U,PC
- // //			// //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
- // //			// ////									   ////
- // //			// //// EXPRESSION EVALUATOR						   ////
- // //			// //// --------------------						   ////
- // //			// //// Recursively calls seven expression levels, evaluating expressions at  ////
- // //			// //// each level, looping within each level until all operators at that	   ////
- // //			// //// level are exhausted.						   ////
- // //			// ////									   ////
- // //			// //// On entry, Y=>start of expression to evaluate			   ////
- // //			// //// On exit,  Y=>first character after evaluated expression		   ////
- // //			// ////	       0x2A/B/C/D = returned value				   ////
- // //			// ////	       A,ZP_VARTYPE=type					   ////
- // //			// ////		 ZP_FPB + 5 - integer				   ////
- // //			// ////									   ////
- // //			// //// Within the evaluator, B=next character, A=current type		   ////
- // //			// //// X trampled								   ////
- // //			// //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
- // 			// internally changed so that next token is in B instead of X
- // evalExpressionMAIN
- // //		LDA ZP_TXTPTR
- // //		STA ZP_TXTPTR2
- // //		LDA ZP_TXTPTR + 1
- // //		STA ZP_TXTPTR2 + 1
- // //		LDA ZP_TXTOFF
- // //		STA ZP_TXTOFF2
- // 
- // //			//  Evaluator Level 7 - OR, EOR
- // //			//  ===========================
- // evalAtY		CALL	 evalLevel6			//  Call Level 6 Evaluator - AND
- // evalLevel7lp0
- // 		CMPB	 #tknOR
- // 		BEQ	 evalLevel7OR			//  Jump to do OR
- // 		CMPB	 #tknEOR
- // 		BEQ	 evalLevel7EOR			//  Jump to do EOR
- // 		STA	 ZP_VARTYPE
- // 		LEAU	 -1,U
- // 		RTS					//  Store type in ZP_VARTYPE and return
- // //			//  OR <numeric>
- // //			//  ------------
- // evalLevel7OR						// L9D4C
+
+
+	.macro	EVCALL dest
+		addi	sp, sp, -4
+		sw	ra, 0(sp)
+		jal	\dest
+		lw	ra, 0(sp)
+		addi	sp, sp, 4
+	.endm
+
+		// //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+		// ////									   ////
+		// //// EXPRESSION EVALUATOR						   ////
+		// //// --------------------						   ////
+		// //// Recursively calls seven expression levels, evaluating expressions at  ////
+		// //// each level, looping within each level until all operators at that	   ////
+		// //// level are exhausted.						   ////
+		// ////									   ////
+		// //// On entry, yp=>start of expression to evaluate			   ////
+		// //// On exit,  tp=>first character after evaluated expression		   ////
+		// ////	       0x2A/B/C/D = returned value				   ////
+		// ////	       A,ZP_VARTYPE=type					   ////
+		// ////		 ZP_FPB + 5 - integer				   ////
+		// ////									   ////
+		// //// cu = current char (tp), tt = current var type
+		// //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+			// internally changed so that next token is in B instead of X
+
+#define tt s0
+
+evalExpressionMAIN:
+//		LDA ZP_TXTPTR
+//		STA ZP_TXTPTR2
+//		LDA ZP_TXTPTR + 1
+//		STA ZP_TXTPTR2 + 1
+//		LDA ZP_TXTOFF
+//		STA ZP_TXTOFF2
+
+//			//  Evaluator Level 7 - OR, EOR
+//			//  ===========================
+evalAtY:
+		EVCALL	 evalLevel6			//  Call Level 6 Evaluator - AND
+evalLevel7lp0:
+
+		li	t0, tknOR
+		beq	cu, t0, evalLevel7OR			//  Jump to do OR
+		li	t0, tknEOR
+		beq	cu, t0, evalLevel7EOR			//  Jump to do EOR
+		sb	tt, ZP_VARTYPE(wp)
+		addi	tp, tp, -1
+		ret					//  Store type in ZP_VARTYPE and return
+			//  OR <numeric>
+			//  ------------
+evalLevel7OR:						// L9D4C
+ NOTIMPL "evalLevel7OR"
  // 		CALL	INTevalLevel6
  // 		CALL	checkTypeInAConvert2INT		//  Stack integer, call Level 6 Evaluator, ensure integer
  // 		PSHS	B
@@ -3614,7 +3655,8 @@ cmdIF: NOTIMPL "cmdIF"
  // 		BRA	evalLevel7lp0			//  Integer result, jump to check for more OR/EORs
  // //			//  EOR <numeric>
  // //			//  -------------
- // evalLevel7EOR						// L9D4C
+evalLevel7EOR:						// L9D4C
+	NOTIMPL "evalLevel7EOR"
  // 		CALL	INTevalLevel6
  // 		CALL	checkTypeInAConvert2INT		//  Stack integer, call Level 6 Evaluator, ensure integer
  // 		PSHS	B
@@ -3644,17 +3686,18 @@ cmdIF: NOTIMPL "cmdIF"
  // 		CALL   checkTypeInAConvert2INT
  // 		CALL   stackINT_WAasINT			//  Ensure number is integer and push onto stack
  // 
- // //			//  Evaluator Level 6 - AND
- // //			//  =======================
- // evalLevel6						// L9D81	
- // 		CALL	evalLevel5			//  Call Evaluator Level 5 - < <= = >= > <>
- // evalLevel6Lp0						// //L9D84:		
- // 		CMPB	#tknAND
- // 		BEQ	evalDoAND			//  Jump to do AND
- // 		RTS
- // //			//  AND <numeric>
- // //			//  -------------
- // evalDoAND						// L9D89
+//			//  Evaluator Level 6 - AND
+//			//  =======================
+evalLevel6:						// L9D81	
+		EVCALL	evalLevel5			//  Call Evaluator Level 5 - < <= = >= > <>
+evalLevel6Lp0:						// //L9D84:		
+		li	t0, tknAND
+		beq	cu, t0,	evalDoAND			//  Jump to do AND
+		ret
+		//  AND <numeric>
+		//  -------------
+evalDoAND:						// L9D89
+	NOTIMPL "evalDoAND"
  // 		CALL	 checkTypeInAConvert2INT
  // 		CALL	 stackINT_WAasINT		 //  Ensure number is integer and push onto stack
  // 		CALL	evalLevel5
@@ -3684,17 +3727,18 @@ cmdIF: NOTIMPL "cmdIF"
  // 		PULS	B
  // 		BRA	evalLevel6Lp0			//  Loop to check for more ANDs
  // 
- // //		// Evaluator Level 5 - < <= = >= > <>
- // //		// ==================================
- // evalLevel5	CALL	evalLevel4			//  Call Evaluator Level 4 - +, -
- // 		CMPB	#'>'
- // 		BHI	eval5rts			//  Not <,=,>, exit
- // 		CMPB	#'<'
- // 		BHS	evalComparison		//  <,=,>, evaluate comparison
- // eval5rts	RTS
+//		// Evaluator Level 5 - < <= = >= > <>
+//		// ==================================
+evalLevel5:	EVCALL	evalLevel4			//  Call Evaluator Level 4 - +, -
+		li	t0, '>'
+		bgtu	cu, t0,	eval5rts			//  Not <,=,>, exit
+		li	t0, '<'
+		bgeu	cu, t0, evalComparison		//  <,=,>, evaluate comparison
+eval5rts:	ret
  // //			//  <expression> <comparison> <expression>
  // //			//  --------------------------------------
- // evalComparison
+evalComparison:
+	NOTIMPL "evalComparison"
  // 		BEQ	evalCompLt1			//  '<' - check for <, <=, <>
  // 		CMPB	#'>'
  // 		BEQ	evalComplGt1			//  '>' - check for >, >=
@@ -3795,17 +3839,18 @@ brkStringTooLong:
  // 		BRA	_skEvalLevel4_noLevel3
  // //			//  Evaluator Level 4 - + -
  // //			//  =======================
- // evalLevel4						// L9E4C
- // 		CALL	evalLevel3			//  Call Evaluator Level 3 - * / DIV MOD
- // _skEvalLevel4_noLevel3					// L9E4F
- // 		CMPB	#'+'
- // 		BEQ	evalL4Plus			//  Jump to do +
- // 		CMPB	#'-'
- // 		BEQ	evalL4Minus			//  Jump to do -
- // 		RTS
+evalLevel4:						// L9E4C
+		EVCALL	evalLevel3			//  Call Evaluator Level 3 - * / DIV MOD
+_skEvalLevel4_noLevel3:					// L9E4F
+		li	t0, '+'
+		beq	cu, t0, evalL4Plus		//  Jump to do +
+		li	t0, '-'
+		beq	cu, t0, evalL4Minus			//  Jump to do -
+		ret
  // //			//  <expression> + <expression>
  // //			//  ---------------------------
- // evalL4Plus						// L9E58
+evalL4Plus:						// L9E58
+	NOTIMPL "evalL4Plus"
  // 		TSTA
  // 		BEQ	evalL4StringPlus		//  <string> +
  // 		BMI	evalL4RealPlus			//  <real> +
@@ -3861,7 +3906,8 @@ brkStringTooLong:
  // 
  // 		//  <expression> - <expression>
  // 		//  ---------------------------
- // evalL4Minus						// L9E58
+evalL4Minus:						// L9E58
+	NOTIMPL "evalL4Minus"
  // 		TSTA
  // 		LBEQ	brkTypeMismatch			//  <string> - Type mismatch
  // 		BMI	evalL4RealMinus			//  <real> -
@@ -3934,7 +3980,8 @@ brkStringTooLong:
  // 		
  // 		//  <expression> * <expression>
  // 		//  ---------------------------
- // Eval3Mul
+Eval3Mul:
+	NOTIMPL "Eval3Mul"
  // 		TSTA
  // 		BEQ	__skbrkTypeMismatch		// can't multiply a string
  // 		BMI	eval3Mul_StackRealEvalAndMul
@@ -4044,21 +4091,22 @@ brkStringTooLong:
  // //			//  ===============================
  // stackIntThenEvalL3					// L9FC4
  // 		CALL stackINT_WAasINT			//  Stack current integer
- // evalLevel3						// L9FC7
- // 		CALL	evalLevel2			//  Call Evaluator Level 2 - ^
- // _skevalLevel3noLevel2					// L9FCA
- // 		CMPB	#'*'
- // 		LBEQ	Eval3Mul			//  Jump with *
- // 		CMPB	#'/'
- // 		BEQ	evalL3DoRealDiv			//  Jump with /
- // 		CMPB	#tknMOD
- // 		BEQ	evalL3DoMOD			//  Jump with MOD
- // 		CMPB	#tknDIV
- // 		BEQ	evalL3DoDIV				//  Jump with DIV
- // 		RTS
+evalLevel3:						// L9FC7
+		EVCALL	evalLevel2			//  Call Evaluator Level 2 - ^
+_skevalLevel3noLevel2:					// L9FCA
+		li	t0, '*'
+		beq	cu, t0, Eval3Mul		//  Jump with *
+		li	t0, '/'
+		beq	cu, t0, evalL3DoRealDiv		//  Jump with /
+		li	t0, tknMOD
+		beq	cu, t0, evalL3DoMOD		//  Jump with MOD
+		li	t0, tknDIV
+		beq	cu, t0, evalL3DoDIV		//  Jump with DIV
+		ret
  // //			//  <expression> / <expression>
  // //			//  ---------------------------
- // evalL3DoRealDiv						// L9FDB
+evalL3DoRealDiv:					// L9FDB
+	NOTIMPL "evalL3DoRealDiv"
  // 		CALL	checkTypeIntToReal
  // 		CALL	fpStackWAtoStackReal		// Error if string, ensure real, stack real
  // 		CALL	evalLevel2			// Call Evaluator Level 2 - ^
@@ -4070,7 +4118,8 @@ brkStringTooLong:
  // 		BRA	divmodfinish
  // //			//  <expression> MOD <expression>
  // //			//  -----------------------------
- // evalL3DoMOD						// L9FF5
+evalL3DoMOD:						// L9FF5
+	NOTIMPL "evalL3DoMOD"
  // 		CALL	evalDoIntDivide
  // 		LDX	#ZP_INT_WA_C
  // 		CALL	intLoadWAFromX
@@ -4078,7 +4127,8 @@ brkStringTooLong:
  // 		BRA	divmodNegateWAifMI
  // //			//  <expression> DIV <expression>
  // //			//  -----------------------------
- // evalL3DoDIV						// L9FFD
+evalL3DoDIV:						// L9FFD
+	NOTIMPL "evalL3DoDIV"
  // 		CALL	evalDoIntDivide
  // 		ROL	ZP_INT_WA_B + 3
  // 		ROL	ZP_INT_WA_B + 2
@@ -4092,18 +4142,20 @@ brkStringTooLong:
  // //			//  =====================
  // stackINTEvalLevel2					// LA00F
  // 		CALL stackINT_WAasINT			// Stack current integer
- // evalLevel2						// LA012
- // 		CALL evalLevel1				// Call Evaluator Level 1 - everything else
- // evalLevel2again						// LA015
- // evalL2lp1	LDB	,U+
- // 		CMPB	#' '
- // 		BEQ	evalL2lp1			//  Skip spaces
- // 		CMPB	#'^'
- // 		BEQ	evalDoCARET			//  Jump with ^
- // 		RTS
+evalLevel2:						// LA012
+		EVCALL evalLevel1				// Call Evaluator Level 1 - everything else
+evalLevel2again:					// LA015
+evalL2lp1:	lbu	cu, 0(tp)
+		addi	tp, tp, 1
+		li	t0, ' '
+		beq	cu, t0,	evalL2lp1		//  Skip spaces
+		li	t0, '^'
+		beq	cu, t0, evalDoCARET		//  Jump with ^
+		ret
  // //			//  <expression> ^ <expression>
  // //			//  ---------------------------
- // evalDoCARET						//LA027:
+evalDoCARET:						//LA027:
+	NOTIMPL "evalDoCARET"
  // 		CALL 	checkTypeIntToReal
  // 		CALL 	fpStackWAtoStackReal
  // 		CALL 	evalLevel1ConvertReal
@@ -4212,7 +4264,7 @@ i16_sk1:
  		beqz	t0, int16_printDigits
  		sub	t2, t0, t1
 		ble	t2, zero, int16_printDigits
-		jal	list_printt2Spaces
+		jal	list_printa2Spaces
 int16_printDigits:				//LA0BF:
 		lbu	a0, 0(a1)
 		addi	a1, a1, -1
@@ -4229,7 +4281,8 @@ int16_printDigits:				//LA0BF:
  // 
  // //			//  Convert number to hex string
  // //			//  ----------------------------
- // cmdPRINT_num2str_hex					// LA0CA
+cmdPRINT_num2str_hex:					// LA0CA
+		NOTIMPL "cmdPRINT_num2str_hex"
  // 		PSHS	U
  // 		TST	ZP_VARTYPE			// real?
  // 		BPL	1F				// no
@@ -4295,7 +4348,8 @@ int16_printDigits:				//LA0BF:
  // //			//		ZP_PRINTFLAG[7]	= 1 if hex
  // //			//  On exit,  StrA contains string version of number
  // //			//
- // cmdPRINT_num2str					// LA118
+ cmdPRINT_num2str:					// LA118
+ 	NOTIMPL "cmdPRINT_num2str"
  // 		LDB	BASWKSP_INTVAR + 1		//  Get @% format byte
  // 		CMPB	#0x03
  // 		BCS	cmdPRINT_num2str_skFMTOK	//  Use it if valid
@@ -6342,9 +6396,10 @@ fnABS: NOTIMPL "fnABS"
  // 1		LDA #0xFF
  // 		RTS					//  Return real
  // 
- // //			//  -<value>
- // //			//  --------
- // evalLevel1UnaryMinus
+			//  -<value>
+			//  --------
+evalLevel1UnaryMinus:
+	NOTIMPL "evalLevel1UnaryMinus"
  // 		CALL	evalLevel1UnaryPlus		//  Call Level 1 Evaluator, get next value
  // evalLevel1CheckNotStringAndNegate			// LACDA
  // 		LBEQ	brkTypeMismatch			//  -<string> - Type mismatch
@@ -6389,49 +6444,52 @@ fnABS: NOTIMPL "fnABS"
  // 		STB	ZP_STRBUFLEN
  // 		LDA #0x00
  // 		RTS
- // //			//  String value
- // //			//  ------------
- // evalLevel1StringLiteral				//LAD19:
- // 		LDX 	#BAS_StrA
- // evalLevel1StringLiteral_lp			//LAD1C:
- // 		LDA 	,U+
- // 		CMPA	#0x0D
- // 		LBEQ	brkMissingQuote
- // 		STA	,X+
- // 		CMPA	#'"'
- // 		BNE	evalLevel1StringLiteral_lp
- // 		LDA	,U+
- // 		CMPA	#'"'
- // 		BEQ	evalLevel1StringLiteral_lp
- // 		LEAU	-1,U
- // 		TFR	X,D
- // 		DECB
- // 		STB	ZP_STRBUFLEN
- // 		CLRA
- // 		RTS
- // //		
- // //			//  Evaluator Level 1 - 0x - + () " ? ! | 0x function variable
- // //			//  ========================================================
- // //			//  Evaluate a value - called by functions for value parameters
- // //			//
- // evalLevel1						// LAD36
- // 		// TODO: Could call skipSpacesY here - but this is called a lot so maybe best to 
- // 		// leave as is for now? - tried this and it reduced clocksp noticeably
- // 		LDA	,U+				//  Get next character
- // 		CMPA	#' '
- // 		BEQ	evalLevel1			//  Skip spaces
- // 		CMPA	#'-'
- // 		BEQ	evalLevel1UnaryMinus		//  Unary minus
- // 		CMPA	#'"'
- // 		BEQ	evalLevel1StringLiteral		//  String
- // 		CMPA	#'+'
- // 		BNE	_sk2NotUnPlus			//  Not unary plus
- // //			
- // //		//  +<value>
- // //		//  --------		   
- // evalLevel1UnaryPlus					// LAD4C
- // 		CALL	skipSpacesY
- // _sk2NotUnPlus	CMPA	#tknOPENIN
+//			//  String value
+//			//  ------------
+evalLevel1StringLiteral:			//LAD19:
+		addi	a0, gp, BAS_StrA
+evalLevel1StringLiteral_lp:			//LAD1C:
+		lbu	cu, 0(tp)
+		addi	tp, tp, 1
+		li	t0, 0x0D
+		beq	cu, t0,	brkMissingQuote
+		sb	cu, 0(a0)
+		addi	a0, a0, 1
+		li	t0, '"'
+		bne	cu, t0,	evalLevel1StringLiteral_lp
+		lb	cu, 0(tp)
+		addi	tp, tp, 1
+		beq	t0, cu,	evalLevel1StringLiteral_lp
+		addi	tp, tp, -1
+		sub	a0, a0, gp
+		addi	a0, a0, -(BAS_StrA + 1)
+		sb	a0, ZP_STRBUFLEN(wp)
+		li	tt, 0
+		ret
+		
+			//  Evaluator Level 1 - & - + () " ? ! | 0x function variable
+			//  ========================================================
+			//  Evaluate a value - called by functions for value parameters
+			//
+evalLevel1:						// LAD36
+		lb	cu, 0(tp)			//  Get next character
+		addi	tp, tp, 1
+		li	t0, ' '
+		beq	cu, t0,	evalLevel1			//  Skip spaces
+		li	t0, '-'
+		beq	cu, t0,	evalLevel1UnaryMinus		//  Unary minus
+		li	t0, '"'
+		beq	cu, t0,	evalLevel1StringLiteral		//  String
+		li	t0, '+'
+		bne	cu, t0,	_sk2NotUnPlus			//  Not unary plus
+//			
+//		//  +<value>
+//		//  --------		   
+evalLevel1UnaryPlus:					// LAD4C
+		EVCALL	skipSpacesY
+_sk2NotUnPlus:
+	NOTIMPL "Eval1 UNARYPLUS"
+ //		CMPA	#tknOPENIN
  // 		BLO	evalL1_sk1			//  Not a function, try indirection and immediate value
  // 		CMPA	#tknAUTO
  // 		BHS	brkNoSuchVar			//  A command, not a function
@@ -9034,52 +9092,55 @@ doListKeyFinished:					//LBD6A:
 		ret
 
 
- // list_printHexByte					// LBD6C
- // 		PSHS	A
- // 		LSRA
- // 		LSRA
- // 		LSRA
- // 		LSRA
- // 		CALL	list_printHexNybble
- // 		PULS	A
- // 		ANDA	#0x0F
- // list_printHexNybble					// LBD77
- // 		CMPA	#0x0A
- // 		BLO	list_printAasDigit
- // 		ADDA	#0x07
- // list_printAasDigit					// LBD7D
- // 		ADDA	#0x30
- // list_printCheckPRLINCOUNT				// LBD7F
- // 		PSHS	A
- // 		LDA	ZP_WIDTH
- // 		CMPA	ZP_PRLINCOUNT
- // 		BCC	list_printCheckPRLINCOUNT_sk1
- // 		CALL	PrintCRclearPRLINCOUNT
- // list_printCheckPRLINCOUNT_sk1				// LBD89:
- // 		PULS	A
- // 		INC	ZP_PRLINCOUNT
- // 		JMP	OSWRCH
- // list_printHexByteAndSpace				// LBD8F
- // 		CALL list_printHexByte
+list_printHexByte:					// LBD6C
+		ENTER 	
+		mv	s0, a0
+		srli	a0, a0, 4
+		jal	list_printHexNybble
+		andi	a0, s0, 0x0F
+list_printHexNybble:					// LBD77
+		li	t0, 0x0A
+		bltu	a0, t0,	list_printAasDigit
+		addi	a0, a0, 0x07
+list_printAasDigit:					// LBD7D
+		addi	a0, a0, 0x30
+list_printCheckPRLINCOUNT:				// LBD7F
+		ENTER	4
+		sw	s0, 0(sp)
+		mv	s0, a0
+		lb	t0, ZP_WIDTH(wp)
+		lb	t1, ZP_PRLINCOUNT(wp)
+		bgeu	t0, t1,	list_printCheckPRLINCOUNT_sk1
+		jal	PrintCRclearPRLINCOUNT
+list_printCheckPRLINCOUNT_sk1:				// LBD89:
+		lbu	t0, ZP_PRLINCOUNT(wp)
+		addi	t0, t0, 1
+		sb	t0, ZP_PRLINCOUNT(wp)
+		mv	a0, s0
+		jal	OSWRCH
+		lw	s0, 0(sp)
+		LEAVE	4
+
+list_printHexByteAndSpace:				// LBD8F
+		ENTER	0
+		jal 	list_printHexByte
 list_print1Space:					// LBD92
  		li	a0, ' '
-		j	list_print_a0
+		j	list_print_a0_int
 list_print_cu:	mv	a0, cu
-
 //TODO: this is unfinished:
-list_print_a0:	li	a7, OS_WRCH
-		ecall
-		ret		
+list_print_a0:
+list_printA0NoEDIT:					// LBD98
+		ENTER	0
+list_print_a0_int:
+		li	t0, 0x0D
+		bne	a0, t0,	list_printCheckPRLINCOUNT
+		jal	OSWRCH
+		UNSTACK 0
+		j	clearPRLINCOUNT
 
-		// print char in cu
-//list_print_cu:						// LBD94
-//		TST	ZP_LISTO
-//		BMI	list_printToVARTOP
-//list_printANoEDIT					// LBD98
-//		li	t0, 0x0D
-//		bne	cu, t0,	list_printCheckPRLINCOUNT
-//		JSR	OSWRCH
-//		JUMP	clearPRLINCOUNT
+
+
 //list_printToVARTOP					// LBDA2
 //		STA	[ZP_VARTOP]			// store at VARTOP for EDIT
 //		INC	ZP_VARTOP
@@ -9102,14 +9163,14 @@ doLISTOSpaces:
 		andi	t0, a1, 0x100
 		bnez	t0, rtsLBDC5	
 		beqz	a1, rtsLBDC5
-list_printt2Spaces:			//LBDBF:
+list_printa2Spaces:			//LBDBF:
 		addi	sp, sp, -4
 		sw	ra, 0(sp)
 
-list_printt2Spaces_lp:
+list_printa2Spaces_lp:
 		jal	list_print1Space
-		addi	t2, t2, -1
-		bnez	t2, list_printt2Spaces_lp
+		addi	a2, a2, -1
+		bnez	a2, list_printa2Spaces_lp
 
 		lw	ra, 0(sp)
 		addi	sp, sp, 4

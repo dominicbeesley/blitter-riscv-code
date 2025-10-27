@@ -99,6 +99,10 @@ BASWKSP_FPTEMP4:		.space 5
 	.align 8
 BASWKSP_INTVAR:
 			.space 0x20*4
+#define VAR_P_PERCENT (BASWKSP_INTVAR + 0x40)
+#define VAR_O_PERCENT (BASWKSP_INTVAR + 0x3C)
+
+
 BASWKSP_DYNVAR_HEADS:
 			.space 0x40*4		// was 0x40*2 in 8 bit basic
 
@@ -122,9 +126,7 @@ BASWKSP_STRING:		.space 0x100
 #define GOSUBSTACK_MAX		17
 
 BAS_InBuf:		.space 0x100
-
-#define VAR_P_PERCENT (BASWKSP_INTVAR + 0x40)
-#define VAR_O_PERCENT (BASWKSP_INTVAR + 0x3C)
+BAS_StrA:		.space 0x100
 
 	//TODO: in 8 bit basic this is overlaid with other stuff - look at copying that?
 OSWORD_BUF:		.space 0x80
