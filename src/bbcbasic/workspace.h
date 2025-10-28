@@ -35,6 +35,7 @@ ZP_FP_TMP_PTR1:		.space 4
 ZP_FP_TMP_PTR2:		.space 4
 
 NEW_WKSP_SP:		.space 4
+ZP_LINE_FOUND:		.space 4	//NEW was ZP_FPB+2
 
 ZP_ERL:			.space 2
 

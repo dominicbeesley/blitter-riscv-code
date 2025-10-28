@@ -262,7 +262,7 @@ ROM_LANGST:
 		// NEW API
 		//  On entry,	a0 => line number
 		//  On Exit,	a0 = 1 - not found
-		//	or	tp = pointer to start of line, or next higher line or end of program
+		//	or	tp, ZP_LINE_FOUND = pointer to start of line, or next higher line or end of program
 
 findProgLineNewAPI:
 		li	t0, 0x7FFF
@@ -276,7 +276,8 @@ fpl_lp1:	lbu	t1, 1(tp)
 		lbu	t0, 3(tp)
 		add	tp, tp, t0
 		j	fpl_lp1
-fpl_ge:		slt	a0, a0, t0
+fpl_ge:		sw	tp, ZP_LINE_FOUND(wp)
+		slt	a0, a0, t0
 		ret
  // //		
  // //			
@@ -984,31 +985,32 @@ skipSpacesCheckHashAtYStepBack:
 		jal	skipSpacesCheckHashAtY
 		j	ssccaysb2
 
- // //		
- // //		//  Skip spaces at PTRB
- // //		//  ===================
- // 		//  leaves PTR unchanged returns next non white pointer + 1 in Y, char in A
- // skipSpacesPTRB
- // 		LDU	ZP_TXTPTR2
+//		
+//		//  Skip spaces at PTRB
+//		//  ===================
+		//  leaves PTR unchanged returns next non white pointer + 1 in Y, char in A
+skipSpacesPTRB:
+		lw	tp, ZP_TXTPTR2(wp)
 skipSpacesY:	li	t0, ' '
 ssylp:		lbu	cu, 0(tp)
 		addi	tp, tp, 1
 		beq	t0, cu, ssylp
 		ret
- // 
- ///////// DONT REINSTATE - DO MANUALLY AND NOTE!
- // inySkipSpacesYStepBack
- // 		LEAU	1,U
- // skipSpacesYStepBack
- // 		CALL	skipSpacesY
- // 		LEAU	-1,U
- // 		RTS
- // 
- //		
- //		//  Skip spaces at PTRA
- //		//  ===================
+ 
+ 	//TODO: this could be unwound or otherwise improved?
+inySkipSpacesYStepBack:
+ 		addi	tp, tp, 1
+skipSpacesYStepBack:
+		mv	s1, ra
+ 		jal	skipSpacesY
+ 		addi	tp, tp, -1
+ 		jr	s1
+ 
+		
+		//  Skip spaces at PTRA
+		//  ===================
  		//  leaves PTR unchanged returns next non white pointer + 1 in Y, char in A
- skipSpacesPTRA:
+skipSpacesPTRA:
  		lw	tp, ZP_TXTPTR(wp)
  		j	skipSpacesY
  // 
@@ -1064,8 +1066,7 @@ stclp:		addi	a0, a0, 1
  // 		// on entry cu contains a numeric digit
  // 		// parse number and store in dest buffer as 8D XX YY ZZ
 tokenizeLineNo:
-		addi 	sp, sp, -4
-		sw	ra, 0(sp)
+		ENTER 0
 
 		andi	a3, cu, 0x0F			// this is the integer accumulator (16 bits)
 tokLinLp:	lbu	cu, 0(tp)
@@ -1084,8 +1085,8 @@ tokLinLp:	lbu	cu, 0(tp)
 tokLinOv:
 		li	a0, 1
 		lw	ra, 0(sp)
-		addi	sp, sp, 4
-		ret				
+		LEAVE 	0
+
 tokLineNoSk1:					
 		addi	tp, tp, -1			// point at char after last read digit
 		li	a0, tknLineNo
@@ -1109,8 +1110,7 @@ tokline3lp:	lbu	t0, 0(tp)
 		j	a3_short_toBUFasTOKENIZED_int
  //L8D62: 
 a3_short_toBUFasTOKENIZED:
-		addi 	sp, sp, -4
-		sw	ra, 0(sp)
+		ENTER 0
 
 a3_short_toBUFasTOKENIZED_int:
 
@@ -1145,9 +1145,7 @@ a3_short_toBUFasTOKENIZED_int:
 
 		li	a0, 0					// indicate success
 
-		lw	ra, 0(sp)
-		addi	sp, sp, 4
-		ret
+		LEAVE	0
 
 
 
@@ -1216,8 +1214,7 @@ checkCLCRET:
 
 
 tokenizeATY:
-		addi	sp, sp, -4
-		sw	ra, 0(sp)
+		ENTER 	0
 
 toklp0:
 		mv	a4, tp				// tokenize in place
@@ -1246,9 +1243,7 @@ tokQuotLp:	lbu	cu, 0(tp)			//  Get next character
 		bne	cu, t2,	tokQuotLp		//  Loop until <cr> or quote
 
 
-rtsL8DDF:	lw	ra, 0(sp)
-		addi	sp, sp, 4
-		ret
+rtsL8DDF:	LEAVE	0
 
 tokNotQuot:	li	t1, ':'
 		bne	cu, t1,	tokNotColon
@@ -1504,65 +1499,72 @@ runFromZP_TXTPTR:					// L8F97
  // 		PULS	U
  // //			//  DATA, DEF,	//
  // //			//  ==============
-cmdREM: NOTIMPL "cmdREM"
- // cmdREM
- // 		LDA	#0x0D
- // 1							// L8FB3:
- // 		CMPA	,U+
- // 		BNE	1B				//  Loop until found <cr>
- // 							//L8FB8:
- // 		LEAU	-1,U
- // 		STU	ZP_TXTPTR
- // 		BRA	stepNextLineOrImmedPrompt	//  Update line pointer, step to next line
- // skipToNextLineOrImmedPrompt				// L8FBD
- // 		CMPA	#0x0D
- // 		BNE	cmdREM				//  Step to end of line
- // stepNextLineOrImmedPrompt
- // 		LDA	ZP_TXTPTR
- // 		CMPA	#BAS_InBuf / 256
- // 		BEQ	immedPrompt
- // 		LDA	1,U				// if next line number top but end of prog
- // 		BMI	immedPrompt
- // 		LDA	ZP_TRACE
- // 		BEQ	skNoTRACE
- // 		LDD	1,U
- // 		STD	ZP_INT_WA + 2
- // 		CALL	doTRACE
- // skNoTRACE						//L8FDB:
- // 		LEAU	4,U				// skip over 0xd,line num,len to first token
- // 		STU	ZP_TXTPTR
- // 		BRA	skipSpacesAtYexecImmed
+cmdREM:
+		li	t0, 0x0D
+cmdREMlp:	lb	cu, 0(tp)			// L8FB3:
+		addi	tp, tp, 1
+		bne	cu, t0,	cmdREMlp		//  Loop until found <cr>
+							//L8FB8:
+		addi	tp, tp, -1
+		sw	tp, ZP_TXTPTR(wp)
+		j	stepNextLineOrImmedPrompt	//  Update line pointer, step to next line
+skipToNextLineOrImmedPrompt:				// L8FBD
+		li	t0, 0x0D
+		bne	cu, t0,	cmdREM			//  Step to end of line
+stepNextLineOrImmedPrompt:
+		lw	t0, ZP_TXTPTR(wp)
+		sub	t0, t0, wp
+		addi	t0, t0, -BAS_InBuf
+		andi	t0, t0, 0xFFFFFF00
+		beqz	t0, immedPrompt
+		lbu	cu, 1(tp)			// if next line number top but end of prog
+		andi	t0, cu, 0x80
+		bnez	t0, immedPrompt
+		lbu	t0, ZP_TRACE(wp)
+		beqz	t0, skNoTRACE
+
+		lbu	t0, 1(tp)
+		lbu	t1, 2(tp)
+		slli	t1, t1, 8
+		or	t0, t0, t1
+		sw	t0, ZP_INT_WA(wp)
+		jal	doTRACE
+skNoTRACE:						//L8FDB:
+		addi	tp, tp, 4			// skip over 0xd,line num,len to first token
+		sw	tp, ZP_TXTPTR(wp)
+		j	skipSpacesAtYexecImmed
  // enterAssembler						//L8FE1:
  // 		LDA	#0x03
  // 		STA	ZP_OPT
  // 		JUMP	assScanEnter			// enter assembler scanner, default OPT=3
- // scanTryStarAssEXTEq					// L8FEB
- // 		LDA	-1,U
- // 		CMPA	#'*'
- // 		BEQ	doOSCLIAtY
- // 		CMPA	#'['
- // 		BEQ	enterAssembler
- // 		CMPA	#tknEXT
- // 		LBEQ	cmdEXTEq
- // 		CMPA	#'='
- // 		BEQ	cmdEquals
+scanTryStarAssEXTEq:					// L8FEB
+
+
+////////////////////////////////////////// // 		LDA	-1,U
+////////////////////////////////////////// // 		CMPA	#'*'
+////////////////////////////////////////// // 		BEQ	doOSCLIAtY
+////////////////////////////////////////// // 		CMPA	#'['
+////////////////////////////////////////// // 		BEQ	enterAssembler
+////////////////////////////////////////// // 		CMPA	#tknEXT
+////////////////////////////////////////// // 		LBEQ	cmdEXTEq
+////////////////////////////////////////// // 		CMPA	#'='
+////////////////////////////////////////// // 		BEQ	cmdEquals
 decYGoScanNextContinue:					// L9000
 		addi	tp, tp, -1
 scanNextContinue:					// L9002
 		jal	scanNextStmtFromY		//  Return to execution loop
-continue:	NOTIMPL "continue"
- // continue					// L9005
- // 		LDA   	,U
- // 		CMPA	#':'
- // 		BNE	skipToNextLineOrImmedPrompt
- // incYskipSpacesAtYexecImmed				// L900B		
- // 		LEAU	1,U
- // skipSpacesAtYexecImmed					// L900D
- // 		CALL	skipSpacesY
- // 		CMPA	#':'		
- // 		BEQ	skipSpacesAtYexecImmed		//  Skip spaces and ':'
- // 		CMPA	#tknPTRc
- // 		BLO	execTryVarAssign		//  Not command token, try variable assignment
+continue:					// L9005
+		lbu	cu, 0(tp)
+		li	t0, ':'
+		bne	cu, t0,	skipToNextLineOrImmedPrompt
+incYskipSpacesAtYexecImmed:				// L900B		
+		addi	tp, tp, 1
+skipSpacesAtYexecImmed:					// L900D
+		jal	skipSpacesY
+		li	t0, ':'		
+		beq	cu, t0,	skipSpacesAtYexecImmed	//  Skip spaces and ':'
+		li	t0, tknPTRc
+		bltu	cu, t0,	execTryVarAssign		//  Not command token, try variable assignment
 //		
 //			//  Dispatch function/command
 //			//  -------------------------
@@ -1580,15 +1582,19 @@ execImmediateLine:			//L901E:
  		li	t0, tknAUTO
   		bgeu	cu, t0,	exeTokenInA			//  If command token, jump to execute command
 
-  		ebreak
- // 			
- // //			//  Not command token, try variable assignment
- // execTryVarAssign					// L9025
- // 		LEAX	-1,U
- // 		STX	ZP_TXTPTR2
- // 		CALL	findVarAtYMinus1
- // 		BNE	assignVarAtZP_INT_WA		//  Look up variable, jump if exists to assign new value
- // 		BCS	scanTryStarAssEXTEq				//  Invalid variable name, try =, [, *, EXT commands
+			
+//			//  Not command token, try variable assignment
+execTryVarAssign:					// L9025
+
+
+	// BODGE:
+	j scanTryStarAssEXTEq
+
+//////////////////////////////////////////// // 		LEAX	-1,U
+//////////////////////////////////////////// // 		STX	ZP_TXTPTR2
+//////////////////////////////////////////// // 		CALL	findVarAtYMinus1
+//////////////////////////////////////////// // 		BNE	assignVarAtZP_INT_WA		//  Look up variable, jump if exists to assign new value
+//////////////////////////////////////////// // 		BCS	scanTryStarAssEXTEq				//  Invalid variable name, try =, [, *, EXT commands
  // 
  // //			//  Variable doesn't exist, create it
  // //			//  ---------------------------------
@@ -1962,7 +1968,8 @@ rtsCLC_L926A:
  // 
  // decUEvalForceINT
  // 		LEAU	-1,U
- // evalForceINT
+evalForceINT:
+	NOTIMPL "evalForceINT"
  // 		CALL	evalExpressionMAIN
  // 		CALL	checkTypeInAConvert2INT
  // copyTXTOFF2toTXTOFF
@@ -2182,7 +2189,7 @@ brkSilly:
  // 		CMPD	ZP_INT_WA+2		// compare with 8D number
  // 		BNE	ren4nomatch
  // 		LDD	1,U			// get new line number as binary
- // 		STD	ZP_FPB+2		// store in FPB+2
+ // 		STD	ZP_LINE_FOUND		// store in FPB+2
  // 		LDU	,S			// get back the intra-line pointer from pass3
  // 		LEAU	-1,U			// point back at 8D instruction
  // 		CALL	a3_short_toBUFasTOKENIZED	//store updated number back in program at 1,U and move U on
@@ -3241,15 +3248,12 @@ fnProcScanYplusBvarname: NOTIMPL "fnProcScanYplusBvarname"
  // //		
  // //		
 skipSpacesDecodeLineNumberNewAPIbrkSyntax:
-		addi	sp, sp, -4
-		sw	ra, 0(sp)
+		ENTER 	0
 
 		jal	skipSpacesDecodeLineNumberNewAPI
 		blt	a1, zero, brkSyntax
 		
-		lw	ra, 0(sp)
-		addi	sp, sp, 4
-		ret
+		LEAVE	0
  
  
   		// API changed used to scan from ZP_TXTPTR now scan from tp
@@ -3257,8 +3261,9 @@ skipSpacesDecodeLineNumberNewAPIbrkSyntax:
 		// return a0, ZP_INT_WA = line number > 32768 only bottom half of ZP_INT_WA
 		// ZP_INT_WA only set if valid line number (see cmdLIST)
 skipSpacesDecodeLineNumberNewAPI:
-		addi	sp, sp, -4
-		sw	ra, 0(sp)
+
+		ENTER	0
+
 		jal	skipSpacesY
 		li	t0, tknLineNo
 		beq	cu, t0, decodeLineNumber_int
@@ -3266,15 +3271,12 @@ skipSpacesDecodeLineNumberNewAPI:
 		sw	tp, ZP_TXTPTR(wp)		//  Not line number, return CC
 		li	a0, -1
 
-		lw	ra, 0(sp)
-		addi	sp, sp, 4
-		ret
+		LEAVE	0
 
   		// API changed used to scan from ZP_TXTPTR now scan from tp
 		// return a0, ZP_INT_WA = line number > 32768 only bottom half of ZP_INT_WA
 decodeLineNumber:
-		addi	sp, sp, -4
-		sw	ra, 0(sp)
+		ENTER 	0
 
 decodeLineNumber_int:
 		lbu	t0, 0(tp)
@@ -3291,9 +3293,7 @@ decodeLineNumber_int:
 		sh	a0, ZP_INT_WA(wp)
 		addi	tp, tp, 3
 	
-		lw	ra, 0(sp)
-		addi	sp, sp, 4
-		ret
+		LEAVE	0
 
  // //			//  Line number, return CS
  // //			//  Expression Evaluator
@@ -3360,11 +3360,11 @@ cmdENDPROC: NOTIMPL "cmdENDPROC"
  // 							// drop through to an RTS
  // //scanNextStmt	LDU ZP_TXTPTR	 -- obsolete?
 scanNextStmtFromY:
-		addi	sp, sp, -4
-		sw	ra, 0(sp)
+		ENTER	0
+
 		jal	skipSpacesY
-		lw	ra, 0(sp)
-		addi	sp, sp, 4
+		UNSTACK 0
+
 		addi	tp, tp, -1
 scanNextExpectColonElseCR:
 		li	t0, ':'
@@ -3420,6 +3420,8 @@ cmdIF: NOTIMPL "cmdIF"
  // execTHENorELSEimpicitGOTO				// L9C29	
  // 		CALL	skipSpacesDecodeLineNumberNewAPI// look for line number
  // 		LBCC	skipSpacesAtYexecImmed		// if not found exec after THEN/ELSE
+
+
  // 		CALL	findProgLineOrBRK
  // 		CALL 	checkForESC
  // 		JUMP	cmdGOTODecodedLineNumber
@@ -3432,7 +3434,8 @@ cmdIF: NOTIMPL "cmdIF"
  // 		BNE	skCmdIFFALSE
  // 		LEAU	-1,U
  // 		JUMP	stepNextLineOrImmedPrompt
- // doTRACE						// L9C4B
+doTRACE:						// L9C4B
+	NOTIMPL "doTRACE"
  // 
  // 		// line number is now in WA+2 - this needs changed
  // 
@@ -3575,11 +3578,9 @@ cmdIF: NOTIMPL "cmdIF"
 
 
 	.macro	EVCALL dest
-		addi	sp, sp, -4
-		sw	ra, 0(sp)
+		ENTER 	0
 		jal	\dest
-		lw	ra, 0(sp)
-		addi	sp, sp, 4
+		UNSTACK	0
 	.endm
 
 		// //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -4216,22 +4217,23 @@ int16print_AnyLen:				// LA081
 int16print_fmt5:				// LA085
 		li	a0, 5
 int16print_fmtA:				// LA087
-		addi	sp, sp, -4
-		sw	ra, 0(sp)
+		ENTER	8
+		sw	s1, 0(sp)
+		sw	s2, 4(sp)
 
 		sb	a0, ZP_PRINTBYTES(wp)
 
 
 		la	a0, tblTENS+4*2		// point at 10,000's in table
-		addi	a1, wp, ZP_FP_TMP+4	// point at string buffer
+		addi	s2, wp, ZP_FP_TMP+4	// point at string buffer
 		lhu	t0, ZP_INT_WA(wp)	// the number to do
 		li	t1, 5			// loop counter
 
-		sb	zero, 0(a1)
-		sb	zero, -1(a1)
-		sb	zero, -2(a1)
-		sb	zero, -3(a1)
-		sb	zero, -4(a1)
+		sb	zero, 0(s2)
+		sb	zero, -1(s2)
+		sb	zero, -2(s2)
+		sb	zero, -3(s2)
+		sb	zero, -4(s2)
 
 i16p_lp0:	lhu	t2, 0(a0)
 		li	t3, -1
@@ -4240,43 +4242,41 @@ i16p_lp1:	addi	t3, t3, 1
 		bge	t0, zero, i16p_lp1
 		add	t0, t0, t2
 
-		sb	t3, 0(a1)
+		sb	t3, 0(s2)
 
 		addi	a0, a0, -2
-		addi	a1, a1, -1
+		addi	s2, s2, -1
 		addi	t1, t1, -1
 		bnez	t1, i16p_lp0
 
-		li	t1, 5
-		addi	a1, a1, 6
-i16_lp2:	addi	a1, a1, -1
-		lbu	t0, 0(a1)
+		// find first non-zero digit MSB first
+		li	s1, 5
+		addi	s2, s2, 6
+i16_lp2:	addi	s2, s2, -1
+		lbu	t0, 0(s2)
 		bnez	t0, i16_sk1
-		addi	t1, t1, -1
-		bnez	t1, i16_lp2
+		addi	s1, s1, -1
+		bnez	s1, i16_lp2
 
 i16_sk1:
-		// a1 points at first non-zero digit
-		// t1 contains no of digits to print
+		// s2 points at first non-zero digit
+		// s1 contains no of digits to print
 
 		
  		lbu	t0, ZP_PRINTBYTES(wp)	// places to print
  		beqz	t0, int16_printDigits
- 		sub	t2, t0, t1
-		ble	t2, zero, int16_printDigits
+ 		sub	a2, t0, s1
+		ble	a2, zero, int16_printDigits
 		jal	list_printa2Spaces
 int16_printDigits:				//LA0BF:
-		lbu	a0, 0(a1)
-		addi	a1, a1, -1
+		lbu	a0, 0(s2)
+		addi	s2, s2, -1
 		ori	a0, a0, 0x30
 		jal	list_print_a0
-		addi	t1, t1, -1
-		bnez	t1, int16_printDigits
+		addi	s1, s1, -1
+		bnez	s1, int16_printDigits
 
-		lw	ra, 0(sp)
-		addi	sp, sp, 4
-
-		ret
+		LEAVE	8
 
  // 
  // //			//  Convert number to hex string
@@ -7648,12 +7648,11 @@ doListSkStart:					      	//LB3C9
 
 		lw	t0, ZP_INT_WA(wp)
 		sw	t0, ZP_INT_WA_B(wp)		// ending line number into WA_B
- 		jal	skipSpacesY			// skipSpacesYStepBack
- 		addi	tp, tp, -1
+ 		jal	skipSpacesYStepBack
  		li	t0, tknIF
  		bne	t0, cu, doListSkStart2
  		addi	tp, tp, 1
-		jal	skipSpacesY			// inySkipSpacesYStepBack
+		jal	skipSpacesYStepBack
 		addi	tp, tp, -1
 		j	doListSkStart3
 cmdLIST:
@@ -7780,16 +7779,16 @@ doListScanDone:						//LB491:
 		lb	t0, ZP_LIST_F_SHO(wp)
 		beqz	t0, doListLoop
 		jal	int16print_fmt5			// print line number
-		li	a2, 0x01
- 		li	a1, 1				// set to 0
+		li	a1, 0x01
+ 		li	a2, 1				// set to 0
  		li	a0, 1
  		jal	doLISTOSpaces			// LISTO1 - space after Line no
- 		lb	a1, ZP_LIST_FOR_LVL(wp)
- 		li	a2, 0x02
- 		jal	doLISTOSpacesa0_1		// LISTO2 - NEXT indents
- 		lb	a1, ZP_LIST_REP_LVL(wp)
- 		li	a2, 0x04			// LISTO4 - REPEAT/UNTIL indents
- 		jal	doLISTOSpacesa0_1
+ 		lb	a2, ZP_LIST_FOR_LVL(wp)
+ 		li	a1, 0x02
+ 		jal	doLISTOSpacesa0_0		// LISTO2 - NEXT indents
+ 		lb	a2, ZP_LIST_REP_LVL(wp)
+ 		li	a1, 0x04			// LISTO4 - REPEAT/UNTIL indents
+ 		jal	doLISTOSpacesa0_0
  		sb	zero, ZP_LIST_F_QUO(wp) 		
 doListNextTok2:						//LB4AF:
 		lw	tp, ZP_TXTPTR(wp)		// TODO reset Y pointer here?
@@ -8151,26 +8150,25 @@ cmdRETURN: NOTIMPL "cmdRETURN"
  // 		LDU	B,X
  // LB71A		JUMP	continue
  // 
- // 			//============================
- // 			// GOTO
- // 			//============================
-cmdGOTO: NOTIMPL "cmdGOTO"
- // cmdGOTO							// LB71D!
- // 
- // 		CALL	decodeLineNumberFindProgLine
- // 		////LDU	ZP_TXTPTR
- // 		CALL	scanNextStmtFromY
- // cmdGOTODecodedLineNumber				// LB723
- // 		LDA	ZP_TRACE
- // 		BEQ	cmdGOTOskTrace
- // 		CALL	doTRACE
- // cmdGOTOskTrace						// LB72A
- // 		LDU	ZP_FPB + 2
- // 		LEAU	4,U
- // STUZPTXTPTR_continue					// LB732
- // 		STU	ZP_TXTPTR
- // 		JUMP	skipSpacesAtYexecImmed
- // 
+			//============================
+			// GOTO
+			//============================
+cmdGOTO:						// LB71D!
+
+		jal	decodeLineNumberFindProgLine
+		////LDU	ZP_TXTPTR
+		jal	scanNextStmtFromY
+cmdGOTODecodedLineNumber:				// LB723
+		lbu	t0, ZP_TRACE(wp)
+		beqz	t0, cmdGOTOskTrace
+		jal	doTRACE
+cmdGOTOskTrace:						// LB72A
+		lw	tp, ZP_LINE_FOUND(wp)
+		addi	tp, tp, 4			// skip over line prologue
+STUZPTXTPTR_continue:					// LB732
+		sw	tp, ZP_TXTPTR(wp)
+		j	skipSpacesAtYexecImmed
+
 cmdONERROROFF: NOTIMPL "cmdONERROROFF"
  // cmdONERROROFF						// LB739
  // 		CALL	scanNextStmtFromY
@@ -8307,22 +8305,25 @@ brkNoSuchLine:
  // 		RTS
  // 
  // 
- // decodeLineNumberFindProgLine
- // 		CALL	skipSpacesDecodeLineNumberNewAPI
- // 		BCS	findProgLineOrBRK			// tokenised line number found
- // 		CALL	evalForceINT
- // 		LDA	#0x7F					// clear top bit of line number
- // 		ANDA	ZP_INT_WA + 2
- // 		STA	ZP_INT_WA + 2
- // findProgLineOrBRK
- // 		PSHS	U
- // 		CALL	findProgLineNewAPI
- // 		BCC	brkNoSuchLine
- // 		PULS	U,PC
- // //LB83C:
- // //		JUMP brkTypeMismatch
- // ////LB83F:
- // ////		JUMP brkSyntax
+decodeLineNumberFindProgLine:
+		ENTER	0
+		jal	skipSpacesDecodeLineNumberNewAPI
+		bnez	a0, findProgLineOrBRK_i			// tokenised line number found
+		jal	evalForceINT
+		lbu	t0, (ZP_INT_WA+1)(wp)
+		andi	t0, t0, 0x7F				// clear top bit of line number
+		sb	t0, (ZP_INT_WA+1)(wp)
+		j	findProgLineOrBRK_i			// tokenised line number found
+findProgLineOrBRK:
+		ENTER	0
+findProgLineOrBRK_i:
+		jal	findProgLineNewAPI
+		bnez	a0, brkNoSuchLine
+		LEAVE	0
+//LB83C:
+//		JUMP brkTypeMismatch
+////LB83F:
+////		JUMP brkSyntax
  // 
  // ////cmdINPUT_HASH_exit
  // ////		STU ZP_TXTOFF
@@ -8481,23 +8482,21 @@ cmdINPUT_LINE_INPUT_STR: NOTIMPL "cmdINPUT_LINE_INPUT_STR"
  // 
  // 
  // 
-cmdRESTORE: NOTIMPL "cmdRESTORE"
- // cmdRESTORE
- // 		CLR	ZP_FPB + 3
- // 		LDA	ZP_PAGE_H
- // 		STA	ZP_FPB + 2			// FPB+2=>start of program
- // 		CALL	skipSpacesYStepBack
- // 		CMPA	#':'
- // 		BEQ	LB967
- // 		CMPA	#0x0D
- // 		BEQ	LB967
- // 		CMPA	#tknELSE
- // 		BEQ	LB967
- // 		CALL	decodeLineNumberFindProgLine	// expect program line number, find it or BRK
- // LB967		CALL	scanNextStmtFromY		// scan to start of next statement
- // 		LDD	ZP_FPB + 2			// now pointing at start of line specified or start of program
- // 		STD	ZP_READ_PTR
- // 		JUMP	continue
+cmdRESTORE:
+ 		lw	t0, ZP_PAGE(wp)
+ 		sw	t0, ZP_LINE_FOUND(wp)		// ZP_LINE_FOUND=>start of program
+		jal	skipSpacesYStepBack
+		li	t0, ':'
+		beq	cu, t0,	LB967
+		li	t0, 0x0D
+		beq	cu, t0, LB967
+		li	t0, tknELSE
+		beq	cu, t0, LB967
+		jal	decodeLineNumberFindProgLine	// expect program line number, find it or BRK
+LB967:		jal	scanNextStmtFromY		// scan to start of next statement
+		lw	t0, ZP_LINE_FOUND(wp)		// now pointing at start of line specified or start of program
+		sw	t0, ZP_READ_PTR(wp)
+		j	continue
  // 
  // 
  // cmdREAD_next						// LLB975
@@ -8669,8 +8668,7 @@ clearPRLINCOUNT:					// LBA95
 		ret
  
 findLineAndDelete:					//LBA98
-		addi	sp, sp, -4
-		sw	ra, 0(sp)
+		ENTER	0
 
 		jal	findProgLineNewAPI
 		bnez	a0, rtsLBAEA
@@ -8691,10 +8689,7 @@ floCopySk1:						//LBAD3:
 		sw	tp, ZP_TOP(wp)
 
 rtsLBAEA:
-		lw	ra, 0(sp)
-
-		addi	sp, sp, 4
-		ret
+		LEAVE	0
 
 floCopy1bytes:	lbu	cu, 0(tp)
 		sb	cu, 0(t0)
@@ -8706,8 +8701,7 @@ floCopy1bytes:	lbu	cu, 0(tp)
 		//  Tokenise line, enter into program if program line
 		//  returns A0<0 if this is a not a program line entered into store
 tokenizeAndStore:
-		addi 	sp, sp, -12
-		sw	ra, 8(sp)					// shared with following routines...
+		ENTER	8	// shared with following routines...
 		li	t0, -1
 		sb	t0, ZP_TOK_FLAGS_A(wp)
 		sb	t0, ZP_TOK_FLAGS_C(wp)
@@ -8720,23 +8714,19 @@ tokenizeAndStore:
 		bge	a0, zero, tokenizeAndStoreAlreadyLineNoDecoded_int	// has a program line, store in program space...
 		sw	a0, 4(sp)
 tokret:		lw	a0, 4(sp)					// TODO check if needed, could just flag 0
-		lw	ra, 8(sp)
-		addi	sp, sp, 12
-		ret
+		LEAVE	8
 
 
 
 		// on entry line number in a0
 tokenizeAndStoreAlreadyLineNoDecoded:					// LBB08
-		addi 	sp, sp, -12
-		sw	ra, 8(sp)					// shared with following routines...
+		ENTER	8	// shared with following routines...
 
 tokenizeAndStoreAlreadyLineNoDecoded_int:
 		sw	a0, 4(sp)					// save decoded line number
 		lbu	t0, ZP_LISTO(wp)
 		beqz	t0, tokAndStoreListo0
-		jal	skipSpacesY					// WAS skipSpacesYStepBack
-		addi	tp, tp, -1
+		jal	skipSpacesYStepBack
 tokAndStoreListo0:							//LBB15:
 		sw	tp, 0(sp)					// save tp into input buffer
 		jal	findLineAndDelete  
@@ -8812,16 +8802,14 @@ tokas_lp5:	lbu	cu, 0(tp)
 		j	tokret
 
 		
-ResetVars:	addi	sp, sp, -4
-		sw	ra, 0(sp)
+ResetVars:	ENTER	4
 		lw	t0, ZP_TOP(wp)
 		sw	t0, ZP_LOMEM(wp)
 		sw	t0, ZP_VARTOP(wp)
 		jal	ResetStackProgStartRepeatGosubFor
 		jal	InittblFPRtnAddr
 		lw	ra, 0(sp)
-		addi	sp, sp, 4
-		ret
+		LEAVE	4
 
 	//  Reset DATA, REPEAT, FOR, GOSUB
 	//  Clear dynamic variables
@@ -9008,8 +8996,7 @@ copya1ata2toa0:
 		// New API - after call all regs preserved except t0
 		// check if all these always pop to an aligned dest then simplifiy to a SW T0, 0(A0)
 popIntANew:
-		addi	sp, sp, -16
-		sw	ra, 12(sp)
+		ENTER	12
 		sw	a0, 0(sp)
 		sw	a1, 4(sp)
 		sw	a2, 8(sp)
@@ -9017,16 +9004,14 @@ popIntANew:
 		addi	a0, gp, ZP_INT_WA
 		j	popIntA_int
 popIntAtZP_GEN_PTRNew:				// LBD06
-		addi	sp, sp, -12
-		sw	ra, 12(sp)
+		ENTER	12
 		sw	a0, 0(sp)
 		sw	a1, 4(sp)
 		sw	a2, 8(sp)
 		addi	a0, gp,	ZP_GEN_PTR
 		j	popIntA_int
 popIntAta0New:					// LBD08
-		addi	sp, sp, -12
-		sw	ra, 12(sp)
+		ENTER	12
 		sw	a0, 0(sp)
 		sw	a1, 4(sp)
 		sw	a2, 8(sp)
@@ -9035,12 +9020,10 @@ popIntA_int:	li	a1, 4
 		jal	copya1ata2toa0
 		sw	a2, ZP_BAS_SP(wp)
 
-		lw	ra, 12(sp)
 		lw	a0, 0(sp)
 		lw	a1, 4(sp)
 		lw	a2, 8(sp)
-		addi	sp, sp, -16
-		ret
+		LEAVE	12
 		
 
 	/*****************************************************************
@@ -9062,11 +9045,10 @@ UpdStackFroma0CheckFull:
 		 * corrupts t0..3, a1, a0
 		 *********************************************************/		 
 doListPrintTokenA:					// LBD37
-		addi	sp, sp, -4
-		sw	ra, 0(sp)
+		ENTER	4
 
 		andi	t0, cu, 0x80
-		beqz	t0, list_print_cu		// just a normal char print it and continue
+		beqz	t0, list_print_cu_int		// just a normal char print it and continue
 		la	t3, tblTOKENS
 
 doListTryNextTok:					// LBD46
@@ -9087,25 +9069,35 @@ doListKeyLp:						//LBD60:
 		jal	list_print_a0
 		j	doListKeyLp
 doListKeyFinished:					//LBD6A:
-		lw	ra, 0(sp)
-		addi	sp, sp, 4
-		ret
-
+		LEAVE	4
 
 list_printHexByte:					// LBD6C
-		ENTER 	
-		mv	s0, a0
-		srli	a0, a0, 4
+		ENTER 	4
+		sw	a0, 0(sp)
+		srli	a0, a0, 4	
 		jal	list_printHexNybble
-		andi	a0, s0, 0x0F
+		lw	a0, 0(sp)
+		jal	list_printHexNybble
+		lw	a0, 0(sp)
+		LEAVE	4
+
 list_printHexNybble:					// LBD77
+		ENTER	0
+		andi	a0, s0, 0x0F
 		li	t0, 0x0A
 		bltu	a0, t0,	list_printAasDigit
 		addi	a0, a0, 0x07
 list_printAasDigit:					// LBD7D
 		addi	a0, a0, 0x30
+
+		jal	list_printCheckPRLINCOUNT
+		LEAVE	0
+
+
+
 list_printCheckPRLINCOUNT:				// LBD7F
 		ENTER	4
+list_printCheckPRLINCOUNT_int:
 		sw	s0, 0(sp)
 		mv	s0, a0
 		lb	t0, ZP_WIDTH(wp)
@@ -9122,21 +9114,27 @@ list_printCheckPRLINCOUNT_sk1:				// LBD89:
 		LEAVE	4
 
 list_printHexByteAndSpace:				// LBD8F
-		ENTER	0
+		ENTER	4
 		jal 	list_printHexByte
+		j	list_print1Space_int
 list_print1Space:					// LBD92
+		ENTER	4
+list_print1Space_int:
  		li	a0, ' '
 		j	list_print_a0_int
-list_print_cu:	mv	a0, cu
+list_print_cu:	ENTER	4
+list_print_cu_int:	
+		mv	a0, cu
+		j	list_print_a0_int
 //TODO: this is unfinished:
 list_print_a0:
 list_printA0NoEDIT:					// LBD98
-		ENTER	0
+		ENTER	4
 list_print_a0_int:
 		li	t0, 0x0D
-		bne	a0, t0,	list_printCheckPRLINCOUNT
+		bne	a0, t0,	list_printCheckPRLINCOUNT_int
 		jal	OSWRCH
-		UNSTACK 0
+		UNSTACK 4
 		j	clearPRLINCOUNT
 
 
@@ -9152,28 +9150,36 @@ list_print_a0_int:
 //		BEQ	ResetVarsBrkNoRoom		// out of space for listing
 //		PULS	A
 //		RTS
-doLISTOSpacesa0_1:					// LBDB3
-		li	a0, 1
+
+	/*****************************************************************
+	 * a0 - added to 2*a2
+	 * a1 - whether to do spaces or not, and-ed with ZP_LISTO
+	 * a2 - number of spaces, mul'd by 2 + a0
+	 * 
+	 * returns a0 as passed 
+	 ****************************************************************/
+
+
+doLISTOSpacesa0_0:					// LBDB3
+		li	a0, 0
 doLISTOSpaces:	
 		lbu	t0, ZP_LISTO(wp)		// LBDB4
-		and	t0, t0, a2
+		and	t0, t0, a1
 		beqz	t0, rtsLBDC5
-		slli	a1, a1, 1
-		or	a1, a1, a0
-		andi	t0, a1, 0x100
+		slli	a2, a2, 1
+		or	a2, a2, a0
+		andi	t0, a2, 0x100
 		bnez	t0, rtsLBDC5	
 		beqz	a1, rtsLBDC5
 list_printa2Spaces:			//LBDBF:
-		addi	sp, sp, -4
-		sw	ra, 0(sp)
+		ENTER   0
 
 list_printa2Spaces_lp:
 		jal	list_print1Space
 		addi	a2, a2, -1
 		bnez	a2, list_printa2Spaces_lp
 
-		lw	ra, 0(sp)
-		addi	sp, sp, 4
+		UNSTACK	0
 rtsLBDC5:	ret
 
  // //		
@@ -9277,16 +9283,14 @@ str_bad_prog:	.asciz 	"\rBad program\r"
 		.section .text
  
 		//TODO: OS ROUTINE?
-PRSTRING:	addi 	sp, sp, -4
-		sw	ra, 0(sp)
+PRSTRING:	ENTER	0
 		mv	a1, a0
 .L_lp:		lbu	a0, 0(a1)
 		beqz	a0, .L_sk
 		addi	a1, a1, 1		
 		jal	ASCII
 		j	.L_lp
-.L_sk:		lw	ra, 0(sp)
-		ret
+.L_sk:		LEAVE	0
 
 	//TODO: add to OS routines?
 ASCII:		li	a7, OS_WRCH
