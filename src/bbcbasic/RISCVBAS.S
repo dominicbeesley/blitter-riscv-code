@@ -79,7 +79,8 @@ main:
 		.section .rodata
 
 HeaderCopyright:
-		.byte	0
+		.align	4
+		.word	0
 		.asciz	VERSIONSTR
 
 
@@ -854,8 +855,8 @@ tblCmdDispatch:
 		j	fnCOS			//  0x9B - COS
 		j	fnCOUNT			//  0x9C - COUNT
 		j	fnDEG			//  0x9D - DEG
-		j	varERL			//  0x9E - ERL
-		j	varERR			//  0x9F - ERR
+		j	fnERL			//  0x9E - ERL
+		j	fnERR			//  0x9F - ERR
 		j	fnEVAL			//  0xA0 - EVAL
 		j	fnEXP			//  0xA1 - EXP
 		j	fnEXT			//  0xA2 - EXT
@@ -6477,7 +6478,7 @@ evalLevel1StringLiteral_lp:			//LAD1C:
 			//  Evaluate a value - called by functions for value parameters
 			//
 evalLevel1:						// LAD36
-		lb	cu, 0(tp)			//  Get next character
+		lbu	cu, 0(tp)			//  Get next character
 		addi	tp, tp, 1
 		li	t0, ' '
 		beq	cu, t0,	evalLevel1			//  Skip spaces
@@ -6493,13 +6494,15 @@ evalLevel1:						// LAD36
 evalLevel1UnaryPlus:					// LAD4C
 		EVCALL	skipSpacesY
 _sk2NotUnPlus:
+		li	t0, tknOPENIN
+		bltu	cu, t0, evalL1_sk1		//  Not a function, try indirection and immediate value
+		li	t0, tknAUTO
+		bgeu	cu, t0,	brkNoSuchVar		//  A command, not a function
+		j	exeTokenInA			//  Jump to dispatch function
+evalL1_sk1:	
 	NOTIMPL "Eval1 UNARYPLUS"
- //		CMPA	#tknOPENIN
- // 		BLO	evalL1_sk1			//  Not a function, try indirection and immediate value
- // 		CMPA	#tknAUTO
- // 		BHS	brkNoSuchVar			//  A command, not a function
- // 		JUMP	exeTokenInA			//  Jump to dispatch function
- // evalL1_sk1	CMPA	#'?'
+
+ //  		CMPA	#'?'
  // 		BHS	evalL1MemOrVar			//  ?, @, A+ - variable or ?value
  // 		CMPA	#'.'
  // 		BHS	evalL1ImmedNum			//  ./0-9    - decimal number
@@ -6644,6 +6647,14 @@ fnLEN: NOTIMPL "fnLEN"
  // 		RTS
  // 
  // 
+
+retA0AsINT:	sw	a0, ZP_INT_WA(wp)
+retWA32asINT:	li	tt, 0x40
+		ret
+
+retWA16asINT:	sh	zero, (ZP_INT_WA+2)(wp)
+		j	retWA32asINT
+
  // retA8asUINT	EXG	A,B
  // retB8asUINT	CLRA
  // retD16asUINT	STD	ZP_INT_WA + 2
@@ -6671,16 +6682,14 @@ varGetHIMEM: NOTIMPL "varGetHIMEM"
  // 		LDD ZP_HIMEM
  // 		BRA retD16asUINT
  
-varERL: NOTIMPL "varERL"
- // varERL
- // 			//  =ERL
- // 		LDD	ZP_ERL
- // 		BRA	retD16asUINT
-varERR: NOTIMPL "varERR"
- // varERR
- // 			//  =ERR
- // 		LDB	[ZP_MOS_ERROR_PTR_QRY]
- // 		BRA	retB8asUINT
+fnERL:
+		lhu	a0, ZP_ERL(wp)
+ 		j	retA0AsINT
+fnERR:
+		//  =ERR	NOTE: RISC-V is a 32 bit number!
+		lw	a0, ZP_MOS_ERROR_PTR_QRY(wp)
+		lw	a0, 0(a0)
+		j	retA0AsINT
 fnGET: NOTIMPL "fnGET"
  // fnGET
  // 			//  =GET
@@ -7385,34 +7394,37 @@ fnCHR: NOTIMPL "fnCHR"
  // 		JUMP	returnAAsString
  // 
  // 
- // HandleBRKFindERL					// LB237
- // 		CLR	ZP_ERL
- // 		CLR	ZP_ERL + 1
- // 		LDA	ZP_PAGE_H
- // 		LDB	#0
- // 		TFR	D,X			// X points at start of program
- // 		LDB	ZP_TXTPTR
- // 		CMPB	#BAS_InBuf / 256
- // 		BEQ	HandleBRKFindERL_sk1
- // 
- // HandleBRKFindERL_lp				//LB251:
- // 		LDA	,X+
- // 		CMPA	#0x0D
- // 		BNE	HandleBRKFindERL_sk2
- // 		CMPX	ZP_TXTPTR
- // 		BHS	HandleBRKFindERL_sk1
- // 		LDA	,X+
- // 		ORA	#0x00			// check end of program
- // 		BMI	HandleBRKFindERL_sk1
- // 		STA	ZP_ERL
- // 		LDA	,X+
- // 		STA	ZP_ERL + 1
- // 		LDA	,X+
- // HandleBRKFindERL_sk2					//LB270:
- // 		CMPX	ZP_TXTPTR
- // 		BLO	HandleBRKFindERL_lp
- // HandleBRKFindERL_sk1					//LB277:
- // 		RTS
+HandleBRKFindERL:					// LB237
+		sh	zero, ZP_ERL(wp)
+
+		// check if running an immediate
+		lw	tp, ZP_TXTPTR(wp)
+		addi	t1, wp, BAS_InBuf
+		sub	t1, tp, t1
+		andi	t1, t1, 0xFFFFFF00
+		beqz	t1, HandleBRKFindERL_sk1
+
+		lw	t1, ZP_PAGE(wp)			// t1 points at start of program
+		lw	tp, ZP_TXTPTR(wp)
+HandleBRKFindERL_lp:					//LB251:
+		lbu	cu, 0(t1)
+		addi	t1, t1, 1
+		li	t0, 0x0d		
+		bne	cu, t0, HandleBRKFindERL_sk2
+		bgeu	t1, tp,	HandleBRKFindERL_sk1
+		lb	cu, 0(t1)
+		addi	t1, t1, 1
+		blt	cu, zero, HandleBRKFindERL_sk1	// check end of program
+		sb	cu, (ZP_ERL+1)(wp)		// line MSB
+		lb	cu, 0(t1)
+		addi	t1, t1, 1
+		sb	cu, (ZP_ERL+0)(wp)		// line LSB
+		lb	cu, 0(t1)
+		addi	t1, t1, 1
+HandleBRKFindERL_sk2:					//LB270:
+		bltu	t1, tp,	HandleBRKFindERL_lp
+HandleBRKFindERL_sk1:					//LB277:
+		ret
 HandleBRK:
 		nop
 		nop
@@ -7434,11 +7446,12 @@ HandleBRK:
  		li	a7, OS_BYTE
  		ecall						// ack escape
 
+		jal	HandleBRKFindERL
+
 		jal	ResetStackProgStartRepeatGosubFor
 		jal	cmdREPORT_int_temp	//TODO: 
 		j	cmdEND_int
 
- // 		CALL	HandleBRKFindERL
  // 		CLR	ZP_TRACE
  // ////		LDA	[ZP_MOS_ERROR_PTR_QRY]
  // 		LDA	[,S++]
