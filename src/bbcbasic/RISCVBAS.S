@@ -1322,7 +1322,7 @@ tokKeyCmpLp:
 		lbu	cu, 0(tp)
 		addi	tp, tp, 1
 		beq	cu, t1, tokKeyCmpLp
-		addi	tp, tp, -1
+		lbu	cu, -1(tp)
 		li	t1, '.'
 		beq	cu, t1, tokKeyAbbrev
 tokSkipEndTryNext:					//L8E5D:
@@ -1429,14 +1429,14 @@ cmdLOAD: NOTIMPL "cmdLOAD"
  // cmdLOAD
  // 		CALL	loadProg2Page
  // 		BRA	resetVarsImmedPrompt
-cmdEND: NOTIMPL "cmdEND"
- // cmdEND			// L8F25!
- // 		CALL	scanNextStmtFromY
- // 		CALL	findTOP
- // 		BRA	immedPrompt
- // 
- // 
- // 
+cmdEND:			// L8F25!
+		jal	scanNextStmtFromY
+cmdEND_int:
+		jal	findTOP
+		j	immedPrompt
+
+
+
 reset_prog_enter_immedprompt:
 		jal	deleteProgSetTOP
   
@@ -2770,16 +2770,21 @@ cmdCLS: NOTIMPL "cmdCLS"
  // L97F1		JUMP continue				//Return to execution loop
 cmdREPORT:
 		jal	scanNextStmtFromY
+		jal	cmdREPORT_int_temp		// TODO: undo this to drop thro after get rid of int_temp
+		j	continue
+
 cmdREPORT_int_temp:	//temp entry point until onerror works
+		ENTER	0
 		jal	PrintCRclearPRLINCOUNT
 		lw	tp2, ZP_MOS_ERROR_PTR_QRY(wp)
 		addi	tp2, tp2, 4
 cmdREPORTlp:						//L97FC:
 		lbu	cu, 0(tp2)
 		addi	tp2, tp2, 1
-		beqz	cu, continue
+		beqz	cu, cmdREPORT_sk
 		jal	doListPrintTokenA
 		j	cmdREPORTlp
+cmdREPORT_sk:	LEAVE	0		
  // doVDUChar_fromWA32				//L9808:
  // 		LDA ZP_INT_WA + 2
  // 		JSR OSWRCH
@@ -3376,7 +3381,7 @@ scanNextExpectColonElseCR:
 snex:
 storeYasTXTPTR:	sw	tp, ZP_TXTPTR(wp)
 checkForESC:	lw	t0, ZP_ESCPTR(wp)
-		lb	t0, 0(tp)
+		lb	t0, 0(t0)
 		blt	t0, zero, errEscape				//  Escape set, give Escape error
 		ret
  // 
@@ -7429,7 +7434,9 @@ HandleBRK:
  		li	a7, OS_BYTE
  		ecall						// ack escape
 
-		j	cmdREPORT_int_temp	//TODO: 
+		jal	ResetStackProgStartRepeatGosubFor
+		jal	cmdREPORT_int_temp	//TODO: 
+		j	cmdEND_int
 
  // 		CALL	HandleBRKFindERL
  // 		CLR	ZP_TRACE
