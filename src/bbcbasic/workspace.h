@@ -45,6 +45,7 @@ ZP_FP_TMP:		.space 6	//?
 
 ZP_RND_WA:		.space 5
 
+#define WKSP_PRSTRBUF ZP_FPB + 4
 
 ZP_TXTOFF:		.space 1
 // order of these is assumed in cmdPRINT

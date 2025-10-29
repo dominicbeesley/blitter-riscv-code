@@ -1002,10 +1002,10 @@ ssylp:		lbu	cu, 0(tp)
 inySkipSpacesYStepBack:
  		addi	tp, tp, 1
 skipSpacesYStepBack:
-		mv	s1, ra
+		ENTER	0
  		jal	skipSpacesY
  		addi	tp, tp, -1
- 		jr	s1
+ 		LEAVE	0
  
 		
 		//  Skip spaces at PTRA
@@ -1892,7 +1892,7 @@ cmdPRINT_sk0:						// L91DB
 		lbu	t0, ZP_PRINTBYTES(wp)			// Get current field width
 		lbu	s1, ZP_STRBUFLEN(wp)			// A=width-stringlength
 		sub	s1, t0, s1
-		bltu	s1, zero, cmdPRINT_printString		// length>=width - print it
+		ble	s1, zero, cmdPRINT_printString		// length>=width - print it
 								// s1=number of spaces needed
 cmdPRINT_padlp1:						// L9211
 		jal	list_print1Space
@@ -2598,7 +2598,8 @@ evalLevel1checkTypeStoreAsINT:
  // 		LBEQ	brkTypeMismatch
  // 		BPL	anRTS				//  If string, error// if already integer, return
  // 		
- // fpReal2Int	
+fpReal2Int:
+	NOTIMPL "fpReal2Int"
  // 		CALL	fpAMant2Int			//  Convert real to integer
  // fpCopyAmant2intWA
  // 		LDD	ZP_FPA + 3
@@ -3607,7 +3608,7 @@ doTRACE:						// L9C4B
 		// //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 			// internally changed so that next token is in B instead of X
 
-#define tt s0
+#define tt a0
 
 evalExpressionMAIN:
 //		LDA ZP_TXTPTR
@@ -4231,7 +4232,7 @@ int16print_fmtA:				// LA087
 
 
 		la	a0, tblTENS+4*2		// point at 10,000's in table
-		addi	s2, wp, ZP_FP_TMP+4	// point at string buffer
+		addi	s2, wp, WKSP_PRSTRBUF	// point at string buffer
 		lhu	t0, ZP_INT_WA(wp)	// the number to do
 		li	t1, 5			// loop counter
 
@@ -4284,36 +4285,47 @@ int16_printDigits:				//LA0BF:
 
 		LEAVE	8
 
+
+#define NUM2STR_STACK 24
+
+
  // 
  // //			//  Convert number to hex string
  // //			//  ----------------------------
 cmdPRINT_num2str_hex:					// LA0CA
-		NOTIMPL "cmdPRINT_num2str_hex"
- // 		PSHS	U
- // 		TST	ZP_VARTYPE			// real?
- // 		BPL	1F				// no
- // 		CALL	fpReal2Int			//  Convert real to integer
- // 1							// LA0D0:
- // 		LDX	#ZP_FPB + 4
- // 		LDU	#ZP_INT_WA + 4
- // 		LDB	#4
- // 1		LDA	,-U				// unwind nibbles into a buffer
- // 		ANDA	#0x0F
- // 		STA	,X+
- // 		LDA	,U				// reload for low nibble
- // 		LSRA
- // 		LSRA
- // 		LSRA
- // 		LSRA
- // 		STA	,X+
- // 		DECB
- // 		BNE	1B
- // 		LDB	#7				// note skip at most 7, print 0 for 0!
- // 1							// LA0EA
- // 		LDA	,-X				// skip leading 0's
- // 		BNE	1F
- // 		DECB
- // 		BPL	1B
+		lb	t0, ZP_VARTYPE(wp)		// real?
+		bgeu	t0, zero, cpn2sh_notreal	// no
+		jal	fpReal2Int			//  Convert real to integer
+cpn2sh_notreal:						// LA0D0:
+		addi	s0, wp, WKSP_PRSTRBUF
+		lw	t1, ZP_INT_WA(wp)
+		li	t2, 8				// # of hex nybble digits to decode
+cpn2sh_lp1:	andi	t3, t1, 0xF
+		srli	t1, t1, 4
+		sb	t3, 0(s0)
+		addi	s0, s0, 1
+		addi	t2, t2, -1
+		bnez	t2, cpn2sh_lp1
+
+		li	s1, 7				// step back over all but the last digit
+cpn2sh_lp2:	addi	s0, s0, -1
+		lbu	t3, 0(s0)
+		bnez	t3, cpn2sh_sk1			// if non-zero then skip forwards
+		addi	s1, s1, -1
+		bge	s1, zero, cpn2sh_lp2
+cpn2sh_sk1:	li	t5, 10
+cpn2sh_lp3:	bltu	t3, t5, cpn2sh_sk2
+		addi	t3, t3, 'A'-'9'-1
+cpn2sh_sk2:	addi	a0, t3, '0'
+		jal	cmdPRINT_num2str_storeA
+		addi	s1, s1, -1
+		blt	s1, zero, cpn2sh_sk3
+		addi	s0, s0, -1
+		lbu	t3, 0(s0)
+		j	cpn2sh_lp3
+cpn2sh_sk3:	LEAVE	NUM2STR_STACK
+
+
  // 1							// LA0F1
  // 		CMPA	#10				// Get byte from workspace
  // 		BLO	2F
@@ -4345,48 +4357,67 @@ cmdPRINT_num2str_hex:					// LA0CA
  // 		BRA 	cmdPRINT_num2str_realNon0_lp1	//  Loop until number is >=1
  // 
  // 
- // //			//  Convert numeric value to string
- // //			//  ===============================
- // //			//  On entry, FloatA (0x2E-0x35)	= number
- // //			//	     or IntA (ZP_INT_WA)= number
- // //			//		ZP_VAR_TYPE	= type
- // //			//		@%		= print format
- // //			//		ZP_PRINTFLAG[7]	= 1 if hex
- // //			//  On exit,  StrA contains string version of number
- // //			//
- cmdPRINT_num2str:					// LA118
- 	NOTIMPL "cmdPRINT_num2str"
- // 		LDB	BASWKSP_INTVAR + 1		//  Get @% format byte
- // 		CMPB	#0x03
- // 		BCS	cmdPRINT_num2str_skFMTOK	//  Use it if valid
- // 		LDB	#0x00
- // //			//  If @% invalid, use General format
- // cmdPRINT_num2str_skFMTOK				//LA121:
- // 		STB 	ZP_GEN_PTR			// Store format type
- // 		LDA	BASWKSP_INTVAR + 2		// Num dec places
- // 		BEQ	cmdPRINT_num2str_0dp		// If digits is zero, check format
- // 		CMPA	#0x0A
- // 		BCC	cmdPRINT_num2str_invaldp	// If digits>10, jump to use 10 digits
- // 		BRA	cmdPRINT_num2str_dp_sk		// Use this number of digits
- // cmdPRINT_num2str_0dp					// LA12E
- // 		CMPB	#0x02
- // 		BEQ	cmdPRINT_num2str_dp_sk		// If fixed format, use zero digits
- // cmdPRINT_num2str_invaldp				// LA132
- // 		LDA	#0x0A				// Otherwise, use ten digits
- // cmdPRINT_num2str_dp_sk					// LA134
- // 		STA	ZP_GEN_PTR + 1
- // 		STA	ZP_FP_TMP + 10			//  Store digit length
- // 		CLR	ZP_STRBUFLEN
- // 		CLR	ZP_FP_TMP + 5			//  Set initial output to 0, initial exponent to 0
- // 		TST	ZP_PRINTFLAG
- // 		BMI	cmdPRINT_num2str_hex		//  Jump for hex conversion
+
+
+// n2s_fmt = format number from @% (was ZP_GEN_PTR)
+#define n2s_fmt s0
+// n2s_pla = # decimal places from @% (was ZP_FP_TMP + 10)
+#define n2s_pla s1
+// n2s_dct = number of digits (was ZP_GEN_PTR + 1)
+#define n2s_dct s2
+// n2s_exp = exponent (was ZP_FP_TMP + 5)
+#define n2s_exp s3
+
+
+
+ //			//  Convert numeric value to string
+ //			//  ===============================
+ //			//  On entry, FloatA (0x2E-0x35)	= number
+ //			//	     or IntA (ZP_INT_WA)= number
+ //			//		ZP_VAR_TYPE	= type
+ //			//		@%		= print format
+ //			//		ZP_PRINTFLAG[7]	= 1 if hex
+ //			//  On exit,  StrA contains string version of number
+ //			//
+cmdPRINT_num2str:	
+		ENTER NUM2STR_STACK
+
+		///TODO: stack save regs
+
+
+
+					// LA118
+		lbu	n2s_fmt, (BASWKSP_INTVAR + 2)(wp)	//  Get @% format byte
+		li	n2s_fmt, 3
+		bltu	n2s_fmt, t0, cmdPRINT_num2str_skFMTOK	//  Use it if valid
+		mv	n2s_fmt, zero				//  If @% invalid, use General format
+cmdPRINT_num2str_skFMTOK:					//LA121:
+		lbu	n2s_pla, (BASWKSP_INTVAR + 1)(wp)	// Num dec places
+ 		beqz	n2s_pla, cmdPRINT_num2str_0dp		// If digits is zero, check format
+ 		li	t0, 10
+		bgtu	n2s_pla, t0, cmdPRINT_num2str_invaldp	// If digits>10, jump to use 10 digits
+		j	cmdPRINT_num2str_dp_sk			// Use this number of digits
+cmdPRINT_num2str_0dp:						// LA12E
+		li	t0, 2
+		beq	n2s_fmt, t0, cmdPRINT_num2str_dp_sk	// If fixed format, use zero digits
+cmdPRINT_num2str_invaldp:					// LA132
+		li	n2s_pla, 10				// Otherwise, use ten digits
+cmdPRINT_num2str_dp_sk:						// LA134
+		mv	n2s_dct, n2s_pla			//  Store digit length
+ 		sb	zero, ZP_STRBUFLEN(wp)
+		mv	n2s_exp, zero				//  Set initial output to 0, initial exponent to 0
+		lb	t0, ZP_PRINTFLAG(wp)
+		blt	t0, zero, cmdPRINT_num2str_hex		//  Jump for hex conversion
+
+		NOTIMPL "DECNUM"
+
  // 		TST	ZP_VARTYPE
  // 		BMI	cmdPRINT_num2str_dec_sk1
  // 		CALL	IntToReal			//  Convert integer to real
  // cmdPRINT_num2str_dec_sk1				//LA146:
  // 		CALL	fpCheckMant0SetSignExp0
  // 		BNE	cmdPRINT_num2str_realNon0	// Get sign, jump if not zero to output nonzero number
- // 		LDA	ZP_GEN_PTR
+ // 		LDA	n2s_fmt
  // 		LBNE	cmdPRINT_num2str_fmtFixedOrExp0	// If not General format, output fixed or exponential zero
  // 		LDA	#'0'
  // 		JUMP	cmdPRINT_num2str_storeA		//  Store '0' and return
@@ -4407,7 +4438,7 @@ cmdPRINT_num2str_hex:					// LA0CA
  // cmdPRINT_num2str_digit_sk1				// LA168:
  // 		CALL	fpFloatADiv10			// FloatA=FloatA / 10
  // cmdPRINT_num2str_digit_sk2				// LA16B:
- // 		INC	ZP_FP_TMP + 5			// incremenet exponent
+ // 		INC	n2s_exp			// incremenet exponent
  // 		BRA	cmdPRINT_num2str_realNon0_lp1
  // //			//  Jump back to get the number >=1 again
  // //			//  FloatA is now between 1 and 9.999999999
@@ -4416,27 +4447,27 @@ cmdPRINT_num2str_hex:					// LA0CA
  // 		LDA	ZP_FPA + 7
  // 		STA	ZP_VARTYPE
  // 		CALL	fpCopyFPA_FPTEMP1				//  Copy FloatA to FloatTemp at 0x27/0x046C
- // 		LDA	ZP_FP_TMP + 10
- // 		STA	ZP_GEN_PTR + 1			//  Get number of digits
- // 		LDB	ZP_GEN_PTR			//  Get print format
+ // 		LDA	n2s_pla
+ // 		STA	n2s_dct			//  Get number of digits
+ // 		LDB	n2s_fmt			//  Get print format
  // 		CMPB	#0x02
  // 		BNE	cmdPRINT_num2str_digit_1_9_sknf				//  Not fixed format, jump to do exponent/general
  // 		SEC
- // 		ADCA	ZP_FP_TMP + 5
+ // 		ADCA	n2s_exp
  // 		BMI	cmdPRINT_num2str_clearZeroFPAandPrintFMT2
- // 		STA	ZP_GEN_PTR + 1
+ // 		STA	n2s_dct
  // 		CMPA	#0x0B
  // 		BCS	cmdPRINT_num2str_digit_1_9_sknf
  // 		LDA	#0x0A
- // 		STA	ZP_GEN_PTR + 1
- // 		CLR	ZP_GEN_PTR
+ // 		STA	n2s_dct
+ // 		CLR	n2s_fmt
  // cmdPRINT_num2str_digit_1_9_sknf				// LA190
  // 		CALL	zero_FPA_sign_expO_manlo	//  Clear FloatA
  // 		LDA	#0xA0
  // 		STA	ZP_FPA + 3
  // 		LDA	#0x83
  // 		STA	ZP_FPA + 2
- // 		LDB	ZP_GEN_PTR + 1
+ // 		LDB	n2s_dct
  // 		BEQ	LA1A5
  // LA19F
  // 		PSHS	B
@@ -4460,31 +4491,31 @@ cmdPRINT_num2str_hex:					// LA0CA
  // 		LDA	ZP_FPA + 3
  // 		CMPA	#0xA0
  // 		BHS	setFloatA1_cmdPRINT_num2str_digit
- // 		LDA	ZP_GEN_PTR + 1
+ // 		LDA	n2s_dct
  // 		BNE	LA1DE
  // cmdPRINT_num2str_fmtFixedOrExp0
  // 		CMPA	#0x01				// If format == 1 (exp)
  // 		BEQ	cmdPRINT_numstr_strAasDigLenPrintDigs
  // cmdPRINT_num2str_clearZeroFPAandPrintFMT2		// LA1D4
  // 		CALL	zero_FPA			// Clear FloatA
- // 		CLR	ZP_FP_TMP + 5			// clear 10's exponent
- // 		LDA	ZP_FP_TMP + 10			// digit length
+ // 		CLR	n2s_exp			// clear 10's exponent
+ // 		LDA	n2s_pla			// digit length
  // 		INCA
- // 		STA	ZP_GEN_PTR + 1
+ // 		STA	n2s_dct
  // LA1DE
  // 		LDA	#1
- // 		CMPA	ZP_GEN_PTR
+ // 		CMPA	n2s_fmt
  // 		BEQ	cmdPRINT_numstr_strAasDigLenPrintDigs				// if format == 1 (exp)
- // 		LDB	ZP_FP_TMP + 5			// B = 10's exponent
+ // 		LDB	n2s_exp			// B = 10's exponent
  // 		BMI	cmdPRINT_numstr_printLead0point	// negative 10's exponent
- // 		CMPB	ZP_GEN_PTR + 1
+ // 		CMPB	n2s_dct
  // 		BCC	cmdPRINT_numstr_strAasDigLenPrintDigs				// 
- // 		CLR	ZP_FP_TMP + 5
+ // 		CLR	n2s_exp
  // 		INCB
  // 		TFR	B,A
  // 		BNE	cmdPRINT_numstr_strAasDigLenPrintDigs
  // cmdPRINT_numstr_printLead0point				// LA1F2
- // 		LDA	ZP_GEN_PTR
+ // 		LDA	n2s_fmt
  // 		CMPA	#0x02				// if format == 2 (fixed)
  // 		BEQ	cmdPRINT_numstr_print0point
  // 		LDA	#1
@@ -4497,24 +4528,24 @@ cmdPRINT_num2str_hex:					// LA0CA
  // 		CALL	cmdPRINT_num2str_storeA		// Output '.'
  // 		LDA	#'0'				// Prepare '0'
  // cmdPRINT_numstr_print0point_lp				//LA20A:
- // 		INC	ZP_FP_TMP + 5
+ // 		INC	n2s_exp
  // 		BEQ	cmdPRINT_numstr_print0point_sk
  // 		CALL	cmdPRINT_num2str_storeA		// Output
  // 		BRA	cmdPRINT_numstr_print0point_lp
  // cmdPRINT_numstr_print0point_sk				//LA213:
  // 		LDA	#0x80
  // cmdPRINT_numstr_strAasDigLenPrintDigs			//
- // 		STA	ZP_FP_TMP + 10
+ // 		STA	n2s_pla
  // cmdPRINT_numstr_print_lp2				//LA217:
  // 		CALL	cmdPRINT_numstr_printAhigh_nyb_asdigit_thenmul10
- // 		DEC	ZP_FP_TMP + 10
+ // 		DEC	n2s_pla
  // 		BNE	cmdPRINT_numstr_print_sk2
  // 		LDA	#'.'
  // 		CALL	cmdPRINT_num2str_storeA
  // cmdPRINT_numstr_print_sk2				//LA223:
- // 		DEC	ZP_GEN_PTR + 1
+ // 		DEC	n2s_dct
  // 		BNE	cmdPRINT_numstr_print_lp2
- // 		LDB	ZP_GEN_PTR
+ // 		LDB	n2s_fmt
  // 		DECB
  // 		BEQ	cmdPRINT_numstr_print_exponent_exp				// format = 1 (exp)
  // 		DECB
@@ -4532,23 +4563,23 @@ cmdPRINT_num2str_hex:					// LA0CA
  // cmdPRINT_numstr_removetrail0_sk				// LA23E:
  // 		STB	ZP_STRBUFLEN
  // cmdPRINT_numstr_print_exponent_fix			// LA240
- // 		LDA	ZP_FP_TMP + 5
+ // 		LDA	n2s_exp
  // 		BEQ	rtsLA26B
  // cmdPRINT_numstr_print_exponent_exp			// LA244
  // 		LDA	#'E'
  // 		CALL	cmdPRINT_num2str_storeA		//  Output 'E'
- // 		LDA	ZP_FP_TMP + 5
+ // 		LDA	n2s_exp
  // 		BPL	cmdPRINT_numstr_print_exponent_exp_sk
  // 		LDA	#'-'
  // 		CALL	cmdPRINT_num2str_storeA		// Output '-'
- // 		NEG	ZP_FP_TMP + 5			//  Negate
- // 		LDA	ZP_FP_TMP + 5
+ // 		NEG	n2s_exp			//  Negate
+ // 		LDA	n2s_exp
  // cmdPRINT_numstr_print_exponent_exp_sk			// LA257:
  // 		CALL	cmdPRINT_numstr_convert_10_1
- // 		LDA	ZP_GEN_PTR
+ // 		LDA	n2s_fmt
  // 		BEQ	rtsLA26B
  // 		LDA	#0x20
- // 		LDB	ZP_FP_TMP + 5
+ // 		LDB	n2s_exp
  // 		BMI	LA267
  // 		CALL	cmdPRINT_num2str_storeA
  // LA267
@@ -4631,17 +4662,22 @@ cmdPRINT_num2str_hex:					// LA0CA
  // cmdPRINT_numstr_printAlow_nyb_asdigit			// LA2CE
  // 		ORA	#'0'
  // 
- // //			//  Store character in string buffer
- // //			//  --------------------------------
- // cmdPRINT_num2str_storeA					// LA2D0
- // 		PSHS	B,X
- // 		LDB	ZP_STRBUFLEN
- // 		LDX	#BAS_StrA
- // 		ABX
- // 		STA	,X				// Store character
- // 		INC	ZP_STRBUFLEN
- // 		PULS	B,X,PC				//  Increment string length
- // 
+
+
+	//TODO: Speed this up by having buffer pointer and length in reserved registers?
+
+
+//			//  Store character in string buffer
+//			//  --------------------------------
+cmdPRINT_num2str_storeA:					// LA2D0
+		lbu	t0, ZP_STRBUFLEN(wp)
+		addi	t1, wp, BAS_StrA
+		add	t1, t1, t0
+		sb	a0, (t1)
+		addi	t0, t0, 1
+		sb	t0, ZP_STRBUFLEN(wp)
+		ret
+
  // parseDecNAN						// LA2DA
  // 		CALL	fpSetSignExp0			//  Set IntA to zero
  // 		CLC					//  CLC=no number, return Real
